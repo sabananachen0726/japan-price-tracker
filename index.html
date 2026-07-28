@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本廠商價格比對與管理系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; font-weight: bold; }
+        .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* 穩定圖片容器排版 */
+        .img-wrapper { width: 65px; height: 65px; flex-shrink: 0; }
+        .product-img-thumb { width: 65px; height: 65px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid #dee2e6; }
+        .no-img-placeholder { width: 65px; height: 65px; border-radius: 6px; border: 1px dashed #ced4da; background-color: #e9ecef; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #6c757d; font-size: 0.65rem; }
+        .no-img-placeholder i { font-size: 1.2rem; margin-bottom: 2px; }
+
+        .lowest-price { color: #198754; font-weight: bold; background-color: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
+        .price-tag { font-size: 1.1rem; }
+        .badge-alias { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; margin-right: 4px; font-weight: normal; }
+        .btn-copy { padding: 0.1rem 0.4rem; font-size: 0.75rem; }
+        .modal-img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+        .item-code-badge { background-color: #0d6efd; color: white; font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
+        <span class="badge bg-secondary">純本地儲存 (localStorage)</span>
+    </div>
+
+    <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="compare-tab" data-bs-toggle="tab" data-bs-target="#compare-panel" type="button"><i class="fa-solid fa-magnifying-glass me-2"></i>1. 商品價格比對</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-panel" type="button"><i class="fa-solid fa-plus me-2"></i>2. 新增/批次匯入報價</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="mapping-tab" data-bs-toggle="tab" data-bs-target="#mapping-panel" type="button"><i class="fa-solid fa-link me-2"></i>3. 條碼關聯綁定</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-panel" type="button"><i class="fa-solid fa-gear me-2"></i>4. 商品主檔與系統備份</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabsContent">
+
+        <!-- 1. 商品價格比對 -->
+        <div class="tab-pane fade show active" id="compare-panel" role="tabpanel">
+            <div class="card p-3 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0 fw-bold"><i class="fa-solid fa-magnifying-glass me-1"></i>搜尋方式</label>
+                            <div>
+                                <button type="button" id="btnSingleMode" class="btn btn-sm btn-primary">單筆快速搜尋</button>
+                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode 批次貼入查詢</button>
+                            </div>
+                        </div>
+
+                        <!-- 單筆輸入框 -->
+                        <div id="singleSearchBox" class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input type="text" id="searchInput" class="form-control" placeholder="搜尋 Barcode / Item Code / 商品名稱...">
+                        </div>
+
+                        <!-- 多筆貼入框 -->
+                        <div id="batchSearchBox" class="d-none">
+                            <textarea id="batchSearchInput" class="form-control border-primary" rows="4" placeholder="在此一次貼入多個 Barcode（可用「換行」、「逗號」或「空格」隔開）&#10;例如：&#10;4901330112813&#10;4901330119999&#10;4901330122222"></textarea>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">自動比對所有貼入的條碼及其關聯綁定條碼。</small>
+                                <div>
+                                    <button id="btnExportPurchase" class="btn btn-sm btn-success me-2"><i class="fa-solid fa-file-csv me-1"></i>匯出採購決策建議單 (CSV)</button>
+                                    <button id="btnClearBatchSearch" class="btn btn-sm btn-outline-secondary">清空輸入</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><i class="fa-solid fa-filter me-1"></i>篩選廠商</label>
+                        <select id="filterSupplier" class="form-select">
+                            <option value="">全部廠商比對</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compareResultsContainer"></div>
+        </div>
+
+        <!-- 2. 新增/批次匯入報價 -->
+        <div class="tab-pane fade" id="add-panel" role="tabpanel">
+            <div class="row g-4 mx-auto" style="max-width: 900px;">
+                
+                <div class="col-md-12">
+                    <div class="card p-4 border-primary border-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="m-0 text-primary"><i class="fa-solid fa-file-csv me-2"></i>【快速】整批 CSV / TXT 報價單匯入</h4>
+                            <div>
+                                <button class="btn btn-outline-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#encodingHelpModal"><i class="fa-solid fa-circle-question me-1"></i>遇到亂碼怎麼辦？</button>
+                                <button id="btnDownloadTemplate" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-download me-1"></i>下載報價單 CSV 範本</button>
+                            </div>
+                        </div>
+                        <p class="text-muted small">支援 Excel 匯出的 CSV 或 TXT 文字檔。包含中文/日文混排皆可正確辨識。</p>
+                        
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <input type="file" id="batchQuoteCSVFile" class="form-control" accept=".csv, .txt">
+                            </div>
+                            <div class="col-md-4">
+                                <select id="quoteEncodingSelect" class="form-select">
+                                    <option value="auto">編碼：自動辨識 (預設)</option>
+                                    <option value="shift-jis">編碼：Shift-JIS (日文Excel)</option>
+                                    <option value="big5">編碼：Big5 (繁中Excel)</option>
+                                    <option value="utf-8">編碼：UTF-8 (標準萬國碼)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <button id="btnImportBatchCSV" class="btn btn-primary w-100" type="button"><i class="fa-solid fa-upload me-1"></i>開始批次匯入報價</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card p-4">
+                        <h5 class="card-title mb-3 text-secondary"><i class="fa-solid fa-pen-to-square me-2"></i>單筆手動錄入報價</h5>
+                        <form id="priceForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">產品 Barcode (JAN Code) <span class="text-danger">*</span></label>
+                                    <input type="text" id="inputBarcode" class="form-control" placeholder="例如: 4901330112813" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Item Code (內部料號，選填)</label>
+                                    <input type="text" id="inputItemCode" class="form-control" placeholder="例如: WHH005">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">商品名稱</label>
+                                    <input type="text" id="inputName" class="form-control" placeholder="例如: Calbee 蝦條 白鹽味 70g">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">圖片 URL (選填)</label>
+                                    <input type="url" id="inputImgUrl" class="form-control" placeholder="https://example.com/image.jpg">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">廠商名稱 <span class="text-danger">*</span></label>
+                                    <select id="inputSupplier" class="form-select" required></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">報價金額 (JPY ¥) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" id="inputPrice" class="form-control" placeholder="日圓單價" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">貨櫃號碼 <span class="text-danger">*</span></label>
+                                    <input type="text" id="inputContainer" class="form-control" placeholder="例如: CTN-2024-001" required>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">備註欄位</label>
+                                    <input type="text" id="inputNote" class="form-control" placeholder="賞味期限、特價原因、箱規等...">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-secondary w-100 mt-3"><i class="fa-solid fa-plus me-1"></i>新增單筆紀錄</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 3. 條碼關聯綁定 -->
+        <div class="tab-pane fade" id="mapping-panel" role="tabpanel">
+            <div class="card p-4">
+                <h4 class="card-title mb-3"><i class="fa-solid fa-code-fork me-2 text-primary"></i>新舊條碼綁定設定 (Barcode Mapping)</h4>
+                <p class="text-muted">日本廠商常更換條碼但為同一商品，在此將「關聯條碼 / 舊條碼」綁定至「主條碼」，比對時會自動合併價格紀錄。</p>
+                
+                <div class="row g-3 mb-4 bg-light p-3 border rounded">
+                    <div class="col-md-5">
+                        <label class="form-label">主要 Barcode</label>
+                        <input type="text" id="mapPrimaryBarcode" class="form-control" placeholder="主條碼 (例如: 4901330112813)">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">要綁定的關聯 Barcode (新/舊條碼)</label>
+                        <input type="text" id="mapAliasBarcode" class="form-control" placeholder="舊條碼/新條碼 (例如: 4901330119999)">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" id="btnAddMapping" class="btn btn-success w-100"><i class="fa-solid fa-link me-1"></i>建立綁定</button>
+                    </div>
+                </div>
+
+                <h5>目前綁定關係清單</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>主條碼 (Primary Barcode)</th>
+                                <th>Item Code</th>
+                                <th>商品名稱</th>
+                                <th>已綁定的關聯條碼 (Aliases)</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mappingTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 商品主檔與系統備份 -->
+        <div class="tab-pane fade" id="settings-panel" role="tabpanel">
+            <div class="row g-4">
+                
+                <div class="col-md-12">
+                    <div class="card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4><i class="fa-solid fa-images me-2 text-primary"></i>商品主檔與圖片網址對照庫 (Product Master File)</h4>
+                            <button id="btnDownloadMasterTemplate" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-download me-1"></i>下載主檔 CSV 範本</button>
+                        </div>
+                        <p class="text-muted small">在此建立每個 Barcode 對應的圖片 URL。之後輸入報價只需 Barcode，系統會自動套用這裡的圖片。</p>
+                        
+                        <div class="bg-light p-3 border rounded mb-3">
+                            <h6>批次匯入/更新商品主檔 (CSV 或 TXT)：</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="file" id="masterCSVFile" class="form-control" accept=".csv, .txt">
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="masterEncodingSelect" class="form-select">
+                                        <option value="auto">編碼：自動辨識 (預設)</option>
+                                        <option value="shift-jis">編碼：Shift-JIS (日文Excel)</option>
+                                        <option value="big5">編碼：Big5 (繁中Excel)</option>
+                                        <option value="utf-8">編碼：UTF-8 (標準萬國碼)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="btnImportMasterCSV" class="btn btn-info text-white w-100" type="button"><i class="fa-solid fa-upload me-1"></i>匯入商品主檔</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 id="masterCountHeader">已存在的主檔商品</h5>
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>圖片</th>
+                                        <th>Primary Barcode (必填)</th>
+                                        <th>Item Code (選填)</th>
+                                        <th>商品名稱</th>
+                                        <th>圖片 URL</th>
+                                        <th class="text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="masterTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 依貨櫃號碼批次刪除區域 -->
+                <div class="col-md-12">
+                    <div class="card p-4 border-danger">
+                        <h4 class="text-danger"><i class="fa-solid fa-boxes-packing me-2"></i>依貨櫃號碼批次刪除報價</h4>
+                        <p class="text-muted small">若不小心匯入錯誤的批次報價，可以選擇特定的貨櫃號碼，一鍵刪除該貨櫃的所有報價紀錄。</p>
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-6">
+                                <select id="selectContainerToDelete" class="form-select">
+                                    <option value="">請選擇要刪除的貨櫃號碼...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button id="btnDeleteByContainer" class="btn btn-danger w-100"><i class="fa-solid fa-trash-can me-1"></i>批次刪除該貨櫃報價</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card p-4 h-100">
+                        <h4><i class="fa-solid fa-building me-2 text-primary"></i>廠商動態管理</h4>
+                        <div class="input-group my-3">
+                            <input type="text" id="newSupplierName" class="form-control" placeholder="新廠商名稱">
+                            <button id="btnAddSupplier" class="btn btn-outline-primary" type="button">新增廠商</button>
+                        </div>
+                        <ul class="list-group" id="supplierList"></ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card p-4 h-100">
+                        <h4><i class="fa-solid fa-database me-2 text-primary"></i>全系統資料備份與復原</h4>
+                        <p class="text-muted small">包含所有商品主檔、圖片 URL、條碼綁定與報價歷史完整備份。</p>
+                        
+                        <div class="d-grid gap-2 mb-3">
+                            <button id="btnExportCSV" class="btn btn-success"><i class="fa-solid fa-file-csv me-2"></i>匯出完整系統備份 CSV 檔</button>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">匯入備份檔恢復資料：</label>
+                            <input class="form-control" type="file" id="importCSVFile" accept=".csv, .txt">
+                        </div>
+
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button id="btnLoadDemo" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>載入測試範例資料</button>
+                            <button id="btnClearData" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-trash me-1"></i>清空所有資料</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 圖片放大彈窗 -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-body text-center p-2">
+        <img id="modalImage" src="" class="modal-img" alt="商品放大圖">
+      </div>
+      <div class="modal-footer p-1 justify-content-center">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 亂碼說明彈窗 -->
+<div class="modal fade" id="encodingHelpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-circle-exclamation text-warning me-2"></i>匯入發生亂碼的排除步驟</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6>方式 1：手動指定檔案編碼（最快速）</h6>
+        <p class="small text-muted mb-3">匯入時，在檔案選擇框旁邊的「編碼」下拉選單中切換：<br>
+        • 日文 Excel 產生的 CSV 檔：選擇 <b>Shift-JIS</b><br>
+        • 繁體中文 Excel 產生的 CSV 檔：選擇 <b>Big5</b></p>
+
+        <h6>方式 2：使用 Windows 記事本轉換為 UTF-8</h6>
+        <ol class="small text-muted mb-0">
+            <li>在電腦上的 CSV/TXT 檔上點右鍵 -> 開啟檔案 -> 選擇<b>「記事本」</b>。</li>
+            <li>點選左上角<b>「檔案」->「另存新檔」</b>。</li>
+            <li>將視窗右下角的<b>「編碼」</b>從 ANSI 改選為 <b>UTF-8</b>。</li>
+            <li>存檔後重新回到網頁匯入即可。</li>
+        </ol>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let appData = {
+    suppliers: ["SilkRoad", "Tencho"],
+    mappings: {},
+    products: {},
+    itemToBarcode: {},
+    quotes: []
+};
+
+let searchMode = 'single'; 
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadLocalStorage();
+    renderSupplierOptions();
+    renderCompareList();
+    renderMappingTable();
+    renderMasterTable();
+    renderContainerDeleteOptions();
+    setupEventListeners();
+});
+
+function saveLocalStorage() {
+    localStorage.setItem("japan_price_tracker_data", JSON.stringify(appData));
+}
+
+function loadLocalStorage() {
+    const data = localStorage.getItem("japan_price_tracker_data");
+    if (data) {
+        try { 
+            appData = JSON.parse(data); 
+            if (!appData.itemToBarcode) appData.itemToBarcode = {};
+        } catch(e) { console.error("Data error", e); }
+    }
+}
+
+function buildImageHtml(imgUrl) {
+    if (imgUrl && imgUrl.trim() !== '') {
+        return `<img src="${imgUrl.trim()}" class="product-img-thumb" onclick="openImageModal('${imgUrl.trim()}')" title="點擊放大圖片">`;
+    }
+    return `<div class="no-img-placeholder"><i class="fa-regular fa-image"></i>無圖片</div>`;
+}
+
+function readTextFileWithSmartEncoding(file, forceEncoding, callback) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const buffer = evt.target.result;
+        
+        if (forceEncoding && forceEncoding !== 'auto') {
+            try {
+                const text = new TextDecoder(forceEncoding).decode(buffer);
+                return callback(text);
+            } catch(e) { console.warn("指定編碼失敗，切換為自動辨識", e); }
+        }
+
+        let text = new TextDecoder('utf-8').decode(buffer);
+        
+        if (text.includes('\uFFFD')) {
+            try {
+                const sjisText = new TextDecoder('shift-jis').decode(buffer);
+                if (!sjisText.includes('\uFFFD')) return callback(sjisText);
+            } catch(e) {}
+
+            try {
+                const big5Text = new TextDecoder('big5').decode(buffer);
+                if (!big5Text.includes('\uFFFD')) return callback(big5Text);
+            } catch(e) {}
+        }
+        callback(text);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseTextLines(text) {
+    const lines = text.split(/\r?\n/);
+    return lines.map(line => {
+        if (!line.trim()) return null;
+        let cols = [];
+        if (line.includes('\t')) {
+            cols = line.split('\t');
+        } else {
+            cols = line.split(',');
+        }
+        return cols.map(c => c.replace(/^"|"$/g, '').trim());
+    }).filter(c => c !== null);
+}
+
+function getPrimaryBarcode(barcode, itemCode) {
+    if (barcode && barcode.trim() !== '') {
+        barcode = barcode.trim();
+        if (appData.mappings[barcode]) return barcode;
+        for (let mainB in appData.mappings) {
+            if (appData.mappings[mainB].includes(barcode)) return mainB;
+        }
+        return barcode;
+    }
+    if (itemCode && appData.itemToBarcode[itemCode.trim()]) {
+        return appData.itemToBarcode[itemCode.trim()];
+    }
+    return "";
+}
+
+function renderSupplierOptions() {
+    const select = document.getElementById("inputSupplier");
+    const filter = document.getElementById("filterSupplier");
+    const list = document.getElementById("supplierList");
+
+    select.innerHTML = "";
+    filter.innerHTML = '<option value="">全部廠商比對</option>';
+    list.innerHTML = "";
+
+    appData.suppliers.forEach(s => {
+        select.innerHTML += `<option value="${s}">${s}</option>`;
+        filter.innerHTML += `<option value="${s}">${s}</option>`;
+        list.innerHTML += `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                ${s}
+                <button class="btn btn-sm btn-outline-danger" onclick="removeSupplier('${s}')"><i class="fa-solid fa-xmark"></i></button>
+            </li>`;
+    });
+}
+
+function renderContainerDeleteOptions() {
+    const select = document.getElementById("selectContainerToDelete");
+    if (!select) return;
+    
+    let containerCounts = {};
+    appData.quotes.forEach(q => {
+        if (q.container) {
+            containerCounts[q.container] = (containerCounts[q.container] || 0) + 1;
+        }
+    });
+
+    select.innerHTML = '<option value="">請選擇要刪除的貨櫃號碼...</option>';
+    for (let ctn in containerCounts) {
+        select.innerHTML += `<option value="${ctn}">${ctn} (包含 ${containerCounts[ctn]} 筆報價)</option>`;
+    }
+}
+
+function renderCompareList() {
+    const container = document.getElementById("compareResultsContainer");
+    const filterSup = document.getElementById("filterSupplier").value;
+
+    let grouped = {};
+    appData.quotes.forEach(q => {
+        const primaryB = getPrimaryBarcode(q.barcode, q.itemCode);
+        if (!primaryB) return;
+        if (!grouped[primaryB]) grouped[primaryB] = [];
+        grouped[primaryB].push(q);
+    });
+
+    container.innerHTML = "";
+    let hasData = false;
+
+    let singleKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
+    let batchBarcodes = [];
+    if (searchMode === 'batch') {
+        const rawBatchText = document.getElementById("batchSearchInput").value.trim();
+        if (rawBatchText) {
+            batchBarcodes = rawBatchText.split(/[\n,\s]+/).map(b => b.trim().toLowerCase()).filter(b => b !== '');
+        }
+    }
+
+    for (let mainB in grouped) {
+        const productInfo = appData.products[mainB] || { itemCode: "-", name: "未命名商品", imgUrl: "" };
+        const aliasList = appData.mappings[mainB] || [];
+        const quotes = grouped[mainB];
+
+        if (searchMode === 'single') {
+            if (singleKeyword) {
+                const matchName = (productInfo.name || '').toLowerCase().includes(singleKeyword);
+                const matchItemCode = (productInfo.itemCode || '').toLowerCase().includes(singleKeyword);
+                const matchBarcode = mainB.toLowerCase().includes(singleKeyword) || aliasList.some(a => a.toLowerCase().includes(singleKeyword));
+                if (!matchName && !matchBarcode && !matchItemCode) continue;
+            }
+        } else if (searchMode === 'batch') {
+            if (batchBarcodes.length > 0) {
+                const matchMain = batchBarcodes.includes(mainB.toLowerCase());
+                const matchAlias = aliasList.some(a => batchBarcodes.includes(a.toLowerCase()));
+                const matchItem = productInfo.itemCode && batchBarcodes.includes(productInfo.itemCode.toLowerCase());
+                if (!matchMain && !matchAlias && !matchItem) continue;
+            }
+        }
+
+        let latestBySupplier = {};
+        quotes.forEach(q => {
+            if (filterSup && q.supplier !== filterSup) return;
+            if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
+                latestBySupplier[q.supplier] = q;
+            }
+        });
+
+        if (Object.keys(latestBySupplier).length === 0) continue;
+        hasData = true;
+
+        let minPrice = Infinity;
+        let lowestSupplier = "";
+        for (let sup in latestBySupplier) {
+            if (latestBySupplier[sup].price < minPrice) {
+                minPrice = latestBySupplier[sup].price;
+                lowestSupplier = sup;
+            }
+        }
+
+        let suppliersHtml = '<div class="row g-2 mt-2">';
+        appData.suppliers.forEach(sup => {
+            if (filterSup && sup !== filterSup) return;
+            const q = latestBySupplier[sup];
+            if (q) {
+                const isLowest = (sup === lowestSupplier && Object.keys(latestBySupplier).length > 1);
+                suppliersHtml += `
+                    <div class="col-md-4 col-sm-6">
+                        <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : ''}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">${sup}</span>
+                                ${isLowest ? '<span class="badge bg-success">Lowest 最低價</span>' : ''}
+                            </div>
+                            <div class="price-tag my-1 ${isLowest ? 'lowest-price d-inline-block' : 'fw-bold'}">
+                                ¥${q.price.toLocaleString()}
+                            </div>
+                            <div class="text-muted small">
+                                <div><i class="fa-solid fa-box me-1"></i>${q.container}</div>
+                                <div><i class="fa-regular fa-clock me-1"></i>${q.date}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                suppliersHtml += `
+                    <div class="col-md-4 col-sm-6">
+                        <div class="p-2 border rounded text-muted bg-light">
+                            <div class="fw-bold">${sup}</div>
+                            <div class="small my-2">暫無報價</div>
+                        </div>
+                    </div>`;
+            }
+        });
+        suppliersHtml += '</div>';
+
+        let historyRows = quotes.sort((a,b) => new Date(b.date) - new Date(a.date)).map(q => `
+            <tr>
+                <td>${q.supplier}</td>
+                <td class="fw-bold">¥${q.price.toLocaleString()}</td>
+                <td><span class="badge bg-secondary">${q.container}</span></td>
+                <td>${q.note || '-'}</td>
+                <td class="small text-muted">${q.date}</td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteQuote('${q.id}')"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>`).join('');
+
+        container.innerHTML += `
+            <div class="card mb-3 p-3">
+                <div class="d-flex gap-3 align-items-start">
+                    <div class="img-wrapper">
+                        ${buildImageHtml(productInfo.imgUrl)}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            ${productInfo.itemCode ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
+                            <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
+                            <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
+                        </div>
+                        <div class="mt-1">
+                            <span class="fw-bold text-primary">JAN: ${mainB}</span>
+                            <button class="btn btn-light btn-copy me-2" onclick="copyToClipboard('${mainB}')"><i class="fa-regular fa-copy"></i> 複製條碼</button>
+                            ${aliasList.map(a => `<span class="badge badge-alias">關聯條碼: ${a}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                ${suppliersHtml}
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#history-${mainB.replace(/[^a-zA-Z0-9]/g, '')}">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>查看完整歷史報價條目 (${quotes.length})
+                    </button>
+                    <div class="collapse mt-2" id="history-${mainB.replace(/[^a-zA-Z0-9]/g, '')}">
+                        <table class="table table-sm table-bordered mt-2">
+                            <thead class="table-light">
+                                <tr><th>廠商</th><th>價格 (JPY)</th><th>貨櫃號碼</th><th>備註</th><th>錄入日期</th><th>操作</th></tr>
+                            </thead>
+                            <tbody>${historyRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    if (!hasData) {
+        container.innerHTML = '<div class="alert alert-info text-center">尚無符合條件的報價資料，請先新增報價或匯入資料。</div>';
+    }
+}
+
+function renderMappingTable() {
+    const tbody = document.getElementById("mappingTableBody");
+    tbody.innerHTML = "";
+    for (let mainB in appData.mappings) {
+        const productInfo = appData.products[mainB] || { itemCode: "-", name: "未命名" };
+        const aliases = appData.mappings[mainB];
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold text-primary">${mainB}</td>
+                <td>${productInfo.itemCode ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : '-'}</td>
+                <td>${productInfo.name}</td>
+                <td>${aliases.map(a => `<span class="badge badge-alias me-1">${a}</span>`).join('')}</td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteMapping('${mainB}')">刪除所有綁定</button></td>
+            </tr>`;
+    }
+}
+
+function renderMasterTable() {
+    const tbody = document.getElementById("masterTableBody");
+    const countHeader = document.getElementById("masterCountHeader");
+    
+    const totalCount = Object.keys(appData.products).length;
+    countHeader.innerText = `已存在的主檔商品 (${totalCount})`;
+
+    tbody.innerHTML = "";
+
+    for (let mainB in appData.products) {
+        const p = appData.products[mainB];
+        tbody.innerHTML += `
+            <tr>
+                <td><div style="width:40px;height:40px;">${buildImageHtml(p.imgUrl)}</div></td>
+                <td class="fw-bold text-primary">${mainB}</td>
+                <td>${p.itemCode ? `<span class="item-code-badge">${p.itemCode}</span>` : '-'}</td>
+                <td>${p.name || '-'}</td>
+                <td class="small text-truncate" style="max-width: 180px;" title="${p.imgUrl}">${p.imgUrl || '未設定'}</td>
+                <td class="text-center"><button class="btn btn-sm btn-outline-danger" onclick="deleteSingleMasterProduct('${mainB}')"><i class="fa-solid fa-trash me-1"></i>刪除主檔</button></td>
+            </tr>`;
+    }
+}
+
+function setupEventListeners() {
+    const btnSingleMode = document.getElementById("btnSingleMode");
+    const btnBatchMode = document.getElementById("btnBatchMode");
+    const singleSearchBox = document.getElementById("singleSearchBox");
+    const batchSearchBox = document.getElementById("batchSearchBox");
+
+    btnSingleMode.addEventListener("click", () => {
+        searchMode = 'single';
+        btnSingleMode.className = "btn btn-sm btn-primary";
+        btnBatchMode.className = "btn btn-sm btn-outline-primary";
+        singleSearchBox.classList.remove("d-none");
+        batchSearchBox.classList.add("d-none");
+        renderCompareList();
+    });
+
+    btnBatchMode.addEventListener("click", () => {
+        searchMode = 'batch';
+        btnBatchMode.className = "btn btn-sm btn-primary";
+        btnSingleMode.className = "btn btn-sm btn-outline-primary";
+        batchSearchBox.classList.remove("d-none");
+        singleSearchBox.classList.add("d-none");
+        renderCompareList();
+    });
+
+    document.getElementById("searchInput").addEventListener("input", renderCompareList);
+    document.getElementById("batchSearchInput").addEventListener("input", renderCompareList);
+    document.getElementById("btnClearBatchSearch").addEventListener("click", () => {
+        document.getElementById("batchSearchInput").value = "";
+        renderCompareList();
+    });
+    
+    // 綁定匯出採購單按鈕
+    document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
+
+    document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
+    document.getElementById("btnDownloadTemplate").addEventListener("click", downloadCSVTemplate);
+    document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
+    document.getElementById("btnImportBatchCSV").addEventListener("click", importBatchQuoteCSV);
+    document.getElementById("btnImportMasterCSV").addEventListener("click", importMasterCSV);
+    document.getElementById("btnDeleteByContainer").addEventListener("click", deleteQuotesByContainer);
+
+    document.getElementById("priceForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const rawBarcode = document.getElementById("inputBarcode").value.trim();
+        const itemCode = document.getElementById("inputItemCode").value.trim();
+        const name = document.getElementById("inputName").value.trim();
+        const imgUrl = document.getElementById("inputImgUrl").value.trim();
+        const supplier = document.getElementById("inputSupplier").value;
+        const price = parseFloat(document.getElementById("inputPrice").value);
+        const container = document.getElementById("inputContainer").value.trim();
+        const note = document.getElementById("inputNote").value.trim();
+
+        if (!rawBarcode) return alert("請務必輸入產品 Barcode！");
+
+        addSingleQuote(itemCode, rawBarcode, name, imgUrl, supplier, price, container, note);
+
+        saveLocalStorage();
+        alert("報價新增成功！");
+        document.getElementById("priceForm").reset();
+        renderCompareList();
+        renderMasterTable();
+        renderContainerDeleteOptions();
+        
+        const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
+        compareTab.show();
+    });
+
+    document.getElementById("btnAddMapping").addEventListener("click", () => {
+        const primary = document.getElementById("mapPrimaryBarcode").value.trim();
+        const alias = document.getElementById("mapAliasBarcode").value.trim();
+
+        if (!primary || !alias) return alert("請同時輸入主要與關聯 Barcode！");
+        if (primary === alias) return alert("主要條碼與關聯條碼不能相同！");
+
+        if (!appData.mappings[primary]) appData.mappings[primary] = [];
+        if (!appData.mappings[primary].includes(alias)) appData.mappings[primary].push(alias);
+
+        saveLocalStorage();
+        renderMappingTable();
+        renderCompareList();
+        document.getElementById("mapAliasBarcode").value = "";
+        alert(`已成功將 ${alias} 綁定至主條碼 ${primary}`);
+    });
+
+    document.getElementById("btnAddSupplier").addEventListener("click", () => {
+        const name = document.getElementById("newSupplierName").value.trim();
+        if (name && !appData.suppliers.includes(name)) {
+            appData.suppliers.push(name);
+            saveLocalStorage();
+            renderSupplierOptions();
+            document.getElementById("newSupplierName").value = "";
+        }
+    });
+
+    document.getElementById("btnExportCSV").addEventListener("click", exportToCSV);
+    document.getElementById("importCSVFile").addEventListener("change", importFromCSV);
+    document.getElementById("btnLoadDemo").addEventListener("click", loadDemoData);
+    document.getElementById("btnClearData").addEventListener("click", () => {
+        if (confirm("確定要清空所有保存在本地的資料嗎？此動作無法復原！")) {
+            localStorage.removeItem("japan_price_tracker_data");
+            appData = { suppliers: ["SilkRoad", "Tencho"], mappings: {}, products: {}, itemToBarcode: {}, quotes: [] };
+            renderSupplierOptions();
+            renderCompareList();
+            renderMappingTable();
+            renderMasterTable();
+            renderContainerDeleteOptions();
+            alert("資料已清空");
+        }
+    });
+}
+
+// 產生並匯出採購決策建議單
+function exportPurchaseRecommendation() {
+    const rawText = document.getElementById("batchSearchInput").value.trim();
+    if (!rawText) {
+        alert("請先在文字框中貼入要查詢的 Barcode！");
+        return;
+    }
+    
+    // 分割並移除重複的查詢條碼
+    const barcodes = [...new Set(rawText.split(/[\n,\s]+/).map(b => b.trim()).filter(b => b !== ''))];
+    const filterSup = document.getElementById("filterSupplier").value;
+
+    let csvContent = "\uFEFF"; // BOM for Excel
+    csvContent += "您查詢的條碼,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低報價(JPY),次低報價備案(廠商與金額),最高低價差(%),最低價報價日期,最低價貨櫃號,預計採購數量(填寫)\n";
+
+    barcodes.forEach(queriedB => {
+        const primaryB = getPrimaryBarcode(queriedB, "");
+        let row = `="${queriedB}",`; // 用 ="..." 強制 Excel 顯示為文字，避免科學記號
+
+        // 判斷是否完全沒有該商品資訊與報價
+        if (!primaryB || (!appData.products[primaryB] && !appData.quotes.some(q => q.barcode === primaryB))) {
+            row += `"查無主檔","","查無此商品資訊","無報價紀錄","","","","","",""`;
+            csvContent += row + "\n";
+            return;
+        }
+
+        const productInfo = appData.products[primaryB] || { itemCode: "", name: "未命名商品" };
+        row += `="${primaryB}","${productInfo.itemCode || ''}","${productInfo.name || ''}",`;
+
+        // 撈出屬於該主條碼的所有報價
+        const quotes = appData.quotes.filter(q => {
+            const qB = getPrimaryBarcode(q.barcode, q.itemCode);
+            return qB === primaryB;
+        });
+
+        // 抓各廠商最新報價
+        let latestBySupplier = {};
+        quotes.forEach(q => {
+            if (filterSup && q.supplier !== filterSup) return;
+            if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
+                latestBySupplier[q.supplier] = q;
+            }
+        });
+
+        // 依價格由低到高排序
+        const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
+
+        if (sortedSuppliers.length === 0) {
+            row += `"無符合報價","","","","","",""`;
+        } else {
+            const lowest = sortedSuppliers[0];
+            let secondLowestStr = "-";
+            let diffStr = "-";
+
+            if (sortedSuppliers.length > 1) {
+                const secondLowest = sortedSuppliers[1];
+                secondLowestStr = `${secondLowest.supplier} (¥${secondLowest.price})`;
+                
+                const highest = sortedSuppliers[sortedSuppliers.length - 1];
+                if (highest.price > lowest.price) {
+                    const diffPercent = (((highest.price - lowest.price) / highest.price) * 100).toFixed(1);
+                    diffStr = `差 ${diffPercent}%`;
+                } else {
+                    diffStr = "無價差";
+                }
+            }
+
+            row += `"${lowest.supplier}","${lowest.price}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}",""`;
+        }
+        csvContent += row + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `採購決策建議單_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+function deleteQuotesByContainer() {
+    const ctn = document.getElementById("selectContainerToDelete").value;
+    if (!ctn) return alert("請先選擇要刪除的貨櫃號碼！");
+
+    const count = appData.quotes.filter(q => q.container === ctn).length;
+    if (confirm(`確定要刪除貨櫃「${ctn}」下的所有報價紀錄（共 ${count} 筆）嗎？此動作無法復原！`)) {
+        appData.quotes = appData.quotes.filter(q => q.container !== ctn);
+        saveLocalStorage();
+        renderCompareList();
+        renderContainerDeleteOptions();
+        alert(`已成功刪除貨櫃「${ctn}」的 ${count} 筆報價紀錄！`);
+    }
+}
+
+function deleteSingleMasterProduct(primaryB) {
+    const prodName = appData.products[primaryB] ? appData.products[primaryB].name : primaryB;
+    if (confirm(`確定要單獨刪除此商品主檔嗎？\n名稱：${prodName}\n條碼：${primaryB}`)) {
+        const itemCode = appData.products[primaryB] ? appData.products[primaryB].itemCode : null;
+        if (itemCode && appData.itemToBarcode[itemCode]) {
+            delete appData.itemToBarcode[itemCode];
+        }
+        delete appData.products[primaryB];
+
+        saveLocalStorage();
+        renderMasterTable();
+        renderCompareList();
+        alert(`商品主檔「${prodName}」已順利刪除！`);
+    }
+}
+
+function addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note, date) {
+    const primaryB = getPrimaryBarcode(barcode, itemCode);
+    if (!primaryB) return;
+
+    if (itemCode && primaryB) {
+        appData.itemToBarcode[itemCode] = primaryB;
+    }
+
+    if (!appData.products[primaryB]) {
+        appData.products[primaryB] = { itemCode: itemCode || '', name: name || '未命名商品', imgUrl: imgUrl || '' };
+    } else {
+        if (itemCode) appData.products[primaryB].itemCode = itemCode;
+        if (name) appData.products[primaryB].name = name;
+        if (imgUrl) appData.products[primaryB].imgUrl = imgUrl;
+    }
+
+    if (!appData.suppliers.includes(supplier)) {
+        appData.suppliers.push(supplier);
+    }
+
+    appData.quotes.push({
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        itemCode: itemCode || (appData.products[primaryB] ? appData.products[primaryB].itemCode : ''),
+        barcode: primaryB,
+        supplier: supplier,
+        price: price,
+        container: container,
+        note: note || '',
+        date: date || new Date().toISOString().split('T')[0]
+    });
+}
+
+function downloadCSVTemplate() {
+    let csv = "\uFEFF";
+    csv += "Barcode,ItemCode,ProductName,ImageURL,Supplier,PriceJPY,ContainerNo,Note\n";
+    csv += "4901330112813,WHH005,Calbee 卡樂比 經典原味蝦條 70g,,SilkRoad,108,CTN-2024-001,首批進貨\n";
+    csv += "4901330112813,,Calbee 卡樂比 經典原味蝦條 70g,,Tencho,102,CTN-2024-001,箱規 1x12\n";
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `報價單批次匯入範本.csv`;
+    link.click();
+}
+
+function downloadMasterTemplate() {
+    let csv = "\uFEFF";
+    csv += "Barcode,ItemCode,ProductName,ImageURL\n";
+    csv += "4901330112813,WHH005,Calbee 卡樂比 經典原味蝦條 70g,https://m.media-amazon.com/images/I/81e5iG0nLzL._AC_SL1500_.jpg\n";
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `商品主檔匯入範本.csv`;
+    link.click();
+}
+
+function importMasterCSV() {
+    const fileInput = document.getElementById("masterCSVFile");
+    const encoding = document.getElementById("masterEncodingSelect").value;
+    const file = fileInput.files[0];
+    if (!file) return alert("請先選擇要匯入的檔案！");
+
+    readTextFileWithSmartEncoding(file, encoding, (text) => {
+        const parsedRows = parseTextLines(text);
+        let count = 0;
+
+        for (let i = 1; i < parsedRows.length; i++) {
+            const cols = parsedRows[i];
+            let barcode = cols[0];
+            let itemCode = cols[1];
+            let name = cols[2];
+            let imgUrl = cols[3];
+
+            if (!barcode || (isNaN(barcode) && barcode.length < 5)) {
+                if (cols[1] && !isNaN(cols[1])) {
+                    barcode = cols[1];
+                    itemCode = cols[0];
+                }
+            }
+
+            const primaryB = getPrimaryBarcode(barcode, itemCode);
+            if (primaryB) {
+                if (itemCode) appData.itemToBarcode[itemCode] = primaryB;
+                appData.products[primaryB] = {
+                    itemCode: itemCode || (appData.products[primaryB] ? appData.products[primaryB].itemCode : ''),
+                    name: name || (appData.products[primaryB] ? appData.products[primaryB].name : ''),
+                    imgUrl: imgUrl || (appData.products[primaryB] ? appData.products[primaryB].imgUrl : '')
+                };
+                count++;
+            }
+        }
+
+        saveLocalStorage();
+        renderMasterTable();
+        renderCompareList();
+        alert(`成功匯入/更新 ${count} 筆商品主檔資料！`);
+        fileInput.value = "";
+    });
+}
+
+function importBatchQuoteCSV() {
+    const fileInput = document.getElementById("batchQuoteCSVFile");
+    const encoding = document.getElementById("quoteEncodingSelect").value;
+    const file = fileInput.files[0];
+    if (!file) return alert("請先選擇要匯入的檔案！");
+
+    readTextFileWithSmartEncoding(file, encoding, (text) => {
+        const parsedRows = parseTextLines(text);
+        let count = 0;
+
+        for (let i = 1; i < parsedRows.length; i++) {
+            const cols = parsedRows[i];
+            let barcode = cols[0];
+            let itemCode = cols[1];
+            let name = cols[2];
+            let imgUrl = cols[3];
+            let supplier = cols[4];
+            let price = parseFloat(cols[5]);
+            let container = cols[6];
+            let note = cols[7];
+
+            if (!barcode || (isNaN(barcode) && cols[1] && !isNaN(cols[1]))) {
+                barcode = cols[1];
+                itemCode = cols[0];
+            }
+
+            if (barcode && supplier && !isNaN(price) && container) {
+                addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note);
+                count++;
+            }
+        }
+
+        saveLocalStorage();
+        renderSupplierOptions();
+        renderCompareList();
+        renderMasterTable();
+        renderContainerDeleteOptions();
+        alert(`成功整批匯入 ${count} 筆報價紀錄！`);
+        fileInput.value = "";
+
+        const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
+        compareTab.show();
+    });
+}
+
+function removeSupplier(name) {
+    if (confirm(`確定要刪除廠商 "${name}" 嗎？`)) {
+        appData.suppliers = appData.suppliers.filter(s => s !== name);
+        saveLocalStorage();
+        renderSupplierOptions();
+        renderCompareList();
+    }
+}
+
+function deleteMapping(primary) {
+    if (confirm(`確定要解除主條碼 ${primary} 的所有關聯綁定嗎？`)) {
+        delete appData.mappings[primary];
+        saveLocalStorage();
+        renderMappingTable();
+        renderCompareList();
+    }
+}
+
+function deleteQuote(id) {
+    if (confirm("確定刪除此筆報價紀錄？")) {
+        appData.quotes = appData.quotes.filter(q => q.id !== id);
+        saveLocalStorage();
+        renderCompareList();
+        renderContainerDeleteOptions();
+    }
+}
+
+function openImageModal(url) {
+    if (!url || url.trim() === '') return;
+    document.getElementById("modalImage").src = url;
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("已複製到剪貼簿: " + text);
+    });
+}
+
+function exportToCSV() {
+    let csvContent = "\uFEFF";
+    csvContent += "Type,PrimaryBarcode,ItemCode,AliasBarcode,ProductName,ImageURL,Supplier,PriceJPY,ContainerNo,Note,Date\n";
+
+    for (let mainB in appData.products) {
+        const p = appData.products[mainB];
+        const aliases = (appData.mappings[mainB] || []).join(';');
+        csvContent += `"PRODUCT","${mainB}","${p.itemCode || ''}","${aliases}","${p.name || ''}","${p.imgUrl || ''}","","","","",""\n`;
+    }
+
+    appData.quotes.forEach(q => {
+        csvContent += `"QUOTE","${q.barcode}","${q.itemCode || ''}","","","","${q.supplier}","${q.price}","${q.container}","${q.note || ''}","${q.date}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Japan_Price_Backup_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+function importFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    readTextFileWithSmartEncoding(file, 'auto', (text) => {
+        const parsedRows = parseTextLines(text);
+        let importedCount = 0;
+
+        for (let i = 1; i < parsedRows.length; i++) {
+            const cols = parsedRows[i];
+            const type = cols[0];
+
+            if (type === "PRODUCT") {
+                const mainB = cols[1];
+                const itemCode = cols[2];
+                const aliases = cols[3] ? cols[3].split(';') : [];
+                const name = cols[4];
+                const imgUrl = cols[5];
+
+                if (mainB) {
+                    if (itemCode) appData.itemToBarcode[itemCode] = mainB;
+                    appData.products[mainB] = { itemCode: itemCode, name: name, imgUrl: imgUrl };
+                    if (aliases.length > 0) appData.mappings[mainB] = aliases;
+                }
+            } else if (type === "QUOTE") {
+                const barcode = cols[1];
+                const itemCode = cols[2];
+                const supplier = cols[6];
+                const price = parseFloat(cols[7]);
+                const container = cols[8];
+                const note = cols[9];
+                const date = cols[10];
+
+                if (barcode && supplier && !isNaN(price)) {
+                    addSingleQuote(itemCode, barcode, "", "", supplier, price, container, note, date);
+                    importedCount++;
+                }
+            }
+        }
+
+        saveLocalStorage();
+        renderSupplierOptions();
+        renderCompareList();
+        renderMappingTable();
+        renderMasterTable();
+        renderContainerDeleteOptions();
+        alert(`匯入成功！共匯入 ${importedCount} 筆報價資料。`);
+    });
+}
+
+function loadDemoData() {
+    appData = {
+        suppliers: ["SilkRoad", "Tencho", "TokyoDirect"],
+        mappings: {
+            "4901330112813": ["4901330119999", "4901330122222"]
+        },
+        products: {
+            "4901330112813": {
+                itemCode: "WHH005",
+                name: "Calbee 卡樂比 經典原味蝦條 70g",
+                imgUrl: "https://m.media-amazon.com/images/I/81e5iG0nLzL._AC_SL1500_.jpg"
+            }
+        },
+        itemToBarcode: {
+            "WHH005": "4901330112813"
+        },
+        quotes: [
+            { id: "q1", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 108, container: "CTN-2024-01", note: "首批進貨特價", date: "2024-01-15" },
+            { id: "q2", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 102, container: "CTN-2024-02", note: "箱規 1x12", date: "2024-02-10" },
+            { id: "q3", itemCode: "WHH005", barcode: "4901330112813", supplier: "TokyoDirect", price: 115, container: "CTN-2024-02", note: "", date: "2024-02-12" }
+        ]
+    };
+    saveLocalStorage();
+    renderSupplierOptions();
+    renderCompareList();
+    renderMappingTable();
+    renderMasterTable();
+    renderContainerDeleteOptions();
+    alert("已載入示範測試資料！可切換至【商品價格比對】體驗。");
+}
+</script>
+</body>
+</html>
