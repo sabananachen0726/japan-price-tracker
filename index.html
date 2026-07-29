@@ -216,7 +216,10 @@
                     <div class="card p-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4><i class="fa-solid fa-images me-2 text-primary"></i>商品主檔與圖片網址對照庫 (Product Master File)</h4>
-                            <button id="btnDownloadMasterTemplate" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-download me-1"></i>下載主檔 CSV 範本</button>
+                            <div>
+                                <button id="btnExportMasterCSV" class="btn btn-outline-success btn-sm me-1"><i class="fa-solid fa-file-export me-1"></i>匯出商品主檔 CSV</button>
+                                <button id="btnDownloadMasterTemplate" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-download me-1"></i>下載主檔 CSV 範本</button>
+                            </div>
                         </div>
                         <p class="text-muted small">在此建立每個 Barcode 對應的圖片 URL。之後輸入報價只需 Barcode，系統會自動套用這裡的圖片。</p>
                         
@@ -407,7 +410,6 @@
       if (!window.appData.products) window.appData.products = {};
       if (!window.appData.quotes) window.appData.quotes = [];
     } else {
-      // 初始建立文件
       saveFirebaseData();
     }
     refreshUI();
@@ -434,7 +436,6 @@
 
   function exportToCSV() {
     let csv = "\uFEFF"; // UTF-8 BOM
-    // 修正：明確標示全系統備份檔的各欄位意義
     csv += "資料類型(TYPE),欄位1(主要條碼/報價ID/主條碼/廠商名),欄位2(料號/舊條碼),欄位3(商品名/條碼),欄位4(圖片URL/廠商名),欄位5(報價日圓),欄位6(貨櫃號),欄位7(備註),欄位8(日期)\n";
 
     // 匯出 suppliers
@@ -465,6 +466,23 @@
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `系統完整備份_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  }
+
+  // 新增：單獨匯出商品主檔 CSV
+  function exportMasterProductsToCSV() {
+    let csv = "\uFEFF"; // UTF-8 BOM
+    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
+
+    for (let mainB in (window.appData.products || {})) {
+      const p = window.appData.products[mainB] || {};
+      csv += `"${mainB}","${(p.itemCode || '').replace(/"/g, '""')}","${(p.name || '').replace(/"/g, '""')}","${(p.imgUrl || '').replace(/"/g, '""')}"\n`;
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `商品主檔匯出_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   }
 
@@ -537,7 +555,6 @@
     });
   }
 
-  // --- 範本下載函數 ---
   function downloadQuoteTemplate() {
     let csv = "\uFEFF"; // UTF-8 BOM
     csv += "Barcode/條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填),廠商名稱(必填),報價金額JPY(必填),貨櫃號碼(必填),備註(選填)\n";
@@ -553,7 +570,7 @@
 
   function downloadMasterTemplate() {
     let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填)\n";
+    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
     csv += "4901330112813,WHH005,Calbee 蝦條 70g,https://example.com/image.jpg\n";
     csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,\n";
 
@@ -563,8 +580,6 @@
     link.download = `商品主檔匯入範本.csv`;
     link.click();
   }
-
-  // --- UI 與 邏輯 函數 ---
 
   function buildImageHtml(imgUrl) {
     if (imgUrl && imgUrl.trim() !== '') {
@@ -966,9 +981,10 @@
     document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
     document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
 
-    // 範本下載按鈕事件綁定
+    // 範本與導出按鈕事件綁定
     document.getElementById("btnDownloadTemplate").addEventListener("click", downloadQuoteTemplate);
     document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
+    document.getElementById("btnExportMasterCSV").addEventListener("click", exportMasterProductsToCSV);
 
     // 系統備份與復原按鈕監聽
     document.getElementById("btnExportCSV").addEventListener("click", exportToCSV);
@@ -976,7 +992,7 @@
       const file = e.target.files[0];
       if (file) {
         importFromCSV(file);
-        e.target.value = ""; // 清空 input 以利重複選取
+        e.target.value = "";
       }
     });
 
