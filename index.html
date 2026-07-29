@@ -926,7 +926,9 @@
         window.appData.products[primaryB] = { itemCode: itemCode || '', name: name || '未命名商品', imgUrl: imgUrl || '' };
     } else {
         if (itemCode) window.appData.products[primaryB].itemCode = itemCode;
-        if (name) window.appData.products[primaryB].name = name;
+        if (name && (!window.appData.products[primaryB].name || window.appData.products[primaryB].name === '未命名商品')) {
+    window.appData.products[primaryB].name = name;
+}
         if (imgUrl) window.appData.products[primaryB].imgUrl = imgUrl;
     }
 
