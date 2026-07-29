@@ -434,7 +434,8 @@
 
   function exportToCSV() {
     let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "TYPE,DATA1,DATA2,DATA3,DATA4,DATA5,DATA6,DATA7,DATA8\n";
+    // 修正：明確標示全系統備份檔的各欄位意義
+    csv += "資料類型(TYPE),欄位1(主要條碼/報價ID/主條碼/廠商名),欄位2(料號/舊條碼),欄位3(商品名/條碼),欄位4(圖片URL/廠商名),欄位5(報價日圓),欄位6(貨櫃號),欄位7(備註),欄位8(日期)\n";
 
     // 匯出 suppliers
     (window.appData.suppliers || []).forEach(s => {
@@ -529,7 +530,6 @@
       }
 
       if (confirm(`成功解析備份檔！即將匯入：\n• 廠商：${newData.suppliers.length} 個\n• 綁定：${Object.keys(newData.mappings).length} 組\n• 商品主檔：${Object.keys(newData.products).length} 筆\n• 報價紀錄：${newData.quotes.length} 筆\n\n確定覆寫目前雲端資料嗎？`)) {
-        // 修正點 1：將解析出來的 newData 設定給全域 appData 並觸發雲端同步
         window.appData = newData;
         saveFirebaseData();
         alert("資料已成功備份還原並同步至雲端！");
@@ -540,7 +540,7 @@
   // --- 範本下載函數 ---
   function downloadQuoteTemplate() {
     let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "Barcode,ItemCode,商品名稱,圖片URL,廠商名稱,報價金額(JPY),貨櫃號碼,備註\n";
+    csv += "Barcode/條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填),廠商名稱(必填),報價金額JPY(必填),貨櫃號碼(必填),備註(選填)\n";
     csv += "4901330112813,WHH005,Calbee 蝦條 70g,,SilkRoad,108,CTN-2024-001,首批特價\n";
     csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,,Tencho,110,CTN-2024-001,常態報價\n";
 
@@ -553,7 +553,7 @@
 
   function downloadMasterTemplate() {
     let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "PrimaryBarcode,ItemCode,商品名稱,圖片URL\n";
+    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填)\n";
     csv += "4901330112813,WHH005,Calbee 蝦條 70g,https://example.com/image.jpg\n";
     csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,\n";
 
@@ -602,7 +602,6 @@
         }
         callback(text);
     };
-    // 修正點：使用 readAsArrayBuffer 以搭配 TextDecoder 處理各種編碼
     reader.readAsArrayBuffer(file);
   }
 
@@ -967,7 +966,7 @@
     document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
     document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
 
-    // 修正點 2：補上範本下載按鈕事件綁定
+    // 範本下載按鈕事件綁定
     document.getElementById("btnDownloadTemplate").addEventListener("click", downloadQuoteTemplate);
     document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
 
