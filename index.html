@@ -529,11 +529,39 @@
       }
 
       if (confirm(`成功解析備份檔！即將匯入：\n• 廠商：${newData.suppliers.length} 個\n• 綁定：${Object.keys(newData.mappings).length} 組\n• 商品主檔：${Object.keys(newData.products).length} 筆\n• 報價紀錄：${newData.quotes.length} 筆\n\n確定覆寫目前雲端資料嗎？`)) {
+        // 修正點 1：將解析出來的 newData 設定給全域 appData 並觸發雲端同步
         window.appData = newData;
         saveFirebaseData();
         alert("資料已成功備份還原並同步至雲端！");
       }
     });
+  }
+
+  // --- 範本下載函數 ---
+  function downloadQuoteTemplate() {
+    let csv = "\uFEFF"; // UTF-8 BOM
+    csv += "Barcode,ItemCode,商品名稱,圖片URL,廠商名稱,報價金額(JPY),貨櫃號碼,備註\n";
+    csv += "4901330112813,WHH005,Calbee 蝦條 70g,,SilkRoad,108,CTN-2024-001,首批特價\n";
+    csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,,Tencho,110,CTN-2024-001,常態報價\n";
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `報價單匯入範本.csv`;
+    link.click();
+  }
+
+  function downloadMasterTemplate() {
+    let csv = "\uFEFF"; // UTF-8 BOM
+    csv += "PrimaryBarcode,ItemCode,商品名稱,圖片URL\n";
+    csv += "4901330112813,WHH005,Calbee 蝦條 70g,https://example.com/image.jpg\n";
+    csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,\n";
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `商品主檔匯入範本.csv`;
+    link.click();
   }
 
   // --- UI 與 邏輯 函數 ---
@@ -574,6 +602,7 @@
         }
         callback(text);
     };
+    // 修正點：使用 readAsArrayBuffer 以搭配 TextDecoder 處理各種編碼
     reader.readAsArrayBuffer(file);
   }
 
@@ -611,7 +640,7 @@
     filter.innerHTML = '<option value="">全部廠商比對</option>';
     list.innerHTML = "";
 
-    window.appData.suppliers.forEach(s => {
+    (window.appData.suppliers || []).forEach(s => {
         select.innerHTML += `<option value="${s}">${s}</option>`;
         filter.innerHTML += `<option value="${s}">${s}</option>`;
         list.innerHTML += `
@@ -627,7 +656,7 @@
     if (!select) return;
     
     let containerCounts = {};
-    window.appData.quotes.forEach(q => {
+    (window.appData.quotes || []).forEach(q => {
         if (q.container) {
             containerCounts[q.container] = (containerCounts[q.container] || 0) + 1;
         }
@@ -645,7 +674,7 @@
     const filterSup = document.getElementById("filterSupplier").value;
 
     let grouped = {};
-    window.appData.quotes.forEach(q => {
+    (window.appData.quotes || []).forEach(q => {
         const primaryB = getPrimaryBarcode(q.barcode, q.itemCode);
         if (!primaryB) return;
         if (!grouped[primaryB]) grouped[primaryB] = [];
@@ -706,7 +735,7 @@
         }
 
         let suppliersHtml = '<div class="row g-2 mt-2">';
-        window.appData.suppliers.forEach(sup => {
+        (window.appData.suppliers || []).forEach(sup => {
             if (filterSup && sup !== filterSup) return;
             const q = latestBySupplier[sup];
             if (q) {
@@ -813,7 +842,7 @@
     const countHeader = document.getElementById("masterCountHeader");
     if(!tbody) return;
     
-    const totalCount = Object.keys(window.appData.products).length;
+    const totalCount = Object.keys(window.appData.products || {}).length;
     countHeader.innerText = `已存在的主檔商品 (${totalCount})`;
 
     tbody.innerHTML = "";
@@ -937,6 +966,10 @@
 
     document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
     document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
+
+    // 修正點 2：補上範本下載按鈕事件綁定
+    document.getElementById("btnDownloadTemplate").addEventListener("click", downloadQuoteTemplate);
+    document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
 
     // 系統備份與復原按鈕監聽
     document.getElementById("btnExportCSV").addEventListener("click", exportToCSV);
