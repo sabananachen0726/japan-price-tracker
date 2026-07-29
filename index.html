@@ -27,7 +27,7 @@
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <span class="badge bg-success" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>Firebase 雲端同步中</span>
+        <span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>連線中...</span>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -369,7 +369,6 @@
 <!-- Firebase Module Script -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
   import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -383,10 +382,8 @@
   };
 
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
   const db = getFirestore(app);
 
-  // 全域變數
   window.appData = {
     suppliers: ["SilkRoad", "Tencho"],
     mappings: {},
@@ -397,11 +394,11 @@
 
   window.searchMode = 'single';
 
-  // 1. 同步 Firebase 資料庫
   const docRef = doc(db, "app_data", "main_config");
 
-  // 即時監聽 Firestore 資料變化
+  // 監聽雲端資料並更新 UI
   onSnapshot(docRef, (snapshot) => {
+    const statusBadge = document.getElementById("cloudStatus");
     if (snapshot.exists()) {
       window.appData = snapshot.data();
       if (!window.appData.itemToBarcode) window.appData.itemToBarcode = {};
@@ -409,17 +406,44 @@
       if (!window.appData.mappings) window.appData.mappings = {};
       if (!window.appData.products) window.appData.products = {};
       if (!window.appData.quotes) window.appData.quotes = [];
+      
+      if (statusBadge) {
+        statusBadge.className = "badge bg-success";
+        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>Firebase 雲端已連線';
+      }
     } else {
       saveFirebaseData();
     }
     refreshUI();
+  }, (error) => {
+    console.error("Firestore Listen Error: ", error);
+    const statusBadge = document.getElementById("cloudStatus");
+    if (statusBadge) {
+      statusBadge.className = "badge bg-danger";
+      statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>連線權限錯誤';
+    }
   });
 
+  // 強化版存檔機制
   async function saveFirebaseData() {
+    const statusBadge = document.getElementById("cloudStatus");
     try {
+      if (statusBadge) {
+        statusBadge.className = "badge bg-warning";
+        statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>同步中...';
+      }
       await setDoc(docRef, window.appData);
+      if (statusBadge) {
+        statusBadge.className = "badge bg-success";
+        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>Firebase 雲端已同步';
+      }
     } catch (e) {
       console.error("Firestore Save Error: ", e);
+      if (statusBadge) {
+        statusBadge.className = "badge bg-danger";
+        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>儲存失敗';
+      }
+      alert("資料同步失敗！請確認 Firebase 控制台 Rules 權限。");
     }
   }
   window.saveFirebaseData = saveFirebaseData;
@@ -432,18 +456,14 @@
     renderContainerDeleteOptions();
   }
 
-  // --- 備份與匯入匯出函數 ---
-
   function exportToCSV() {
-    let csv = "\uFEFF"; // UTF-8 BOM
+    let csv = "\uFEFF";
     csv += "資料類型(TYPE),欄位1(主要條碼/報價ID/主條碼/廠商名),欄位2(料號/舊條碼),欄位3(商品名/條碼),欄位4(圖片URL/廠商名),欄位5(報價日圓),欄位6(貨櫃號),欄位7(備註),欄位8(日期)\n";
 
-    // 匯出 suppliers
     (window.appData.suppliers || []).forEach(s => {
       csv += `SUPPLIER,"${(s || '').replace(/"/g, '""')}"\n`;
     });
 
-    // 匯出 mappings
     for (let mainB in (window.appData.mappings || {})) {
       const aliases = window.appData.mappings[mainB] || [];
       aliases.forEach(alias => {
@@ -451,13 +471,11 @@
       });
     }
 
-    // 匯出 products
     for (let mainB in (window.appData.products || {})) {
       const p = window.appData.products[mainB] || {};
       csv += `PRODUCT,"${mainB}","${(p.itemCode || '').replace(/"/g, '""')}","${(p.name || '').replace(/"/g, '""')}","${(p.imgUrl || '').replace(/"/g, '""')}"\n`;
     }
 
-    // 匯出 quotes
     (window.appData.quotes || []).forEach(q => {
       csv += `QUOTE,"${q.id || ''}","${(q.itemCode || '').replace(/"/g, '""')}","${q.barcode || ''}","${(q.supplier || '').replace(/"/g, '""')}","${q.price || 0}","${(q.container || '').replace(/"/g, '""')}","${(q.note || '').replace(/"/g, '""')}","${q.date || ''}"\n`;
     });
@@ -469,9 +487,8 @@
     link.click();
   }
 
-  // 新增：單獨匯出商品主檔 CSV
   function exportMasterProductsToCSV() {
-    let csv = "\uFEFF"; // UTF-8 BOM
+    let csv = "\uFEFF";
     csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
 
     for (let mainB in (window.appData.products || {})) {
@@ -550,13 +567,13 @@
       if (confirm(`成功解析備份檔！即將匯入：\n• 廠商：${newData.suppliers.length} 個\n• 綁定：${Object.keys(newData.mappings).length} 組\n• 商品主檔：${Object.keys(newData.products).length} 筆\n• 報價紀錄：${newData.quotes.length} 筆\n\n確定覆寫目前雲端資料嗎？`)) {
         window.appData = newData;
         saveFirebaseData();
-        alert("資料已成功備份還原並同步至雲端！");
+        alert("資料已成功還原並寫入雲端！");
       }
     });
   }
 
   function downloadQuoteTemplate() {
-    let csv = "\uFEFF"; // UTF-8 BOM
+    let csv = "\uFEFF";
     csv += "Barcode/條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填),廠商名稱(必填),報價金額JPY(必填),貨櫃號碼(必填),備註(選填)\n";
     csv += "4901330112813,WHH005,Calbee 蝦條 70g,,SilkRoad,108,CTN-2024-001,首批特價\n";
     csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,,Tencho,110,CTN-2024-001,常態報價\n";
@@ -569,7 +586,7 @@
   }
 
   function downloadMasterTemplate() {
-    let csv = "\uFEFF"; // UTF-8 BOM
+    let csv = "\uFEFF";
     csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
     csv += "4901330112813,WHH005,Calbee 蝦條 70g,https://example.com/image.jpg\n";
     csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,\n";
@@ -587,6 +604,7 @@
     }
     return `<div class="no-img-placeholder"><i class="fa-regular fa-image"></i>無圖片</div>`;
   }
+  
   window.openImageModal = (url) => {
     if (!url || url.trim() === '') return;
     document.getElementById("modalImage").src = url;
@@ -927,8 +945,8 @@
     } else {
         if (itemCode) window.appData.products[primaryB].itemCode = itemCode;
         if (name && (!window.appData.products[primaryB].name || window.appData.products[primaryB].name === '未命名商品')) {
-    window.appData.products[primaryB].name = name;
-}
+            window.appData.products[primaryB].name = name;
+        }
         if (imgUrl) window.appData.products[primaryB].imgUrl = imgUrl;
     }
 
@@ -948,7 +966,7 @@
     });
   }
 
-  // 事件監聽註冊
+  // DOM 載入後註冊各種事件
   document.addEventListener("DOMContentLoaded", () => {
     const btnSingleMode = document.getElementById("btnSingleMode");
     const btnBatchMode = document.getElementById("btnBatchMode");
@@ -983,12 +1001,10 @@
     document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
     document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
 
-    // 範本與導出按鈕事件綁定
     document.getElementById("btnDownloadTemplate").addEventListener("click", downloadQuoteTemplate);
     document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
     document.getElementById("btnExportMasterCSV").addEventListener("click", exportMasterProductsToCSV);
 
-    // 系統備份與復原按鈕監聽
     document.getElementById("btnExportCSV").addEventListener("click", exportToCSV);
     document.getElementById("importCSVFile").addEventListener("change", (e) => {
       const file = e.target.files[0];
@@ -1013,7 +1029,7 @@
 
         addSingleQuote(itemCode, rawBarcode, name, imgUrl, supplier, price, container, note);
         saveFirebaseData();
-        alert("報價新增成功並同步至雲端！");
+        alert("報價新增成功並已同步至 Firebase 雲端！");
         document.getElementById("priceForm").reset();
 
         const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
