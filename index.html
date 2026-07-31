@@ -20,6 +20,9 @@
         .btn-copy { padding: 0.1rem 0.4rem; font-size: 0.75rem; }
         .modal-img { max-width: 100%; max-height: 80vh; object-fit: contain; }
         .item-code-badge { background-color: #0d6efd; color: white; font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; }
+        .trend-up { color: #dc3545; font-size: 0.75rem; font-weight: bold; }
+        .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
+        .trend-same { color: #6c757d; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -322,6 +325,41 @@
     </div>
 </div>
 
+<!-- 新增：快速編輯商品主檔 Modal -->
+<div class="modal fade" id="editMasterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>快速編輯商品主檔</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMasterPrimaryBarcode">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Primary Barcode (主條碼)</label>
+            <input type="text" id="editMasterBarcodeDisplay" class="form-control bg-light" readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">內部料號 (Item Code)</label>
+            <input type="text" id="editMasterItemCode" class="form-control" placeholder="例如: WHH005">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">商品名稱</label>
+            <input type="text" id="editMasterName" class="form-control" placeholder="例如: Calbee 蝦條 70g">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">圖片 URL</label>
+            <input type="url" id="editMasterImgUrl" class="form-control" placeholder="https://example.com/image.jpg">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSaveMasterEdit"><i class="fa-solid fa-floppy-disk me-1"></i>儲存修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal 彈窗與其它元素 -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -395,6 +433,24 @@
   window.searchMode = 'single';
 
   const docRef = doc(db, "app_data", "main_config");
+
+  // 洗滌條碼：轉半形 + 刪除前後與不可見空白 (修復問題 A)
+  function cleanBarcode(str) {
+    if (!str) return "";
+    str = String(str).trim();
+    // 全形數字轉半形
+    str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
+    // 移除無形字元/不可見空白
+    return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  }
+
+  // 生成包含時分秒的檔案時間戳記 (修復問題 C)
+  function getTimestampString() {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+    return `${dateStr}_${timeStr}`;
+  }
 
   // 監聽雲端資料並更新 UI
   onSnapshot(docRef, (snapshot) => {
@@ -483,7 +539,7 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `系統完整備份_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `系統完整備份_${getTimestampString()}.csv`;
     link.click();
   }
 
@@ -499,7 +555,7 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `商品主檔匯出_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `商品主檔匯出_${getTimestampString()}.csv`;
     link.click();
   }
 
@@ -528,14 +584,14 @@
             newData.suppliers.push(cols[1]);
           }
         } else if (type === "MAPPING") {
-          const mainB = cols[1];
-          const alias = cols[2];
+          const mainB = cleanBarcode(cols[1]);
+          const alias = cleanBarcode(cols[2]);
           if (mainB && alias) {
             if (!newData.mappings[mainB]) newData.mappings[mainB] = [];
             if (!newData.mappings[mainB].includes(alias)) newData.mappings[mainB].push(alias);
           }
         } else if (type === "PRODUCT") {
-          const mainB = cols[1];
+          const mainB = cleanBarcode(cols[1]);
           if (mainB) {
             const itemCode = cols[2] || "";
             newData.products[mainB] = {
@@ -548,7 +604,7 @@
         } else if (type === "QUOTE") {
           const qId = cols[1] || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
           const itemCode = cols[2] || "";
-          const barcode = cols[3] || "";
+          const barcode = cleanBarcode(cols[3]);
           if (barcode) {
             newData.quotes.push({
               id: qId,
@@ -648,8 +704,8 @@
   }
 
   function getPrimaryBarcode(barcode, itemCode) {
-    if (barcode && barcode.trim() !== '') {
-        barcode = barcode.trim();
+    barcode = cleanBarcode(barcode);
+    if (barcode && barcode !== '') {
         if (window.appData.mappings[barcode]) return barcode;
         for (let mainB in window.appData.mappings) {
             if (window.appData.mappings[mainB].includes(barcode)) return mainB;
@@ -700,7 +756,7 @@
     }
   }
 
-  // 重點修改 1 & 3：嚴格按照貼入順序呈現 + 一律以主檔欄位為主
+  // 渲染比對結果卡片 (含編輯主檔與漲跌價提示)
   function renderCompareList() {
     const container = document.getElementById("compareResultsContainer");
     if(!container) return;
@@ -717,15 +773,14 @@
     container.innerHTML = "";
     let hasData = false;
 
-    let singleKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
+    let singleKeyword = cleanBarcode(document.getElementById("searchInput").value).toLowerCase();
+    let rawKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
     
-    // 定義主條碼呈現的排序與目標清單
     let targetPrimaryBarcodes = [];
     let notFoundBarcodes = [];
 
     if (window.searchMode === 'single') {
         let allPrimaryKeys = Object.keys(grouped);
-        // 將商品主檔中的條碼也涵蓋進來
         Object.keys(window.appData.products || {}).forEach(pKey => {
             if (!allPrimaryKeys.includes(pKey)) allPrimaryKeys.push(pKey);
         });
@@ -734,10 +789,10 @@
             const productInfo = window.appData.products[mainB] || { itemCode: "", name: "未命名商品", imgUrl: "" };
             const aliasList = window.appData.mappings[mainB] || [];
             
-            if (singleKeyword) {
-                const matchName = (productInfo.name || '').toLowerCase().includes(singleKeyword);
-                const matchItemCode = (productInfo.itemCode || '').toLowerCase().includes(singleKeyword);
-                const matchBarcode = mainB.toLowerCase().includes(singleKeyword) || aliasList.some(a => a.toLowerCase().includes(singleKeyword));
+            if (rawKeyword) {
+                const matchName = (productInfo.name || '').toLowerCase().includes(rawKeyword);
+                const matchItemCode = (productInfo.itemCode || '').toLowerCase().includes(rawKeyword);
+                const matchBarcode = mainB.toLowerCase().includes(rawKeyword) || aliasList.some(a => a.toLowerCase().includes(rawKeyword));
                 if (!matchName && !matchBarcode && !matchItemCode) continue;
             }
             targetPrimaryBarcodes.push(mainB);
@@ -745,12 +800,10 @@
     } else if (window.searchMode === 'batch') {
         const rawBatchText = document.getElementById("batchSearchInput").value.trim();
         if (rawBatchText) {
-            // 保留使用者貼入原始順序
-            const inputList = rawBatchText.split(/[\n,\s]+/).map(b => b.trim()).filter(b => b !== '');
+            const inputList = rawBatchText.split(/[\n,\s]+/).map(b => cleanBarcode(b)).filter(b => b !== '');
             inputList.forEach(inputCode => {
                 const primaryB = getPrimaryBarcode(inputCode, inputCode);
                 
-                // 檢查是否包含資料（主檔或報價紀錄）
                 const hasMaster = !!window.appData.products[primaryB];
                 const hasQuotes = grouped[primaryB] && grouped[primaryB].length > 0;
 
@@ -765,7 +818,6 @@
         }
     }
 
-    // 提示貼入但查無資料的條碼
     if (window.searchMode === 'batch' && notFoundBarcodes.length > 0) {
         container.innerHTML += `
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -775,9 +827,7 @@
             </div>`;
     }
 
-    // 依照排好的 targetPrimaryBarcodes 順序渲染商品卡片
     for (let mainB of targetPrimaryBarcodes) {
-        // 核心重點 3：所有照片URL、名字、Barcode皆以「主檔」為主
         const masterProduct = window.appData.products[mainB];
         const productInfo = masterProduct ? {
             itemCode: masterProduct.itemCode || "-",
@@ -788,11 +838,20 @@
         const aliasList = window.appData.mappings[mainB] || [];
         const quotes = grouped[mainB] || [];
 
+        // 新增功能：計算同廠商的價格漲跌趨勢
         let latestBySupplier = {};
-        quotes.forEach(q => {
-            if (filterSup && q.supplier !== filterSup) return;
-            if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
-                latestBySupplier[q.supplier] = q;
+        let priceTrends = {}; // 儲存廠商的漲跌資訊
+
+        (window.appData.suppliers || []).forEach(sup => {
+            const supQuotes = quotes.filter(q => q.supplier === sup).sort((a,b) => new Date(b.date) - new Date(a.date));
+            if (supQuotes.length > 0) {
+                latestBySupplier[sup] = supQuotes[0]; // 最新一筆
+                if (supQuotes.length > 1) {
+                    const diff = supQuotes[0].price - supQuotes[1].price;
+                    priceTrends[sup] = diff; // 最新價減上一批價格
+                } else {
+                    priceTrends[sup] = null; // 無上一批數據
+                }
             }
         });
 
@@ -802,6 +861,7 @@
         let minPrice = Infinity;
         let lowestSupplier = "";
         for (let sup in latestBySupplier) {
+            if (filterSup && sup !== filterSup) continue;
             if (latestBySupplier[sup].price < minPrice) {
                 minPrice = latestBySupplier[sup].price;
                 lowestSupplier = sup;
@@ -814,6 +874,20 @@
             const q = latestBySupplier[sup];
             if (q) {
                 const isLowest = (sup === lowestSupplier && Object.keys(latestBySupplier).length > 1);
+                
+                // 漲跌 HTML 構建
+                let trendHtml = '';
+                const diff = priceTrends[sup];
+                if (diff !== null && diff !== undefined) {
+                    if (diff > 0) {
+                        trendHtml = `<div class="trend-up"><i class="fa-solid fa-arrow-trend-up me-1"></i>▲ +${diff.toLocaleString()} (漲價)</div>`;
+                    } else if (diff < 0) {
+                        trendHtml = `<div class="trend-down"><i class="fa-solid fa-arrow-trend-down me-1"></i>▼ ${diff.toLocaleString()} (降價)</div>`;
+                    } else {
+                        trendHtml = `<div class="trend-same"><i class="fa-solid fa-minus me-1"></i>— 持平</div>`;
+                    }
+                }
+
                 suppliersHtml += `
                     <div class="col-md-4 col-sm-6">
                         <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : ''}">
@@ -821,8 +895,11 @@
                                 <span class="fw-bold">${sup}</span>
                                 ${isLowest ? '<span class="badge bg-success">Lowest 最低價</span>' : ''}
                             </div>
-                            <div class="price-tag my-1 ${isLowest ? 'lowest-price d-inline-block' : 'fw-bold'}">
-                                ¥${q.price.toLocaleString()}
+                            <div class="d-flex align-items-baseline gap-2 my-1">
+                                <div class="price-tag ${isLowest ? 'lowest-price d-inline-block' : 'fw-bold'}">
+                                    ¥${q.price.toLocaleString()}
+                                </div>
+                                ${trendHtml}
                             </div>
                             <div class="text-muted small">
                                 <div><i class="fa-solid fa-box me-1"></i>${q.container}</div>
@@ -859,10 +936,12 @@
                         ${buildImageHtml(productInfo.imgUrl)}
                     </div>
                     <div class="flex-grow-1">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             ${productInfo.itemCode && productInfo.itemCode !== '-' ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
                             <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
                             <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
+                            <!-- 新增功能：比對頁面直接編輯主檔按鈕 -->
+                            <button class="btn btn-outline-primary btn-sm ms-auto" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen-to-square me-1"></i>編輯主檔</button>
                         </div>
                         <div class="mt-1">
                             <span class="fw-bold text-primary">JAN (主條碼): ${mainB}</span>
@@ -930,10 +1009,28 @@
                 <td>${p.itemCode ? `<span class="item-code-badge">${p.itemCode}</span>` : '-'}</td>
                 <td>${p.name || '-'}</td>
                 <td class="small text-truncate" style="max-width: 180px;" title="${p.imgUrl}">${p.imgUrl || '未設定'}</td>
-                <td class="text-center"><button class="btn btn-sm btn-outline-danger" onclick="deleteSingleMasterProduct('${mainB}')"><i class="fa-solid fa-trash me-1"></i>刪除主檔</button></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSingleMasterProduct('${mainB}')"><i class="fa-solid fa-trash"></i></button>
+                </td>
             </tr>`;
     }
   }
+
+  // 打開主檔編輯 Modal
+  window.openMasterEditModal = (primaryB) => {
+    primaryB = cleanBarcode(primaryB);
+    const prod = window.appData.products[primaryB] || { itemCode: '', name: '', imgUrl: '' };
+    
+    document.getElementById("editMasterPrimaryBarcode").value = primaryB;
+    document.getElementById("editMasterBarcodeDisplay").value = primaryB;
+    document.getElementById("editMasterItemCode").value = prod.itemCode || '';
+    document.getElementById("editMasterName").value = prod.name || '';
+    document.getElementById("editMasterImgUrl").value = prod.imgUrl || '';
+
+    const modal = new bootstrap.Modal(document.getElementById('editMasterModal'));
+    modal.show();
+  };
 
   window.copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -948,7 +1045,9 @@
     }
   };
 
+  // 解除條碼綁定並即時重新整理 (修復問題 B)
   window.deleteMapping = (primary) => {
+    primary = cleanBarcode(primary);
     if (confirm(`確定要解除主條碼 ${primary} 的所有關聯綁定嗎？`)) {
         delete window.appData.mappings[primary];
         saveFirebaseData();
@@ -963,6 +1062,7 @@
   };
 
   window.deleteSingleMasterProduct = (primaryB) => {
+    primaryB = cleanBarcode(primaryB);
     const prodName = window.appData.products[primaryB] ? window.appData.products[primaryB].name : primaryB;
     if (confirm(`確定要單獨刪除此商品主檔嗎？\n名稱：${prodName}\n條碼：${primaryB}`)) {
         const itemCode = window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : null;
@@ -975,14 +1075,14 @@
   };
 
   function addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note, date) {
+    barcode = cleanBarcode(barcode);
     const primaryB = getPrimaryBarcode(barcode, itemCode);
     if (!primaryB) return;
 
     if (itemCode && primaryB) {
-        window.appData.itemToBarcode[itemCode] = primaryB;
+        window.appData.itemToBarcode[itemCode.trim()] = primaryB;
     }
 
-    // 若主檔完全不存在才自動建立，避免無意間更改主檔的標準資訊
     if (!window.appData.products[primaryB]) {
         window.appData.products[primaryB] = { itemCode: itemCode || '', name: name || '未命名商品', imgUrl: imgUrl || '' };
     }
@@ -1051,9 +1151,39 @@
       }
     });
 
+    // 儲存快速編輯主檔 modal
+    document.getElementById("btnSaveMasterEdit").addEventListener("click", () => {
+        const primaryB = document.getElementById("editMasterPrimaryBarcode").value;
+        const newItemCode = document.getElementById("editMasterItemCode").value.trim();
+        const newName = document.getElementById("editMasterName").value.trim();
+        const newImgUrl = document.getElementById("editMasterImgUrl").value.trim();
+
+        if (!primaryB) return;
+
+        if (!window.appData.products[primaryB]) {
+            window.appData.products[primaryB] = {};
+        }
+
+        window.appData.products[primaryB].itemCode = newItemCode;
+        window.appData.products[primaryB].name = newName || '未命名商品';
+        window.appData.products[primaryB].imgUrl = newImgUrl;
+
+        if (newItemCode) {
+            window.appData.itemToBarcode[newItemCode] = primaryB;
+        }
+
+        saveFirebaseData();
+
+        const modalElement = document.getElementById('editMasterModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        if (modalInstance) modalInstance.hide();
+
+        alert(`已成功更新條碼 ${primaryB} 的主檔資料！`);
+    });
+
     document.getElementById("priceForm").addEventListener("submit", (e) => {
         e.preventDefault();
-        const rawBarcode = document.getElementById("inputBarcode").value.trim();
+        const rawBarcode = cleanBarcode(document.getElementById("inputBarcode").value);
         const itemCode = document.getElementById("inputItemCode").value.trim();
         const name = document.getElementById("inputName").value.trim();
         const imgUrl = document.getElementById("inputImgUrl").value.trim();
@@ -1074,8 +1204,8 @@
     });
 
     document.getElementById("btnAddMapping").addEventListener("click", () => {
-        const primary = document.getElementById("mapPrimaryBarcode").value.trim();
-        const alias = document.getElementById("mapAliasBarcode").value.trim();
+        const primary = cleanBarcode(document.getElementById("mapPrimaryBarcode").value);
+        const alias = cleanBarcode(document.getElementById("mapAliasBarcode").value);
 
         if (!primary || !alias) return alert("請同時輸入主要與關聯 Barcode！");
         if (primary === alias) return alert("主要條碼與關聯條碼不能相同！");
@@ -1097,7 +1227,6 @@
         }
     });
 
-    // 重點修改 2 & 4：主檔匯入邏輯 (強制覆蓋、舊不刪、新新增 + 錯誤彈窗提示)
     document.getElementById("btnImportMasterCSV").addEventListener("click", () => {
         const fileInput = document.getElementById("masterCSVFile");
         const encoding = document.getElementById("masterEncodingSelect").value;
@@ -1111,15 +1240,14 @@
 
             for (let i = 1; i < parsedRows.length; i++) {
                 const cols = parsedRows[i];
-                let barcode = cols[0];
+                let barcode = cleanBarcode(cols[0]);
                 let itemCode = cols[1];
                 let name = cols[2];
                 let imgUrl = cols[3];
 
-                // 彈性檢測欄位顛倒情況
                 if (!barcode || (isNaN(barcode) && barcode.length < 5)) {
-                    if (cols[1] && !isNaN(cols[1])) {
-                        barcode = cols[1];
+                    if (cols[1] && !isNaN(cleanBarcode(cols[1]))) {
+                        barcode = cleanBarcode(cols[1]);
                         itemCode = cols[0];
                     }
                 }
@@ -1133,7 +1261,6 @@
                 if (primaryB) {
                     if (itemCode) window.appData.itemToBarcode[itemCode] = primaryB;
                     
-                    // 重點 4：重複強制覆蓋，舊資料保留不刪除，新資料直接寫入
                     window.appData.products[primaryB] = {
                         itemCode: itemCode || (window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : ''),
                         name: name || (window.appData.products[primaryB] ? window.appData.products[primaryB].name : ''),
@@ -1157,7 +1284,6 @@
         });
     });
 
-    // 重點修改 2：整批報價匯入 (錯誤彈窗提示與欄位校驗)
     document.getElementById("btnImportBatchCSV").addEventListener("click", () => {
         const fileInput = document.getElementById("batchQuoteCSVFile");
         const encoding = document.getElementById("quoteEncodingSelect").value;
@@ -1171,7 +1297,7 @@
 
             for (let i = 1; i < parsedRows.length; i++) {
                 const cols = parsedRows[i];
-                let barcode = cols[0];
+                let barcode = cleanBarcode(cols[0]);
                 let itemCode = cols[1];
                 let name = cols[2];
                 let imgUrl = cols[3];
@@ -1180,12 +1306,11 @@
                 let container = cols[6];
                 let note = cols[7];
 
-                if (!barcode || (isNaN(barcode) && cols[1] && !isNaN(cols[1]))) {
-                    barcode = cols[1];
+                if (!barcode || (isNaN(barcode) && cols[1] && !isNaN(cleanBarcode(cols[1])))) {
+                    barcode = cleanBarcode(cols[1]);
                     itemCode = cols[0];
                 }
 
-                // 嚴格錯誤檢查
                 let rowErrors = [];
                 if (!barcode) rowErrors.push("缺少 Barcode");
                 if (!supplier) rowErrors.push("缺少廠商名稱");
@@ -1242,20 +1367,22 @@
             products: { "4901330112813": { itemCode: "WHH005", name: "Calbee 卡樂比 經典原味蝦條 70g", imgUrl: "https://m.media-amazon.com/images/I/81e5iG0nLzL._AC_SL1500_.jpg" } },
             itemToBarcode: { "WHH005": "4901330112813" },
             quotes: [
-                { id: "q1", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 108, container: "CTN-2024-01", note: "首批進貨特價", date: "2024-01-15" },
-                { id: "q2", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 102, container: "CTN-2024-02", note: "箱規 1x12", date: "2024-02-10" },
-                { id: "q3", itemCode: "WHH005", barcode: "4901330112813", supplier: "TokyoDirect", price: 115, container: "CTN-2024-02", note: "", date: "2024-02-12" }
+                { id: "q1", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 100, container: "CTN-2024-01", note: "舊價格", date: "2024-01-01" },
+                { id: "q2", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 108, container: "CTN-2024-02", note: "最新調漲", date: "2024-02-01" },
+                { id: "q3", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 110, container: "CTN-2024-01", note: "舊價格", date: "2024-01-01" },
+                { id: "q4", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 102, container: "CTN-2024-02", note: "最新降價", date: "2024-02-01" }
             ]
         };
         saveFirebaseData();
-        alert("已載入示範測試資料！");
+        alert("已載入帶有歷史漲跌價的示範資料！");
     });
   });
 
+  // 採購決策單 CSV 匯出 (包含精確時間戳記)
   function exportPurchaseRecommendation() {
     const rawText = document.getElementById("batchSearchInput").value.trim();
     if (!rawText) return alert("請先在文字框中貼入要查詢的 Barcode！");
-    const barcodes = [...new Set(rawText.split(/[\n,\s]+/).map(b => b.trim()).filter(b => b !== ''))];
+    const barcodes = [...new Set(rawText.split(/[\n,\s]+/).map(b => cleanBarcode(b)).filter(b => b !== ''))];
     const filterSup = document.getElementById("filterSupplier").value;
 
     let csvContent = "\uFEFF";
@@ -1312,7 +1439,7 @@
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `採購決策建議單_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `採購決策建議單_${getTimestampString()}.csv`;
     link.click();
   }
 </script>
