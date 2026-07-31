@@ -23,7 +23,7 @@
         .trend-up { color: #dc3545; font-size: 0.75rem; font-weight: bold; }
         .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
         .trend-same { color: #6c757d; font-size: 0.75rem; }
-        .subtotal-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .qty-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -60,7 +60,7 @@
                             <label class="form-label mb-0 fw-bold"><i class="fa-solid fa-magnifying-glass me-1"></i>搜尋方式</label>
                             <div>
                                 <button type="button" id="btnSingleMode" class="btn btn-sm btn-primary">單筆快速搜尋</button>
-                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode+數量 貼入查詢</button>
+                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode+箱數 貼入查詢</button>
                             </div>
                         </div>
 
@@ -70,11 +70,11 @@
                             <input type="text" id="searchInput" class="form-control" placeholder="搜尋 Barcode / Item Code / 商品名稱...">
                         </div>
 
-                        <!-- 多筆貼入框 (支援帶入數量) -->
+                        <!-- 多筆貼入框 (支援帶入箱數) -->
                         <div id="batchSearchBox" class="d-none">
-                            <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與數量（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填數量預設為1）"></textarea>
+                            <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與採購箱數（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填箱數預設為1）"></textarea>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <small class="text-muted">自動解析條碼與數量，並計算最低價採購總額。</small>
+                                <small class="text-muted">自動比對貼入的條碼與需求箱數。</small>
                                 <div>
                                     <button id="btnExportPurchase" class="btn btn-sm btn-success me-2"><i class="fa-solid fa-file-csv me-1"></i>匯出採購決策建議單 (CSV)</button>
                                     <button id="btnClearBatchSearch" class="btn btn-sm btn-outline-secondary">清空輸入</button>
@@ -436,7 +436,6 @@
 
   const docRef = doc(db, "app_data", "main_config");
 
-  // 洗滌條碼：轉半形 + 刪除前後與不可見空白
   function cleanBarcode(str) {
     if (!str) return "";
     str = String(str).trim();
@@ -444,7 +443,6 @@
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
   }
 
-  // 解析貼入文字（解析條碼與數量，支援逗號、Tab、空格分隔）
   function parseBatchInputLines(text) {
     if (!text) return [];
     const lines = text.split(/\r?\n/);
@@ -452,14 +450,12 @@
     lines.forEach(line => {
         line = line.trim();
         if (!line) return;
-        // 使用逗號、tab 或多個空格分隔
         const parts = line.split(/[\t,]+/).map(p => p.trim()).filter(p => p !== '');
         if (parts.length >= 2) {
             const code = cleanBarcode(parts[0]);
             const qty = parseInt(parts[1], 10);
             result.push({ barcode: code, qty: isNaN(qty) ? 1 : qty });
         } else {
-            // 若只寫了一項，嘗試用空格分拆或當作只有條碼
             const spaceParts = line.split(/\s+/);
             if (spaceParts.length >= 2 && !isNaN(parseInt(spaceParts[spaceParts.length - 1], 10))) {
                 const qty = parseInt(spaceParts[spaceParts.length - 1], 10);
@@ -480,7 +476,6 @@
     return `${dateStr}_${timeStr}`;
   }
 
-  // 監聽雲端資料並更新 UI
   onSnapshot(docRef, (snapshot) => {
     const statusBadge = document.getElementById("cloudStatus");
     if (snapshot.exists()) {
@@ -508,7 +503,6 @@
     }
   });
 
-  // 存檔機制
   async function saveFirebaseData() {
     const statusBadge = document.getElementById("cloudStatus");
     try {
@@ -784,7 +778,7 @@
     }
   }
 
-  // 渲染比對結果卡片 (包含數量計算與總金額統計)
+  // 渲染比對結果卡片 (僅保留款數與箱數統計)
   function renderCompareList() {
     const container = document.getElementById("compareResultsContainer");
     const summaryContainer = document.getElementById("batchSummaryContainer");
@@ -843,7 +837,7 @@
                     if (primaryB) {
                         const existing = targetItems.find(t => t.primaryB === primaryB);
                         if (existing) {
-                            existing.qty += item.qty; // 重複條碼自動累加數量
+                            existing.qty += item.qty; // 重複條碼自動累加箱數
                         } else {
                             targetItems.push({ primaryB: primaryB, qty: item.qty });
                         }
@@ -862,9 +856,8 @@
             </div>`;
     }
 
-    // 統計批次採購總金額與總件數
+    // 統計總箱數與總款數
     let grandTotalQty = 0;
-    let grandTotalPrice = 0;
     let totalMatchedCount = 0;
 
     for (let itemObj of targetItems) {
@@ -912,7 +905,6 @@
 
         if (minPrice !== Infinity) {
             grandTotalQty += currentQty;
-            grandTotalPrice += (minPrice * currentQty);
             totalMatchedCount++;
         }
 
@@ -922,7 +914,6 @@
             const q = latestBySupplier[sup];
             if (q) {
                 const isLowest = (sup === lowestSupplier && Object.keys(latestBySupplier).length > 1);
-                const supSubtotal = q.price * currentQty;
 
                 let trendHtml = '';
                 const diff = priceTrends[sup];
@@ -949,10 +940,6 @@
                                 </div>
                                 ${trendHtml}
                             </div>
-                            ${window.searchMode === 'batch' ? `
-                            <div class="text-primary small fw-bold mt-1">
-                                預估小計: ¥${supSubtotal.toLocaleString()} (${currentQty}件)
-                            </div>` : ''}
                             <div class="text-muted small mt-1">
                                 <div><i class="fa-solid fa-box me-1"></i>${q.container}</div>
                                 <div><i class="fa-regular fa-clock me-1"></i>${q.date}</div>
@@ -992,7 +979,7 @@
                             ${productInfo.itemCode && productInfo.itemCode !== '-' ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
                             <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
                             <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
-                            ${window.searchMode === 'batch' ? `<span class="subtotal-badge ms-auto"><i class="fa-solid fa-cart-shopping me-1"></i>採購需求數量: ${currentQty} 件</span>` : ''}
+                            ${window.searchMode === 'batch' ? `<span class="qty-badge ms-auto"><i class="fa-solid fa-boxes-stacked me-1"></i>需求箱數: ${currentQty} 箱</span>` : ''}
                             <button class="btn btn-outline-primary btn-sm ${window.searchMode === 'single' ? 'ms-auto' : ''}" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen-to-square me-1"></i>編輯主檔</button>
                         </div>
                         <div class="mt-1">
@@ -1019,18 +1006,17 @@
             </div>`;
     }
 
-    // 在批次模式下渲染全單統計卡片
+    // 頂部統計列：僅保留款數與總箱數
     if (window.searchMode === 'batch' && summaryContainer && totalMatchedCount > 0) {
         summaryContainer.innerHTML = `
             <div class="card p-3 mb-3 bg-primary text-white shadow-sm">
                 <div class="d-flex justify-content-between align-items-center flex-wrap">
                     <div>
-                        <h5 class="m-0"><i class="fa-solid fa-calculator me-2"></i>本次批次採購試算總覽</h5>
-                        <small class="opacity-75">已找到報價商品：${totalMatchedCount} 款</small>
+                        <h5 class="m-0"><i class="fa-solid fa-list-check me-2"></i>本次批次貼入比對概覽</h5>
                     </div>
                     <div class="d-flex gap-4 fs-5 fw-bold text-end mt-2 mt-md-0">
-                        <div>採購總數量: <span class="text-warning">${grandTotalQty.toLocaleString()}</span> 件</div>
-                        <div>最低預估總金額: <span class="text-warning">¥${grandTotalPrice.toLocaleString()}</span></div>
+                        <div>符合商品: <span class="text-warning">${totalMatchedCount}</span> 款</div>
+                        <div>預計採購總數量: <span class="text-warning">${grandTotalQty.toLocaleString()}</span> 箱</div>
                     </div>
                 </div>
             </div>`;
@@ -1440,11 +1426,11 @@
             ]
         };
         saveFirebaseData();
-        alert("已載入帶有歷史漲跌價的示範資料！");
+        alert("已載入示範資料！");
     });
   });
 
-  // 採購決策單 CSV 匯出 (包含預計採購數量與金額試算)
+  // 採購決策單 CSV 匯出 (僅帶入預計採購箱數)
   function exportPurchaseRecommendation() {
     const rawText = document.getElementById("batchSearchInput").value.trim();
     if (!rawText) return alert("請先在文字框中貼入要查詢的 Barcode！");
@@ -1453,7 +1439,7 @@
     const filterSup = document.getElementById("filterSupplier").value;
 
     let csvContent = "\uFEFF";
-    csvContent += "您查詢的條碼,預計採購數量,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低單價(JPY),採購預估小計(JPY),次低報價備案(廠商與單價),最高低價差(%),最低價報價日期,最低價貨櫃號\n";
+    csvContent += "您查詢的條碼,預計採購箱數,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低單價(JPY/個),次低報價備案(廠商與單價),最高低價差(%),最低價報價日期,最低價貨櫃號\n";
 
     parsedBatch.forEach(item => {
         const queriedB = item.barcode;
@@ -1463,7 +1449,7 @@
         let row = `="${queriedB}","${qty}",`;
 
         if (!primaryB || (!window.appData.products[primaryB] && !window.appData.quotes.some(q => q.barcode === primaryB))) {
-            row += `"查無主檔","","查無此商品資訊","無報價紀錄","0","0","","","",""`;
+            row += `"查無主檔","","查無此商品資訊","無報價紀錄","0","","","",""`;
             csvContent += row + "\n";
             return;
         }
@@ -1484,10 +1470,9 @@
         const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
 
         if (sortedSuppliers.length === 0) {
-            row += `"無符合報價","0","0","","","",""`;
+            row += `"無符合報價","0","","","",""`;
         } else {
             const lowest = sortedSuppliers[0];
-            const subtotal = lowest.price * qty;
             let secondLowestStr = "-";
             let diffStr = "-";
 
@@ -1502,7 +1487,7 @@
                     diffStr = "無價差";
                 }
             }
-            row += `"${lowest.supplier}","${lowest.price}","${subtotal}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}"`;
+            row += `"${lowest.supplier}","${lowest.price}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}"`;
         }
         csvContent += row + "\n";
     });
