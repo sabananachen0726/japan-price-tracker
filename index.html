@@ -23,6 +23,7 @@
         .trend-up { color: #dc3545; font-size: 0.75rem; font-weight: bold; }
         .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
         .trend-same { color: #6c757d; font-size: 0.75rem; }
+        .subtotal-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -59,7 +60,7 @@
                             <label class="form-label mb-0 fw-bold"><i class="fa-solid fa-magnifying-glass me-1"></i>搜尋方式</label>
                             <div>
                                 <button type="button" id="btnSingleMode" class="btn btn-sm btn-primary">單筆快速搜尋</button>
-                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode 批次貼入查詢</button>
+                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode+數量 貼入查詢</button>
                             </div>
                         </div>
 
@@ -69,11 +70,11 @@
                             <input type="text" id="searchInput" class="form-control" placeholder="搜尋 Barcode / Item Code / 商品名稱...">
                         </div>
 
-                        <!-- 多筆貼入框 -->
+                        <!-- 多筆貼入框 (支援帶入數量) -->
                         <div id="batchSearchBox" class="d-none">
-                            <textarea id="batchSearchInput" class="form-control border-primary" rows="4" placeholder="在此一次貼入多個 Barcode（可用「換行」、「逗號」或「空格」隔開）&#10;例如：&#10;4901330112813&#10;4901330119999&#10;4901330122222"></textarea>
+                            <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與數量（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填數量預設為1）"></textarea>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <small class="text-muted">自動比對所有貼入的條碼及其關聯綁定條碼。</small>
+                                <small class="text-muted">自動解析條碼與數量，並計算最低價採購總額。</small>
                                 <div>
                                     <button id="btnExportPurchase" class="btn btn-sm btn-success me-2"><i class="fa-solid fa-file-csv me-1"></i>匯出採購決策建議單 (CSV)</button>
                                     <button id="btnClearBatchSearch" class="btn btn-sm btn-outline-secondary">清空輸入</button>
@@ -90,6 +91,7 @@
                 </div>
             </div>
 
+            <div id="batchSummaryContainer"></div>
             <div id="compareResultsContainer"></div>
         </div>
 
@@ -325,7 +327,7 @@
     </div>
 </div>
 
-<!-- 新增：快速編輯商品主檔 Modal -->
+<!-- 快速編輯商品主檔 Modal -->
 <div class="modal fade" id="editMasterModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -434,17 +436,43 @@
 
   const docRef = doc(db, "app_data", "main_config");
 
-  // 洗滌條碼：轉半形 + 刪除前後與不可見空白 (修復問題 A)
+  // 洗滌條碼：轉半形 + 刪除前後與不可見空白
   function cleanBarcode(str) {
     if (!str) return "";
     str = String(str).trim();
-    // 全形數字轉半形
     str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xfee0));
-    // 移除無形字元/不可見空白
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
   }
 
-  // 生成包含時分秒的檔案時間戳記 (修復問題 C)
+  // 解析貼入文字（解析條碼與數量，支援逗號、Tab、空格分隔）
+  function parseBatchInputLines(text) {
+    if (!text) return [];
+    const lines = text.split(/\r?\n/);
+    const result = [];
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        // 使用逗號、tab 或多個空格分隔
+        const parts = line.split(/[\t,]+/).map(p => p.trim()).filter(p => p !== '');
+        if (parts.length >= 2) {
+            const code = cleanBarcode(parts[0]);
+            const qty = parseInt(parts[1], 10);
+            result.push({ barcode: code, qty: isNaN(qty) ? 1 : qty });
+        } else {
+            // 若只寫了一項，嘗試用空格分拆或當作只有條碼
+            const spaceParts = line.split(/\s+/);
+            if (spaceParts.length >= 2 && !isNaN(parseInt(spaceParts[spaceParts.length - 1], 10))) {
+                const qty = parseInt(spaceParts[spaceParts.length - 1], 10);
+                const code = cleanBarcode(spaceParts.slice(0, spaceParts.length - 1).join(''));
+                result.push({ barcode: code, qty: qty });
+            } else {
+                result.push({ barcode: cleanBarcode(line), qty: 1 });
+            }
+        }
+    });
+    return result;
+  }
+
   function getTimestampString() {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -756,9 +784,10 @@
     }
   }
 
-  // 渲染比對結果卡片 (含編輯主檔與漲跌價提示)
+  // 渲染比對結果卡片 (包含數量計算與總金額統計)
   function renderCompareList() {
     const container = document.getElementById("compareResultsContainer");
+    const summaryContainer = document.getElementById("batchSummaryContainer");
     if(!container) return;
     const filterSup = document.getElementById("filterSupplier").value;
 
@@ -771,12 +800,13 @@
     });
 
     container.innerHTML = "";
+    if (summaryContainer) summaryContainer.innerHTML = "";
     let hasData = false;
 
     let singleKeyword = cleanBarcode(document.getElementById("searchInput").value).toLowerCase();
     let rawKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
     
-    let targetPrimaryBarcodes = [];
+    let targetItems = []; // [{ primaryB: '...', qty: 50 }]
     let notFoundBarcodes = [];
 
     if (window.searchMode === 'single') {
@@ -795,23 +825,28 @@
                 const matchBarcode = mainB.toLowerCase().includes(rawKeyword) || aliasList.some(a => a.toLowerCase().includes(rawKeyword));
                 if (!matchName && !matchBarcode && !matchItemCode) continue;
             }
-            targetPrimaryBarcodes.push(mainB);
+            targetItems.push({ primaryB: mainB, qty: 1 });
         }
     } else if (window.searchMode === 'batch') {
         const rawBatchText = document.getElementById("batchSearchInput").value.trim();
         if (rawBatchText) {
-            const inputList = rawBatchText.split(/[\n,\s]+/).map(b => cleanBarcode(b)).filter(b => b !== '');
-            inputList.forEach(inputCode => {
-                const primaryB = getPrimaryBarcode(inputCode, inputCode);
+            const parsedBatch = parseBatchInputLines(rawBatchText);
+            parsedBatch.forEach(item => {
+                const primaryB = getPrimaryBarcode(item.barcode, item.barcode);
                 
                 const hasMaster = !!window.appData.products[primaryB];
                 const hasQuotes = grouped[primaryB] && grouped[primaryB].length > 0;
 
                 if (!hasMaster && !hasQuotes) {
-                    if (!notFoundBarcodes.includes(inputCode)) notFoundBarcodes.push(inputCode);
+                    if (!notFoundBarcodes.includes(item.barcode)) notFoundBarcodes.push(item.barcode);
                 } else {
-                    if (primaryB && !targetPrimaryBarcodes.includes(primaryB)) {
-                        targetPrimaryBarcodes.push(primaryB);
+                    if (primaryB) {
+                        const existing = targetItems.find(t => t.primaryB === primaryB);
+                        if (existing) {
+                            existing.qty += item.qty; // 重複條碼自動累加數量
+                        } else {
+                            targetItems.push({ primaryB: primaryB, qty: item.qty });
+                        }
                     }
                 }
             });
@@ -827,7 +862,15 @@
             </div>`;
     }
 
-    for (let mainB of targetPrimaryBarcodes) {
+    // 統計批次採購總金額與總件數
+    let grandTotalQty = 0;
+    let grandTotalPrice = 0;
+    let totalMatchedCount = 0;
+
+    for (let itemObj of targetItems) {
+        const mainB = itemObj.primaryB;
+        const currentQty = itemObj.qty || 1;
+
         const masterProduct = window.appData.products[mainB];
         const productInfo = masterProduct ? {
             itemCode: masterProduct.itemCode || "-",
@@ -838,19 +881,18 @@
         const aliasList = window.appData.mappings[mainB] || [];
         const quotes = grouped[mainB] || [];
 
-        // 新增功能：計算同廠商的價格漲跌趨勢
         let latestBySupplier = {};
-        let priceTrends = {}; // 儲存廠商的漲跌資訊
+        let priceTrends = {};
 
         (window.appData.suppliers || []).forEach(sup => {
             const supQuotes = quotes.filter(q => q.supplier === sup).sort((a,b) => new Date(b.date) - new Date(a.date));
             if (supQuotes.length > 0) {
-                latestBySupplier[sup] = supQuotes[0]; // 最新一筆
+                latestBySupplier[sup] = supQuotes[0];
                 if (supQuotes.length > 1) {
                     const diff = supQuotes[0].price - supQuotes[1].price;
-                    priceTrends[sup] = diff; // 最新價減上一批價格
+                    priceTrends[sup] = diff;
                 } else {
-                    priceTrends[sup] = null; // 無上一批數據
+                    priceTrends[sup] = null;
                 }
             }
         });
@@ -868,21 +910,27 @@
             }
         }
 
+        if (minPrice !== Infinity) {
+            grandTotalQty += currentQty;
+            grandTotalPrice += (minPrice * currentQty);
+            totalMatchedCount++;
+        }
+
         let suppliersHtml = '<div class="row g-2 mt-2">';
         (window.appData.suppliers || []).forEach(sup => {
             if (filterSup && sup !== filterSup) return;
             const q = latestBySupplier[sup];
             if (q) {
                 const isLowest = (sup === lowestSupplier && Object.keys(latestBySupplier).length > 1);
-                
-                // 漲跌 HTML 構建
+                const supSubtotal = q.price * currentQty;
+
                 let trendHtml = '';
                 const diff = priceTrends[sup];
                 if (diff !== null && diff !== undefined) {
                     if (diff > 0) {
-                        trendHtml = `<div class="trend-up"><i class="fa-solid fa-arrow-trend-up me-1"></i>▲ +${diff.toLocaleString()} (漲價)</div>`;
+                        trendHtml = `<div class="trend-up"><i class="fa-solid fa-arrow-trend-up me-1"></i>▲ +${diff.toLocaleString()}</div>`;
                     } else if (diff < 0) {
-                        trendHtml = `<div class="trend-down"><i class="fa-solid fa-arrow-trend-down me-1"></i>▼ ${diff.toLocaleString()} (降價)</div>`;
+                        trendHtml = `<div class="trend-down"><i class="fa-solid fa-arrow-trend-down me-1"></i>▼ ${diff.toLocaleString()}</div>`;
                     } else {
                         trendHtml = `<div class="trend-same"><i class="fa-solid fa-minus me-1"></i>— 持平</div>`;
                     }
@@ -901,7 +949,11 @@
                                 </div>
                                 ${trendHtml}
                             </div>
-                            <div class="text-muted small">
+                            ${window.searchMode === 'batch' ? `
+                            <div class="text-primary small fw-bold mt-1">
+                                預估小計: ¥${supSubtotal.toLocaleString()} (${currentQty}件)
+                            </div>` : ''}
+                            <div class="text-muted small mt-1">
                                 <div><i class="fa-solid fa-box me-1"></i>${q.container}</div>
                                 <div><i class="fa-regular fa-clock me-1"></i>${q.date}</div>
                             </div>
@@ -940,8 +992,8 @@
                             ${productInfo.itemCode && productInfo.itemCode !== '-' ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
                             <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
                             <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
-                            <!-- 新增功能：比對頁面直接編輯主檔按鈕 -->
-                            <button class="btn btn-outline-primary btn-sm ms-auto" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen-to-square me-1"></i>編輯主檔</button>
+                            ${window.searchMode === 'batch' ? `<span class="subtotal-badge ms-auto"><i class="fa-solid fa-cart-shopping me-1"></i>採購需求數量: ${currentQty} 件</span>` : ''}
+                            <button class="btn btn-outline-primary btn-sm ${window.searchMode === 'single' ? 'ms-auto' : ''}" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen-to-square me-1"></i>編輯主檔</button>
                         </div>
                         <div class="mt-1">
                             <span class="fw-bold text-primary">JAN (主條碼): ${mainB}</span>
@@ -962,6 +1014,23 @@
                             </thead>
                             <tbody>${historyRows}</tbody>
                         </table>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // 在批次模式下渲染全單統計卡片
+    if (window.searchMode === 'batch' && summaryContainer && totalMatchedCount > 0) {
+        summaryContainer.innerHTML = `
+            <div class="card p-3 mb-3 bg-primary text-white shadow-sm">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h5 class="m-0"><i class="fa-solid fa-calculator me-2"></i>本次批次採購試算總覽</h5>
+                        <small class="opacity-75">已找到報價商品：${totalMatchedCount} 款</small>
+                    </div>
+                    <div class="d-flex gap-4 fs-5 fw-bold text-end mt-2 mt-md-0">
+                        <div>採購總數量: <span class="text-warning">${grandTotalQty.toLocaleString()}</span> 件</div>
+                        <div>最低預估總金額: <span class="text-warning">¥${grandTotalPrice.toLocaleString()}</span></div>
                     </div>
                 </div>
             </div>`;
@@ -1017,7 +1086,6 @@
     }
   }
 
-  // 打開主檔編輯 Modal
   window.openMasterEditModal = (primaryB) => {
     primaryB = cleanBarcode(primaryB);
     const prod = window.appData.products[primaryB] || { itemCode: '', name: '', imgUrl: '' };
@@ -1045,7 +1113,6 @@
     }
   };
 
-  // 解除條碼綁定並即時重新整理 (修復問題 B)
   window.deleteMapping = (primary) => {
     primary = cleanBarcode(primary);
     if (confirm(`確定要解除主條碼 ${primary} 的所有關聯綁定嗎？`)) {
@@ -1151,7 +1218,6 @@
       }
     });
 
-    // 儲存快速編輯主檔 modal
     document.getElementById("btnSaveMasterEdit").addEventListener("click", () => {
         const primaryB = document.getElementById("editMasterPrimaryBarcode").value;
         const newItemCode = document.getElementById("editMasterItemCode").value.trim();
@@ -1378,22 +1444,26 @@
     });
   });
 
-  // 採購決策單 CSV 匯出 (包含精確時間戳記)
+  // 採購決策單 CSV 匯出 (包含預計採購數量與金額試算)
   function exportPurchaseRecommendation() {
     const rawText = document.getElementById("batchSearchInput").value.trim();
     if (!rawText) return alert("請先在文字框中貼入要查詢的 Barcode！");
-    const barcodes = [...new Set(rawText.split(/[\n,\s]+/).map(b => cleanBarcode(b)).filter(b => b !== ''))];
+    
+    const parsedBatch = parseBatchInputLines(rawText);
     const filterSup = document.getElementById("filterSupplier").value;
 
     let csvContent = "\uFEFF";
-    csvContent += "您查詢的條碼,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低報價(JPY),次低報價備案(廠商與金額),最高低價差(%),最低價報價日期,最低價貨櫃號,預計採購數量(填寫)\n";
+    csvContent += "您查詢的條碼,預計採購數量,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低單價(JPY),採購預估小計(JPY),次低報價備案(廠商與單價),最高低價差(%),最低價報價日期,最低價貨櫃號\n";
 
-    barcodes.forEach(queriedB => {
+    parsedBatch.forEach(item => {
+        const queriedB = item.barcode;
+        const qty = item.qty || 1;
+
         const primaryB = getPrimaryBarcode(queriedB, "");
-        let row = `="${queriedB}",`;
+        let row = `="${queriedB}","${qty}",`;
 
         if (!primaryB || (!window.appData.products[primaryB] && !window.appData.quotes.some(q => q.barcode === primaryB))) {
-            row += `"查無主檔","","查無此商品資訊","無報價紀錄","","","","","",""`;
+            row += `"查無主檔","","查無此商品資訊","無報價紀錄","0","0","","","",""`;
             csvContent += row + "\n";
             return;
         }
@@ -1414,9 +1484,10 @@
         const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
 
         if (sortedSuppliers.length === 0) {
-            row += `"無符合報價","","","","","",""`;
+            row += `"無符合報價","0","0","","","",""`;
         } else {
             const lowest = sortedSuppliers[0];
+            const subtotal = lowest.price * qty;
             let secondLowestStr = "-";
             let diffStr = "-";
 
@@ -1431,7 +1502,7 @@
                     diffStr = "無價差";
                 }
             }
-            row += `"${lowest.supplier}","${lowest.price}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}",""`;
+            row += `"${lowest.supplier}","${lowest.price}","${subtotal}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}"`;
         }
         csvContent += row + "\n";
     });
