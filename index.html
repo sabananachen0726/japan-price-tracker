@@ -138,11 +138,11 @@
                                     <input type="text" id="inputItemCode" class="form-control" placeholder="例如: WHH005">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">商品名稱</label>
+                                    <label class="form-label">商品名稱 (若主檔無對應將存入主檔)</label>
                                     <input type="text" id="inputName" class="form-control" placeholder="例如: Calbee 蝦條 白鹽味 70g">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">圖片 URL (選填)</label>
+                                    <label class="form-label">圖片 URL (若主檔無對應將存入主檔)</label>
                                     <input type="url" id="inputImgUrl" class="form-control" placeholder="https://example.com/image.jpg">
                                 </div>
                                 <div class="col-md-4">
@@ -221,7 +221,7 @@
                                 <button id="btnDownloadMasterTemplate" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-download me-1"></i>下載主檔 CSV 範本</button>
                             </div>
                         </div>
-                        <p class="text-muted small">在此建立每個 Barcode 對應的圖片 URL。之後輸入報價只需 Barcode，系統會自動套用這裡的圖片。</p>
+                        <p class="text-muted small">所有查詢與卡片資訊均以主檔為準。重複匯入主條碼將直接覆蓋，舊資料不自動刪除。</p>
                         
                         <div class="bg-light p-3 border rounded mb-3">
                             <h6>批次匯入/更新商品主檔 (CSV 或 TXT)：</h6>
@@ -424,7 +424,7 @@
     }
   });
 
-  // 強化版存檔機制
+  // 存檔機制
   async function saveFirebaseData() {
     const statusBadge = document.getElementById("cloudStatus");
     try {
@@ -700,6 +700,7 @@
     }
   }
 
+  // 重點修改 1 & 3：嚴格按照貼入順序呈現 + 一律以主檔欄位為主
   function renderCompareList() {
     const container = document.getElementById("compareResultsContainer");
     if(!container) return;
@@ -717,34 +718,75 @@
     let hasData = false;
 
     let singleKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
-    let batchBarcodes = [];
-    if (window.searchMode === 'batch') {
-        const rawBatchText = document.getElementById("batchSearchInput").value.trim();
-        if (rawBatchText) {
-            batchBarcodes = rawBatchText.split(/[\n,\s]+/).map(b => b.trim().toLowerCase()).filter(b => b !== '');
-        }
-    }
+    
+    // 定義主條碼呈現的排序與目標清單
+    let targetPrimaryBarcodes = [];
+    let notFoundBarcodes = [];
 
-    for (let mainB in grouped) {
-        const productInfo = window.appData.products[mainB] || { itemCode: "-", name: "未命名商品", imgUrl: "" };
-        const aliasList = window.appData.mappings[mainB] || [];
-        const quotes = grouped[mainB];
+    if (window.searchMode === 'single') {
+        let allPrimaryKeys = Object.keys(grouped);
+        // 將商品主檔中的條碼也涵蓋進來
+        Object.keys(window.appData.products || {}).forEach(pKey => {
+            if (!allPrimaryKeys.includes(pKey)) allPrimaryKeys.push(pKey);
+        });
 
-        if (window.searchMode === 'single') {
+        for (let mainB of allPrimaryKeys) {
+            const productInfo = window.appData.products[mainB] || { itemCode: "", name: "未命名商品", imgUrl: "" };
+            const aliasList = window.appData.mappings[mainB] || [];
+            
             if (singleKeyword) {
                 const matchName = (productInfo.name || '').toLowerCase().includes(singleKeyword);
                 const matchItemCode = (productInfo.itemCode || '').toLowerCase().includes(singleKeyword);
                 const matchBarcode = mainB.toLowerCase().includes(singleKeyword) || aliasList.some(a => a.toLowerCase().includes(singleKeyword));
                 if (!matchName && !matchBarcode && !matchItemCode) continue;
             }
-        } else if (window.searchMode === 'batch') {
-            if (batchBarcodes.length > 0) {
-                const matchMain = batchBarcodes.includes(mainB.toLowerCase());
-                const matchAlias = aliasList.some(a => batchBarcodes.includes(a.toLowerCase()));
-                const matchItem = productInfo.itemCode && batchBarcodes.includes(productInfo.itemCode.toLowerCase());
-                if (!matchMain && !matchAlias && !matchItem) continue;
-            }
+            targetPrimaryBarcodes.push(mainB);
         }
+    } else if (window.searchMode === 'batch') {
+        const rawBatchText = document.getElementById("batchSearchInput").value.trim();
+        if (rawBatchText) {
+            // 保留使用者貼入原始順序
+            const inputList = rawBatchText.split(/[\n,\s]+/).map(b => b.trim()).filter(b => b !== '');
+            inputList.forEach(inputCode => {
+                const primaryB = getPrimaryBarcode(inputCode, inputCode);
+                
+                // 檢查是否包含資料（主檔或報價紀錄）
+                const hasMaster = !!window.appData.products[primaryB];
+                const hasQuotes = grouped[primaryB] && grouped[primaryB].length > 0;
+
+                if (!hasMaster && !hasQuotes) {
+                    if (!notFoundBarcodes.includes(inputCode)) notFoundBarcodes.push(inputCode);
+                } else {
+                    if (primaryB && !targetPrimaryBarcodes.includes(primaryB)) {
+                        targetPrimaryBarcodes.push(primaryB);
+                    }
+                }
+            });
+        }
+    }
+
+    // 提示貼入但查無資料的條碼
+    if (window.searchMode === 'batch' && notFoundBarcodes.length > 0) {
+        container.innerHTML += `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>
+                <strong>以下 ${notFoundBarcodes.length} 個貼入的條碼查無主檔與報價紀錄：</strong> ${notFoundBarcodes.join(', ')}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`;
+    }
+
+    // 依照排好的 targetPrimaryBarcodes 順序渲染商品卡片
+    for (let mainB of targetPrimaryBarcodes) {
+        // 核心重點 3：所有照片URL、名字、Barcode皆以「主檔」為主
+        const masterProduct = window.appData.products[mainB];
+        const productInfo = masterProduct ? {
+            itemCode: masterProduct.itemCode || "-",
+            name: masterProduct.name || "未命名商品",
+            imgUrl: masterProduct.imgUrl || ""
+        } : { itemCode: "-", name: "未命名商品", imgUrl: "" };
+
+        const aliasList = window.appData.mappings[mainB] || [];
+        const quotes = grouped[mainB] || [];
 
         let latestBySupplier = {};
         quotes.forEach(q => {
@@ -754,7 +796,7 @@
             }
         });
 
-        if (Object.keys(latestBySupplier).length === 0) continue;
+        if (quotes.length === 0 && window.searchMode === 'single') continue;
         hasData = true;
 
         let minPrice = Infinity;
@@ -818,12 +860,12 @@
                     </div>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2">
-                            ${productInfo.itemCode ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
+                            ${productInfo.itemCode && productInfo.itemCode !== '-' ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
                             <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
                             <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
                         </div>
                         <div class="mt-1">
-                            <span class="fw-bold text-primary">JAN: ${mainB}</span>
+                            <span class="fw-bold text-primary">JAN (主條碼): ${mainB}</span>
                             <button class="btn btn-light btn-copy me-2" onclick="copyToClipboard('${mainB}')"><i class="fa-regular fa-copy"></i> 複製條碼</button>
                             ${aliasList.map(a => `<span class="badge badge-alias">關聯條碼: ${a}</span>`).join('')}
                         </div>
@@ -846,7 +888,7 @@
             </div>`;
     }
 
-    if (!hasData) {
+    if (!hasData && notFoundBarcodes.length === 0) {
         container.innerHTML = '<div class="alert alert-info text-center">尚無符合條件的報價資料，請先新增報價或匯入資料。</div>';
     }
   }
@@ -940,14 +982,9 @@
         window.appData.itemToBarcode[itemCode] = primaryB;
     }
 
+    // 若主檔完全不存在才自動建立，避免無意間更改主檔的標準資訊
     if (!window.appData.products[primaryB]) {
         window.appData.products[primaryB] = { itemCode: itemCode || '', name: name || '未命名商品', imgUrl: imgUrl || '' };
-    } else {
-        if (itemCode) window.appData.products[primaryB].itemCode = itemCode;
-        if (name && (!window.appData.products[primaryB].name || window.appData.products[primaryB].name === '未命名商品')) {
-            window.appData.products[primaryB].name = name;
-        }
-        if (imgUrl) window.appData.products[primaryB].imgUrl = imgUrl;
     }
 
     if (!window.appData.suppliers.includes(supplier)) {
@@ -1060,6 +1097,7 @@
         }
     });
 
+    // 重點修改 2 & 4：主檔匯入邏輯 (強制覆蓋、舊不刪、新新增 + 錯誤彈窗提示)
     document.getElementById("btnImportMasterCSV").addEventListener("click", () => {
         const fileInput = document.getElementById("masterCSVFile");
         const encoding = document.getElementById("masterEncodingSelect").value;
@@ -1068,7 +1106,9 @@
 
         readTextFileWithSmartEncoding(file, encoding, (text) => {
             const parsedRows = parseTextLines(text);
-            let count = 0;
+            let successCount = 0;
+            let errors = [];
+
             for (let i = 1; i < parsedRows.length; i++) {
                 const cols = parsedRows[i];
                 let barcode = cols[0];
@@ -1076,6 +1116,7 @@
                 let name = cols[2];
                 let imgUrl = cols[3];
 
+                // 彈性檢測欄位顛倒情況
                 if (!barcode || (isNaN(barcode) && barcode.length < 5)) {
                     if (cols[1] && !isNaN(cols[1])) {
                         barcode = cols[1];
@@ -1083,23 +1124,40 @@
                     }
                 }
 
+                if (!barcode) {
+                    errors.push(`第 ${i + 1} 行：缺失主要 Barcode`);
+                    continue;
+                }
+
                 const primaryB = getPrimaryBarcode(barcode, itemCode);
                 if (primaryB) {
                     if (itemCode) window.appData.itemToBarcode[itemCode] = primaryB;
+                    
+                    // 重點 4：重複強制覆蓋，舊資料保留不刪除，新資料直接寫入
                     window.appData.products[primaryB] = {
                         itemCode: itemCode || (window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : ''),
                         name: name || (window.appData.products[primaryB] ? window.appData.products[primaryB].name : ''),
                         imgUrl: imgUrl || (window.appData.products[primaryB] ? window.appData.products[primaryB].imgUrl : '')
                     };
-                    count++;
+                    successCount++;
+                } else {
+                    errors.push(`第 ${i + 1} 行：無法歸類或產生有效的Primary Barcode`);
                 }
             }
+
             saveFirebaseData();
-            alert(`成功匯入/更新 ${count} 筆商品主檔資料！`);
+
+            let msg = `【商品主檔匯入完成報告】\n\n✅ 成功匯入/更新：${successCount} 筆`;
+            if (errors.length > 0) {
+                msg += `\n❌ 失敗：${errors.length} 筆\n\n失敗詳細原因：\n` + errors.slice(0, 10).join('\n');
+                if (errors.length > 10) msg += `\n...等其餘 ${errors.length - 10} 筆錯誤。`;
+            }
+            alert(msg);
             fileInput.value = "";
         });
     });
 
+    // 重點修改 2：整批報價匯入 (錯誤彈窗提示與欄位校驗)
     document.getElementById("btnImportBatchCSV").addEventListener("click", () => {
         const fileInput = document.getElementById("batchQuoteCSVFile");
         const encoding = document.getElementById("quoteEncodingSelect").value;
@@ -1108,7 +1166,9 @@
 
         readTextFileWithSmartEncoding(file, encoding, (text) => {
             const parsedRows = parseTextLines(text);
-            let count = 0;
+            let successCount = 0;
+            let errors = [];
+
             for (let i = 1; i < parsedRows.length; i++) {
                 const cols = parsedRows[i];
                 let barcode = cols[0];
@@ -1125,13 +1185,31 @@
                     itemCode = cols[0];
                 }
 
-                if (barcode && supplier && !isNaN(price) && container) {
-                    addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note);
-                    count++;
+                // 嚴格錯誤檢查
+                let rowErrors = [];
+                if (!barcode) rowErrors.push("缺少 Barcode");
+                if (!supplier) rowErrors.push("缺少廠商名稱");
+                if (isNaN(price)) rowErrors.push("金額格式錯誤或缺失");
+                if (!container) rowErrors.push("缺少貨櫃號碼");
+
+                if (rowErrors.length > 0) {
+                    errors.push(`第 ${i + 1} 行 (${barcode || '未知條碼'}): ${rowErrors.join(', ')}`);
+                    continue;
                 }
+
+                addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note);
+                successCount++;
             }
+
             saveFirebaseData();
-            alert(`成功整批匯入 ${count} 筆報價紀錄！`);
+
+            let msg = `【報價整批匯入完成報告】\n\n✅ 成功匯入：${successCount} 筆`;
+            if (errors.length > 0) {
+                msg += `\n❌ 失敗：${errors.length} 筆\n\n失敗詳細原因：\n` + errors.slice(0, 10).join('\n');
+                if (errors.length > 10) msg += `\n...等其餘 ${errors.length - 10} 筆錯誤。`;
+            }
+            alert(msg);
+
             fileInput.value = "";
             const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
             compareTab.show();
