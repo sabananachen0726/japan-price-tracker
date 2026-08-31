@@ -51,7 +51,6 @@
 
     <div class="tab-content" id="mainTabsContent">
 
-        <!-- 1. 商品價格比對 -->
         <div class="tab-pane fade show active" id="compare-panel" role="tabpanel">
             <div class="card p-3 mb-4">
                 <div class="row g-3">
@@ -64,13 +63,11 @@
                             </div>
                         </div>
 
-                        <!-- 單筆輸入框 -->
                         <div id="singleSearchBox" class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
                             <input type="text" id="searchInput" class="form-control" placeholder="搜尋 Barcode / Item Code / 商品名稱...">
                         </div>
 
-                        <!-- 多筆貼入框 (支援帶入數量) -->
                         <div id="batchSearchBox" class="d-none">
                             <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與採購數量（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填數量預設為1）"></textarea>
                             <div class="d-flex justify-content-between align-items-center mt-2">
@@ -95,7 +92,6 @@
             <div id="compareResultsContainer"></div>
         </div>
 
-        <!-- 2. 新增/批次匯入報價 -->
         <div class="tab-pane fade" id="add-panel" role="tabpanel">
             <div class="row g-4 mx-auto" style="max-width: 900px;">
                 
@@ -108,7 +104,7 @@
                                 <button id="btnDownloadTemplate" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-download me-1"></i>下載報價單 CSV 範本</button>
                             </div>
                         </div>
-                        <p class="text-muted small">支援 Excel 匯出的 CSV 或 TXT 文字檔。包含中文/日文混排皆可正確辨識。</p>
+                        <p class="text-muted small">支援 Excel 匯出的 CSV 或 TXT 文字檔。若單價為 $0 可選擇或註明「停產」或「等待報價」。</p>
                         
                         <div class="row g-2">
                             <div class="col-md-8">
@@ -156,15 +152,15 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">報價金額 (JPY ¥) <span class="text-danger">*</span></label>
-                                    <input type="number" step="0.01" id="inputPrice" class="form-control" placeholder="日圓單價" required>
+                                    <input type="number" step="0.01" id="inputPrice" class="form-control" placeholder="0 表示停產/等待報價" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">貨櫃號碼 <span class="text-danger">*</span></label>
                                     <input type="text" id="inputContainer" class="form-control" placeholder="例如: CTN-2024-001" required>
                                 </div>
                                 <div class="col-md-12">
-                                    <label class="form-label">備註欄位</label>
-                                    <input type="text" id="inputNote" class="form-control" placeholder="賞味期限、特價原因、箱規等...">
+                                    <label class="form-label">備註/狀態 (如：停產、等待報價)</label>
+                                    <input type="text" id="inputNote" class="form-control" placeholder="賞味期限、停產、等待報價等...">
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-secondary w-100 mt-3"><i class="fa-solid fa-plus me-1"></i>新增單筆紀錄</button>
@@ -175,7 +171,6 @@
             </div>
         </div>
 
-        <!-- 3. 條碼關聯綁定 -->
         <div class="tab-pane fade" id="mapping-panel" role="tabpanel">
             <div class="card p-4">
                 <h4 class="card-title mb-3"><i class="fa-solid fa-code-fork me-2 text-primary"></i>新舊條碼綁定設定 (Barcode Mapping)</h4>
@@ -213,7 +208,6 @@
             </div>
         </div>
 
-        <!-- 4. 商品主檔與系統備份 -->
         <div class="tab-pane fade" id="settings-panel" role="tabpanel">
             <div class="row g-4">
                 
@@ -267,7 +261,6 @@
                     </div>
                 </div>
 
-                <!-- 依貨櫃號碼批次刪除區域 -->
                 <div class="col-md-12">
                     <div class="card p-4 border-danger">
                         <h4 class="text-danger"><i class="fa-solid fa-boxes-packing me-2"></i>依貨櫃號碼批次刪除報價</h4>
@@ -327,7 +320,6 @@
     </div>
 </div>
 
-<!-- 快速編輯商品主檔 Modal -->
 <div class="modal fade" id="editMasterModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -362,7 +354,6 @@
   </div>
 </div>
 
-<!-- Modal 彈窗與其它元素 -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
@@ -406,7 +397,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Firebase Module Script -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
   import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -566,109 +556,35 @@
   }
 
   function exportMasterProductsToCSV() {
-    let csv = "\uFEFF";
-    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
-
+    let csv = "\uFEFFPrimary Barcode,Item Code,商品名稱,圖片URL\n";
     for (let mainB in (window.appData.products || {})) {
-      const p = window.appData.products[mainB] || {};
-      csv += `"${mainB}","${(p.itemCode || '').replace(/"/g, '""')}","${(p.name || '').replace(/"/g, '""')}","${(p.imgUrl || '').replace(/"/g, '""')}"\n`;
+        const p = window.appData.products[mainB] || {};
+        csv += `"${mainB}","${(p.itemCode || '').replace(/"/g, '""')}","${(p.name || '').replace(/"/g, '""')}","${(p.imgUrl || '').replace(/"/g, '""')}"\n`;
     }
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `商品主檔匯出_${getTimestampString()}.csv`;
+    link.download = `商品主檔對照表_${getTimestampString()}.csv`;
     link.click();
   }
 
-  function importFromCSV(file) {
-    if (!file) return;
-    readTextFileWithSmartEncoding(file, "auto", (text) => {
-      const rows = parseTextLines(text);
-      if (rows.length < 2) {
-        alert("無效的備份檔案格式");
-        return;
-      }
-
-      const newData = {
-        suppliers: [],
-        mappings: {},
-        products: {},
-        itemToBarcode: {},
-        quotes: []
-      };
-
-      for (let i = 1; i < rows.length; i++) {
-        const cols = rows[i];
-        const type = cols[0];
-        if (type === "SUPPLIER") {
-          if (cols[1] && !newData.suppliers.includes(cols[1])) {
-            newData.suppliers.push(cols[1]);
-          }
-        } else if (type === "MAPPING") {
-          const mainB = cleanBarcode(cols[1]);
-          const alias = cleanBarcode(cols[2]);
-          if (mainB && alias) {
-            if (!newData.mappings[mainB]) newData.mappings[mainB] = [];
-            if (!newData.mappings[mainB].includes(alias)) newData.mappings[mainB].push(alias);
-          }
-        } else if (type === "PRODUCT") {
-          const mainB = cleanBarcode(cols[1]);
-          if (mainB) {
-            const itemCode = cols[2] || "";
-            newData.products[mainB] = {
-              itemCode: itemCode,
-              name: cols[3] || "",
-              imgUrl: cols[4] || ""
-            };
-            if (itemCode) newData.itemToBarcode[itemCode] = mainB;
-          }
-        } else if (type === "QUOTE") {
-          const qId = cols[1] || ('q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
-          const itemCode = cols[2] || "";
-          const barcode = cleanBarcode(cols[3]);
-          if (barcode) {
-            newData.quotes.push({
-              id: qId,
-              itemCode: itemCode,
-              barcode: barcode,
-              supplier: cols[4] || "",
-              price: parseFloat(cols[5]) || 0,
-              container: cols[6] || "",
-              note: cols[7] || "",
-              date: cols[8] || new Date().toISOString().split('T')[0]
-            });
-          }
-        }
-      }
-
-      if (confirm(`成功解析備份檔！即將匯入：\n• 廠商：${newData.suppliers.length} 個\n• 綁定：${Object.keys(newData.mappings).length} 組\n• 商品主檔：${Object.keys(newData.products).length} 筆\n• 報價紀錄：${newData.quotes.length} 筆\n\n確定覆寫目前雲端資料嗎？`)) {
-        window.appData = newData;
-        saveFirebaseData();
-        alert("資料已成功還原並寫入雲端！");
-      }
-    });
-  }
-
+  // 下載報價單 CSV 範本（含停產、等待報價選擇與說明）
   function downloadQuoteTemplate() {
-    let csv = "\uFEFF";
-    csv += "Barcode/條碼(必填),ItemCode/內部料號(選填),商品名稱(選填),圖片URL(選填),廠商名稱(必填),報價金額JPY(必填),貨櫃號碼(必填),備註(選填)\n";
-    csv += "4901330112813,WHH005,Calbee 蝦條 70g,,SilkRoad,108,CTN-2024-001,首批特價\n";
-    csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,,Tencho,110,CTN-2024-001,常態報價\n";
-
+    let csv = "\uFEFFJAN Code (Barcode),Item Code (料號),商品名稱,廠商名稱,報價金額,貨櫃號碼,備註/狀態(停產/等待報價)\n";
+    csv += `"4901330112813","WHH005","Calbee 蝦條 白鹽味 70g","SilkRoad","128.5","CTN-2024-001","正常報價"\n`;
+    csv += `"4901330119999","WHH006","Calbee 洋芋片 50g","Tencho","0","CTN-2024-001","停產"\n`;
+    csv += `"4901330122222","WHH007","Calbee 堅果餅乾 80g","SilkRoad","0","CTN-2024-001","等待報價"\n`;
+    
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `報價單匯入範本.csv`;
+    link.download = `批次報價單匯入範本_含0元下拉選項.csv`;
     link.click();
   }
 
   function downloadMasterTemplate() {
-    let csv = "\uFEFF";
-    csv += "PrimaryBarcode/主要條碼(必填),ItemCode/內部料號(選填),商品名稱,圖片URL\n";
-    csv += "4901330112813,WHH005,Calbee 蝦條 70g,https://example.com/image.jpg\n";
-    csv += "4901330119999,WHH006,Calbee 蝦條 海苔味 70g,\n";
-
+    let csv = "\uFEFFPrimary Barcode,Item Code,商品名稱,圖片URL\n";
+    csv += `"4901330112813","WHH005","Calbee 蝦條 白鹽味 70g","https://example.com/image.jpg"\n`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -676,792 +592,34 @@
     link.click();
   }
 
-  function buildImageHtml(imgUrl) {
-    if (imgUrl && imgUrl.trim() !== '') {
-        return `<img src="${imgUrl.trim()}" class="product-img-thumb" onclick="openImageModal('${imgUrl.trim()}')" title="點擊放大圖片">`;
+  // 採購決策建議單匯出邏輯 (滿足規則 2 & 規則 3)
+  function exportPurchaseDecisionCSV() {
+    const rawInput = document.getElementById("batchSearchInput").value;
+    const items = parseBatchInputLines(rawInput);
+    if (items.length === 0) {
+        alert("請先在輸入框貼入需要比對的 Barcode 與數量！");
+        return;
     }
-    return `<div class="no-img-placeholder"><i class="fa-regular fa-image"></i>無圖片</div>`;
-  }
-  
-  window.openImageModal = (url) => {
-    if (!url || url.trim() === '') return;
-    document.getElementById("modalImage").src = url;
-    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
-    modal.show();
-  };
 
-  function readTextFileWithSmartEncoding(file, forceEncoding, callback) {
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        const buffer = evt.target.result;
-        if (forceEncoding && forceEncoding !== 'auto') {
-            try {
-                const text = new TextDecoder(forceEncoding).decode(buffer);
-                return callback(text);
-            } catch(e) { console.warn("指定編碼失敗，切換為自動辨識", e); }
-        }
-        let text = new TextDecoder('utf-8').decode(buffer);
-        if (text.includes('\uFFFD')) {
-            try {
-                const sjisText = new TextDecoder('shift-jis').decode(buffer);
-                if (!sjisText.includes('\uFFFD')) return callback(sjisText);
-            } catch(e) {}
-            try {
-                const big5Text = new TextDecoder('big5').decode(buffer);
-                if (!big5Text.includes('\uFFFD')) return callback(big5Text);
-            } catch(e) {}
-        }
-        callback(text);
-    };
-    reader.readAsArrayBuffer(file);
-  }
+    let csvContent = "\uFEFF\"需求條碼/商品\",\"需求數量\",\"主檔條碼\",\"Item Code\",\"商品名稱\",\"最低價廠商(建議採購)\",\"最低日圓單價\",\"次低價廠商/價格\",\"價差%\",\"最新報價日期\",\"最新貨櫃號碼\",\"採購備註\"\n";
 
-  function parseTextLines(text) {
-    const lines = text.split(/\r?\n/);
-    return lines.map(line => {
-        if (!line.trim()) return null;
-        let cols = line.includes('\t') ? line.split('\t') : line.split(',');
-        return cols.map(c => c.replace(/^"|"$/g, '').trim());
-    }).filter(c => c !== null);
-  }
-
-  function getPrimaryBarcode(barcode, itemCode) {
-    barcode = cleanBarcode(barcode);
-    if (barcode && barcode !== '') {
-        if (window.appData.mappings[barcode]) return barcode;
-        for (let mainB in window.appData.mappings) {
-            if (window.appData.mappings[mainB].includes(barcode)) return mainB;
-        }
-        return barcode;
-    }
-    if (itemCode && window.appData.itemToBarcode[itemCode.trim()]) {
-        return window.appData.itemToBarcode[itemCode.trim()];
-    }
-    return "";
-  }
-
-  function renderSupplierOptions() {
-    const select = document.getElementById("inputSupplier");
-    const filter = document.getElementById("filterSupplier");
-    const list = document.getElementById("supplierList");
-    if(!select) return;
-
-    select.innerHTML = "";
-    filter.innerHTML = '<option value="">全部廠商比對</option>';
-    list.innerHTML = "";
-
-    (window.appData.suppliers || []).forEach(s => {
-        select.innerHTML += `<option value="${s}">${s}</option>`;
-        filter.innerHTML += `<option value="${s}">${s}</option>`;
-        list.innerHTML += `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                ${s}
-                <button class="btn btn-sm btn-outline-danger" onclick="removeSupplier('${s}')"><i class="fa-solid fa-xmark"></i></button>
-            </li>`;
-    });
-  }
-
-  function renderContainerDeleteOptions() {
-    const select = document.getElementById("selectContainerToDelete");
-    if (!select) return;
-    
-    let containerCounts = {};
-    (window.appData.quotes || []).forEach(q => {
-        if (q.container) {
-            containerCounts[q.container] = (containerCounts[q.container] || 0) + 1;
-        }
-    });
-
-    select.innerHTML = '<option value="">請選擇要刪除的貨櫃號碼...</option>';
-    for (let ctn in containerCounts) {
-        select.innerHTML += `<option value="${ctn}">${ctn} (包含 ${containerCounts[ctn]} 筆報價)</option>`;
-    }
-  }
-
-  // 渲染比對結果卡片 (僅保留款數與數量統計，不計算總金額與小計)
-  function renderCompareList() {
-    const container = document.getElementById("compareResultsContainer");
-    const summaryContainer = document.getElementById("batchSummaryContainer");
-    if(!container) return;
-    const filterSup = document.getElementById("filterSupplier").value;
-
-    let grouped = {};
-    (window.appData.quotes || []).forEach(q => {
-        const primaryB = getPrimaryBarcode(q.barcode, q.itemCode);
-        if (!primaryB) return;
-        if (!grouped[primaryB]) grouped[primaryB] = [];
-        grouped[primaryB].push(q);
-    });
-
-    container.innerHTML = "";
-    if (summaryContainer) summaryContainer.innerHTML = "";
-    let hasData = false;
-
-    let singleKeyword = cleanBarcode(document.getElementById("searchInput").value).toLowerCase();
-    let rawKeyword = document.getElementById("searchInput").value.trim().toLowerCase();
-    
-    let targetItems = []; // [{ primaryB: '...', qty: 50 }]
-    let notFoundBarcodes = [];
-
-    if (window.searchMode === 'single') {
-        let allPrimaryKeys = Object.keys(grouped);
-        Object.keys(window.appData.products || {}).forEach(pKey => {
-            if (!allPrimaryKeys.includes(pKey)) allPrimaryKeys.push(pKey);
-        });
-
-        for (let mainB of allPrimaryKeys) {
-            const productInfo = window.appData.products[mainB] || { itemCode: "", name: "未命名商品", imgUrl: "" };
-            const aliasList = window.appData.mappings[mainB] || [];
-            
-            if (rawKeyword) {
-                const matchName = (productInfo.name || '').toLowerCase().includes(rawKeyword);
-                const matchItemCode = (productInfo.itemCode || '').toLowerCase().includes(rawKeyword);
-                const matchBarcode = mainB.toLowerCase().includes(rawKeyword) || aliasList.some(a => a.toLowerCase().includes(rawKeyword));
-                if (!matchName && !matchBarcode && !matchItemCode) continue;
+    items.forEach(item => {
+        const queryBarcode = cleanBarcode(item.barcode);
+        let primaryB = resolveToPrimaryBarcode(queryBarcode);
+        const p = window.appData.products[primaryB] || {};
+        
+        let allRelated = [primaryB];
+        for (let m in window.appData.mappings) {
+            if (m === primaryB) {
+                allRelated = allRelated.concat(window.appData.mappings[m]);
             }
-            targetItems.push({ primaryB: mainB, qty: 1 });
         }
-    } else if (window.searchMode === 'batch') {
-        const rawBatchText = document.getElementById("batchSearchInput").value.trim();
-        if (rawBatchText) {
-            const parsedBatch = parseBatchInputLines(rawBatchText);
-            parsedBatch.forEach(item => {
-                const primaryB = getPrimaryBarcode(item.barcode, item.barcode);
-                
-                const hasMaster = !!window.appData.products[primaryB];
-                const hasQuotes = grouped[primaryB] && grouped[primaryB].length > 0;
+        allRelated = [...new Set(allRelated)];
 
-                if (!hasMaster && !hasQuotes) {
-                    if (!notFoundBarcodes.includes(item.barcode)) notFoundBarcodes.push(item.barcode);
-                } else {
-                    if (primaryB) {
-                        const existing = targetItems.find(t => t.primaryB === primaryB);
-                        if (existing) {
-                            existing.qty += item.qty; // 重複條碼自動累加數量
-                        } else {
-                            targetItems.push({ primaryB: primaryB, qty: item.qty });
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    if (window.searchMode === 'batch' && notFoundBarcodes.length > 0) {
-        container.innerHTML += `
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <i class="fa-solid fa-circle-exclamation me-2"></i>
-                <strong>以下 ${notFoundBarcodes.length} 個貼入的條碼查無主檔與報價紀錄：</strong> ${notFoundBarcodes.join(', ')}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>`;
-    }
-
-    // 統計總數量與總款數
-    let grandTotalQty = 0;
-    let totalMatchedCount = 0;
-
-    for (let itemObj of targetItems) {
-        const mainB = itemObj.primaryB;
-        const currentQty = itemObj.qty || 1;
-
-        const masterProduct = window.appData.products[mainB];
-        const productInfo = masterProduct ? {
-            itemCode: masterProduct.itemCode || "-",
-            name: masterProduct.name || "未命名商品",
-            imgUrl: masterProduct.imgUrl || ""
-        } : { itemCode: "-", name: "未命名商品", imgUrl: "" };
-
-        const aliasList = window.appData.mappings[mainB] || [];
-        const quotes = grouped[mainB] || [];
+        let matchedQuotes = window.appData.quotes.filter(q => allRelated.includes(q.barcode));
 
         let latestBySupplier = {};
-        let priceTrends = {};
-
-        (window.appData.suppliers || []).forEach(sup => {
-            const supQuotes = quotes.filter(q => q.supplier === sup).sort((a,b) => new Date(b.date) - new Date(a.date));
-            if (supQuotes.length > 0) {
-                latestBySupplier[sup] = supQuotes[0];
-                if (supQuotes.length > 1) {
-                    const diff = supQuotes[0].price - supQuotes[1].price;
-                    priceTrends[sup] = diff;
-                } else {
-                    priceTrends[sup] = null;
-                }
-            }
-        });
-
-        if (quotes.length === 0 && window.searchMode === 'single') continue;
-        hasData = true;
-
-        let minPrice = Infinity;
-        let lowestSupplier = "";
-        for (let sup in latestBySupplier) {
-            if (filterSup && sup !== filterSup) continue;
-            if (latestBySupplier[sup].price < minPrice) {
-                minPrice = latestBySupplier[sup].price;
-                lowestSupplier = sup;
-            }
-        }
-
-        if (minPrice !== Infinity) {
-            grandTotalQty += currentQty;
-            totalMatchedCount++;
-        }
-
-        let suppliersHtml = '<div class="row g-2 mt-2">';
-        (window.appData.suppliers || []).forEach(sup => {
-            if (filterSup && sup !== filterSup) return;
-            const q = latestBySupplier[sup];
-            if (q) {
-                const isLowest = (sup === lowestSupplier && Object.keys(latestBySupplier).length > 1);
-
-                let trendHtml = '';
-                const diff = priceTrends[sup];
-                if (diff !== null && diff !== undefined) {
-                    if (diff > 0) {
-                        trendHtml = `<div class="trend-up"><i class="fa-solid fa-arrow-trend-up me-1"></i>▲ +${diff.toLocaleString()}</div>`;
-                    } else if (diff < 0) {
-                        trendHtml = `<div class="trend-down"><i class="fa-solid fa-arrow-trend-down me-1"></i>▼ ${diff.toLocaleString()}</div>`;
-                    } else {
-                        trendHtml = `<div class="trend-same"><i class="fa-solid fa-minus me-1"></i>— 持平</div>`;
-                    }
-                }
-
-                suppliersHtml += `
-                    <div class="col-md-4 col-sm-6">
-                        <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : ''}">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold">${sup}</span>
-                                ${isLowest ? '<span class="badge bg-success">Lowest 最低價</span>' : ''}
-                            </div>
-                            <div class="d-flex align-items-baseline gap-2 my-1">
-                                <div class="price-tag ${isLowest ? 'lowest-price d-inline-block' : 'fw-bold'}">
-                                    ¥${q.price.toLocaleString()}
-                                </div>
-                                ${trendHtml}
-                            </div>
-                            <div class="text-muted small mt-1">
-                                <div><i class="fa-solid fa-box me-1"></i>${q.container}</div>
-                                <div><i class="fa-regular fa-clock me-1"></i>${q.date}</div>
-                            </div>
-                        </div>
-                    </div>`;
-            } else {
-                suppliersHtml += `
-                    <div class="col-md-4 col-sm-6">
-                        <div class="p-2 border rounded text-muted bg-light">
-                            <div class="fw-bold">${sup}</div>
-                            <div class="small my-2">暫無報價</div>
-                        </div>
-                    </div>`;
-            }
-        });
-        suppliersHtml += '</div>';
-
-        let historyRows = quotes.sort((a,b) => new Date(b.date) - new Date(a.date)).map(q => `
-            <tr>
-                <td>${q.supplier}</td>
-                <td class="fw-bold">¥${q.price.toLocaleString()}</td>
-                <td><span class="badge bg-secondary">${q.container}</span></td>
-                <td>${q.note || '-'}</td>
-                <td class="small text-muted">${q.date}</td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteQuote('${q.id}')"><i class="fa-solid fa-trash"></i></button></td>
-            </tr>`).join('');
-
-        container.innerHTML += `
-            <div class="card mb-3 p-3">
-                <div class="d-flex gap-3 align-items-start">
-                    <div class="img-wrapper">
-                        ${buildImageHtml(productInfo.imgUrl)}
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            ${productInfo.itemCode && productInfo.itemCode !== '-' ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : ''}
-                            <h5 class="m-0">${productInfo.name || '未命名商品'}</h5>
-                            <button class="btn btn-light btn-copy" onclick="copyToClipboard('${productInfo.name}')"><i class="fa-regular fa-copy"></i> 複製品名</button>
-                            ${window.searchMode === 'batch' ? `<span class="qty-badge ms-auto"><i class="fa-solid fa-boxes-stacked me-1"></i>需求數量: ${currentQty}</span>` : ''}
-                            <button class="btn btn-outline-primary btn-sm ${window.searchMode === 'single' ? 'ms-auto' : ''}" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen-to-square me-1"></i>編輯主檔</button>
-                        </div>
-                        <div class="mt-1">
-                            <span class="fw-bold text-primary">JAN (主條碼): ${mainB}</span>
-                            <button class="btn btn-light btn-copy me-2" onclick="copyToClipboard('${mainB}')"><i class="fa-regular fa-copy"></i> 複製條碼</button>
-                            ${aliasList.map(a => `<span class="badge badge-alias">關聯條碼: ${a}</span>`).join('')}
-                        </div>
-                    </div>
-                </div>
-                ${suppliersHtml}
-                <div class="mt-3">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#history-${mainB.replace(/[^a-zA-Z0-9]/g, '')}">
-                        <i class="fa-solid fa-clock-rotate-left me-1"></i>查看完整歷史報價條目 (${quotes.length})
-                    </button>
-                    <div class="collapse mt-2" id="history-${mainB.replace(/[^a-zA-Z0-9]/g, '')}">
-                        <table class="table table-sm table-bordered mt-2">
-                            <thead class="table-light">
-                                <tr><th>廠商</th><th>價格 (JPY)</th><th>貨櫃號碼</th><th>備註</th><th>錄入日期</th><th>操作</th></tr>
-                            </thead>
-                            <tbody>${historyRows}</tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>`;
-    }
-
-    // 頂部統計列：保留款數與總數量
-    if (window.searchMode === 'batch' && summaryContainer && totalMatchedCount > 0) {
-        summaryContainer.innerHTML = `
-            <div class="card p-3 mb-3 bg-primary text-white shadow-sm">
-                <div class="d-flex justify-content-between align-items-center flex-wrap">
-                    <div>
-                        <h5 class="m-0"><i class="fa-solid fa-list-check me-2"></i>本次批次貼入比對概覽</h5>
-                    </div>
-                    <div class="d-flex gap-4 fs-5 fw-bold text-end mt-2 mt-md-0">
-                        <div>符合商品: <span class="text-warning">${totalMatchedCount}</span> 款</div>
-                        <div>預計採購總數量: <span class="text-warning">${grandTotalQty.toLocaleString()}</span> 件</div>
-                    </div>
-                </div>
-            </div>`;
-    }
-
-    if (!hasData && notFoundBarcodes.length === 0) {
-        container.innerHTML = '<div class="alert alert-info text-center">尚無符合條件的報價資料，請先新增報價或匯入資料。</div>';
-    }
-  }
-
-  function renderMappingTable() {
-    const tbody = document.getElementById("mappingTableBody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    for (let mainB in window.appData.mappings) {
-        const productInfo = window.appData.products[mainB] || { itemCode: "-", name: "未命名" };
-        const aliases = window.appData.mappings[mainB];
-        tbody.innerHTML += `
-            <tr>
-                <td class="fw-bold text-primary">${mainB}</td>
-                <td>${productInfo.itemCode ? `<span class="item-code-badge">${productInfo.itemCode}</span>` : '-'}</td>
-                <td>${productInfo.name}</td>
-                <td>${aliases.map(a => `<span class="badge badge-alias me-1">${a}</span>`).join('')}</td>
-                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteMapping('${mainB}')">刪除所有綁定</button></td>
-            </tr>`;
-    }
-  }
-
-  function renderMasterTable() {
-    const tbody = document.getElementById("masterTableBody");
-    const countHeader = document.getElementById("masterCountHeader");
-    if(!tbody) return;
-    
-    const totalCount = Object.keys(window.appData.products || {}).length;
-    countHeader.innerText = `已存在的主檔商品 (${totalCount})`;
-
-    tbody.innerHTML = "";
-
-    for (let mainB in window.appData.products) {
-        const p = window.appData.products[mainB];
-        tbody.innerHTML += `
-            <tr>
-                <td><div style="width:40px;height:40px;">${buildImageHtml(p.imgUrl)}</div></td>
-                <td class="fw-bold text-primary">${mainB}</td>
-                <td>${p.itemCode ? `<span class="item-code-badge">${p.itemCode}</span>` : '-'}</td>
-                <td>${p.name || '-'}</td>
-                <td class="small text-truncate" style="max-width: 180px;" title="${p.imgUrl}">${p.imgUrl || '未設定'}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openMasterEditModal('${mainB}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSingleMasterProduct('${mainB}')"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>`;
-    }
-  }
-
-  window.openMasterEditModal = (primaryB) => {
-    primaryB = cleanBarcode(primaryB);
-    const prod = window.appData.products[primaryB] || { itemCode: '', name: '', imgUrl: '' };
-    
-    document.getElementById("editMasterPrimaryBarcode").value = primaryB;
-    document.getElementById("editMasterBarcodeDisplay").value = primaryB;
-    document.getElementById("editMasterItemCode").value = prod.itemCode || '';
-    document.getElementById("editMasterName").value = prod.name || '';
-    document.getElementById("editMasterImgUrl").value = prod.imgUrl || '';
-
-    const modal = new bootstrap.Modal(document.getElementById('editMasterModal'));
-    modal.show();
-  };
-
-  window.copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-        alert("已複製到剪貼簿: " + text);
-    });
-  };
-
-  window.removeSupplier = (name) => {
-    if (confirm(`確定要刪除廠商 "${name}" 嗎？`)) {
-        window.appData.suppliers = window.appData.suppliers.filter(s => s !== name);
-        saveFirebaseData();
-    }
-  };
-
-  window.deleteMapping = (primary) => {
-    primary = cleanBarcode(primary);
-    if (confirm(`確定要解除主條碼 ${primary} 的所有關聯綁定嗎？`)) {
-        delete window.appData.mappings[primary];
-        saveFirebaseData();
-    }
-  };
-
-  window.deleteQuote = (id) => {
-    if (confirm("確定刪除此筆報價紀錄？")) {
-        window.appData.quotes = window.appData.quotes.filter(q => q.id !== id);
-        saveFirebaseData();
-    }
-  };
-
-  window.deleteSingleMasterProduct = (primaryB) => {
-    primaryB = cleanBarcode(primaryB);
-    const prodName = window.appData.products[primaryB] ? window.appData.products[primaryB].name : primaryB;
-    if (confirm(`確定要單獨刪除此商品主檔嗎？\n名稱：${prodName}\n條碼：${primaryB}`)) {
-        const itemCode = window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : null;
-        if (itemCode && window.appData.itemToBarcode[itemCode]) {
-            delete window.appData.itemToBarcode[itemCode];
-        }
-        delete window.appData.products[primaryB];
-        saveFirebaseData();
-    }
-  };
-
-  function addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note, date) {
-    barcode = cleanBarcode(barcode);
-    const primaryB = getPrimaryBarcode(barcode, itemCode);
-    if (!primaryB) return;
-
-    if (itemCode && primaryB) {
-        window.appData.itemToBarcode[itemCode.trim()] = primaryB;
-    }
-
-    if (!window.appData.products[primaryB]) {
-        window.appData.products[primaryB] = { itemCode: itemCode || '', name: name || '未命名商品', imgUrl: imgUrl || '' };
-    }
-
-    if (!window.appData.suppliers.includes(supplier)) {
-        window.appData.suppliers.push(supplier);
-    }
-
-    window.appData.quotes.push({
-        id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        itemCode: itemCode || (window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : ''),
-        barcode: primaryB,
-        supplier: supplier,
-        price: price,
-        container: container,
-        note: note || '',
-        date: date || new Date().toISOString().split('T')[0]
-    });
-  }
-
-  // DOM 載入後註冊各種事件
-  document.addEventListener("DOMContentLoaded", () => {
-    const btnSingleMode = document.getElementById("btnSingleMode");
-    const btnBatchMode = document.getElementById("btnBatchMode");
-    const singleSearchBox = document.getElementById("singleSearchBox");
-    const batchSearchBox = document.getElementById("batchSearchBox");
-
-    btnSingleMode.addEventListener("click", () => {
-        window.searchMode = 'single';
-        btnSingleMode.className = "btn btn-sm btn-primary";
-        btnBatchMode.className = "btn btn-sm btn-outline-primary";
-        singleSearchBox.classList.remove("d-none");
-        batchSearchBox.classList.add("d-none");
-        renderCompareList();
-    });
-
-    btnBatchMode.addEventListener("click", () => {
-        window.searchMode = 'batch';
-        btnBatchMode.className = "btn btn-sm btn-primary";
-        btnSingleMode.className = "btn btn-sm btn-outline-primary";
-        batchSearchBox.classList.remove("d-none");
-        singleSearchBox.classList.add("d-none");
-        renderCompareList();
-    });
-
-    document.getElementById("searchInput").addEventListener("input", renderCompareList);
-    document.getElementById("batchSearchInput").addEventListener("input", renderCompareList);
-    document.getElementById("btnClearBatchSearch").addEventListener("click", () => {
-        document.getElementById("batchSearchInput").value = "";
-        renderCompareList();
-    });
-
-    document.getElementById("btnExportPurchase").addEventListener("click", exportPurchaseRecommendation);
-    document.getElementById("filterSupplier").addEventListener("change", renderCompareList);
-
-    document.getElementById("btnDownloadTemplate").addEventListener("click", downloadQuoteTemplate);
-    document.getElementById("btnDownloadMasterTemplate").addEventListener("click", downloadMasterTemplate);
-    document.getElementById("btnExportMasterCSV").addEventListener("click", exportMasterProductsToCSV);
-
-    document.getElementById("btnExportCSV").addEventListener("click", exportToCSV);
-    document.getElementById("importCSVFile").addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        importFromCSV(file);
-        e.target.value = "";
-      }
-    });
-
-    document.getElementById("btnSaveMasterEdit").addEventListener("click", () => {
-        const primaryB = document.getElementById("editMasterPrimaryBarcode").value;
-        const newItemCode = document.getElementById("editMasterItemCode").value.trim();
-        const newName = document.getElementById("editMasterName").value.trim();
-        const newImgUrl = document.getElementById("editMasterImgUrl").value.trim();
-
-        if (!primaryB) return;
-
-        if (!window.appData.products[primaryB]) {
-            window.appData.products[primaryB] = {};
-        }
-
-        window.appData.products[primaryB].itemCode = newItemCode;
-        window.appData.products[primaryB].name = newName || '未命名商品';
-        window.appData.products[primaryB].imgUrl = newImgUrl;
-
-        if (newItemCode) {
-            window.appData.itemToBarcode[newItemCode] = primaryB;
-        }
-
-        saveFirebaseData();
-
-        const modalElement = document.getElementById('editMasterModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) modalInstance.hide();
-
-        alert(`已成功更新條碼 ${primaryB} 的主檔資料！`);
-    });
-
-    document.getElementById("priceForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const rawBarcode = cleanBarcode(document.getElementById("inputBarcode").value);
-        const itemCode = document.getElementById("inputItemCode").value.trim();
-        const name = document.getElementById("inputName").value.trim();
-        const imgUrl = document.getElementById("inputImgUrl").value.trim();
-        const supplier = document.getElementById("inputSupplier").value;
-        const price = parseFloat(document.getElementById("inputPrice").value);
-        const container = document.getElementById("inputContainer").value.trim();
-        const note = document.getElementById("inputNote").value.trim();
-
-        if (!rawBarcode) return alert("請務必輸入產品 Barcode！");
-
-        addSingleQuote(itemCode, rawBarcode, name, imgUrl, supplier, price, container, note);
-        saveFirebaseData();
-        alert("報價新增成功並已同步至 Firebase 雲端！");
-        document.getElementById("priceForm").reset();
-
-        const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
-        compareTab.show();
-    });
-
-    document.getElementById("btnAddMapping").addEventListener("click", () => {
-        const primary = cleanBarcode(document.getElementById("mapPrimaryBarcode").value);
-        const alias = cleanBarcode(document.getElementById("mapAliasBarcode").value);
-
-        if (!primary || !alias) return alert("請同時輸入主要與關聯 Barcode！");
-        if (primary === alias) return alert("主要條碼與關聯條碼不能相同！");
-
-        if (!window.appData.mappings[primary]) window.appData.mappings[primary] = [];
-        if (!window.appData.mappings[primary].includes(alias)) window.appData.mappings[primary].push(alias);
-
-        saveFirebaseData();
-        document.getElementById("mapAliasBarcode").value = "";
-        alert(`已成功將 ${alias} 綁定至主條碼 ${primary}`);
-    });
-
-    document.getElementById("btnAddSupplier").addEventListener("click", () => {
-        const name = document.getElementById("newSupplierName").value.trim();
-        if (name && !window.appData.suppliers.includes(name)) {
-            window.appData.suppliers.push(name);
-            saveFirebaseData();
-            document.getElementById("newSupplierName").value = "";
-        }
-    });
-
-    document.getElementById("btnImportMasterCSV").addEventListener("click", () => {
-        const fileInput = document.getElementById("masterCSVFile");
-        const encoding = document.getElementById("masterEncodingSelect").value;
-        const file = fileInput.files[0];
-        if (!file) return alert("請先選擇要匯入的檔案！");
-
-        readTextFileWithSmartEncoding(file, encoding, (text) => {
-            const parsedRows = parseTextLines(text);
-            let successCount = 0;
-            let errors = [];
-
-            for (let i = 1; i < parsedRows.length; i++) {
-                const cols = parsedRows[i];
-                let barcode = cleanBarcode(cols[0]);
-                let itemCode = cols[1];
-                let name = cols[2];
-                let imgUrl = cols[3];
-
-                if (!barcode || (isNaN(barcode) && barcode.length < 5)) {
-                    if (cols[1] && !isNaN(cleanBarcode(cols[1]))) {
-                        barcode = cleanBarcode(cols[1]);
-                        itemCode = cols[0];
-                    }
-                }
-
-                if (!barcode) {
-                    errors.push(`第 ${i + 1} 行：缺失主要 Barcode`);
-                    continue;
-                }
-
-                const primaryB = getPrimaryBarcode(barcode, itemCode);
-                if (primaryB) {
-                    if (itemCode) window.appData.itemToBarcode[itemCode] = primaryB;
-                    
-                    window.appData.products[primaryB] = {
-                        itemCode: itemCode || (window.appData.products[primaryB] ? window.appData.products[primaryB].itemCode : ''),
-                        name: name || (window.appData.products[primaryB] ? window.appData.products[primaryB].name : ''),
-                        imgUrl: imgUrl || (window.appData.products[primaryB] ? window.appData.products[primaryB].imgUrl : '')
-                    };
-                    successCount++;
-                } else {
-                    errors.push(`第 ${i + 1} 行：無法歸類或產生有效的Primary Barcode`);
-                }
-            }
-
-            saveFirebaseData();
-
-            let msg = `【商品主檔匯入完成報告】\n\n✅ 成功匯入/更新：${successCount} 筆`;
-            if (errors.length > 0) {
-                msg += `\n❌ 失敗：${errors.length} 筆\n\n失敗詳細原因：\n` + errors.slice(0, 10).join('\n');
-                if (errors.length > 10) msg += `\n...等其餘 ${errors.length - 10} 筆錯誤。`;
-            }
-            alert(msg);
-            fileInput.value = "";
-        });
-    });
-
-    document.getElementById("btnImportBatchCSV").addEventListener("click", () => {
-        const fileInput = document.getElementById("batchQuoteCSVFile");
-        const encoding = document.getElementById("quoteEncodingSelect").value;
-        const file = fileInput.files[0];
-        if (!file) return alert("請先選擇要匯入的檔案！");
-
-        readTextFileWithSmartEncoding(file, encoding, (text) => {
-            const parsedRows = parseTextLines(text);
-            let successCount = 0;
-            let errors = [];
-
-            for (let i = 1; i < parsedRows.length; i++) {
-                const cols = parsedRows[i];
-                let barcode = cleanBarcode(cols[0]);
-                let itemCode = cols[1];
-                let name = cols[2];
-                let imgUrl = cols[3];
-                let supplier = cols[4];
-                let price = parseFloat(cols[5]);
-                let container = cols[6];
-                let note = cols[7];
-
-                if (!barcode || (isNaN(barcode) && cols[1] && !isNaN(cleanBarcode(cols[1])))) {
-                    barcode = cleanBarcode(cols[1]);
-                    itemCode = cols[0];
-                }
-
-                let rowErrors = [];
-                if (!barcode) rowErrors.push("缺少 Barcode");
-                if (!supplier) rowErrors.push("缺少廠商名稱");
-                if (isNaN(price)) rowErrors.push("金額格式錯誤或缺失");
-                if (!container) rowErrors.push("缺少貨櫃號碼");
-
-                if (rowErrors.length > 0) {
-                    errors.push(`第 ${i + 1} 行 (${barcode || '未知條碼'}): ${rowErrors.join(', ')}`);
-                    continue;
-                }
-
-                addSingleQuote(itemCode, barcode, name, imgUrl, supplier, price, container, note);
-                successCount++;
-            }
-
-            saveFirebaseData();
-
-            let msg = `【報價整批匯入完成報告】\n\n✅ 成功匯入：${successCount} 筆`;
-            if (errors.length > 0) {
-                msg += `\n❌ 失敗：${errors.length} 筆\n\n失敗詳細原因：\n` + errors.slice(0, 10).join('\n');
-                if (errors.length > 10) msg += `\n...等其餘 ${errors.length - 10} 筆錯誤。`;
-            }
-            alert(msg);
-
-            fileInput.value = "";
-            const compareTab = new bootstrap.Tab(document.getElementById('compare-tab'));
-            compareTab.show();
-        });
-    });
-
-    document.getElementById("btnDeleteByContainer").addEventListener("click", () => {
-        const ctn = document.getElementById("selectContainerToDelete").value;
-        if (!ctn) return alert("請先選擇要刪除的貨櫃號碼！");
-        const count = window.appData.quotes.filter(q => q.container === ctn).length;
-        if (confirm(`確定要刪除貨櫃「${ctn}」下的所有報價紀錄（共 ${count} 筆）嗎？此動作無法復原！`)) {
-            window.appData.quotes = window.appData.quotes.filter(q => q.container !== ctn);
-            saveFirebaseData();
-            alert(`已成功刪除貨櫃「${ctn}」的 ${count} 筆報價紀錄！`);
-        }
-    });
-
-    document.getElementById("btnClearData").addEventListener("click", () => {
-        if (confirm("確定要清空雲端儲存的所有資料嗎？此動作無法復原！")) {
-            window.appData = { suppliers: ["SilkRoad", "Tencho"], mappings: {}, products: {}, itemToBarcode: {}, quotes: [] };
-            saveFirebaseData();
-            alert("雲端資料已清空");
-        }
-    });
-
-    document.getElementById("btnLoadDemo").addEventListener("click", () => {
-        window.appData = {
-            suppliers: ["SilkRoad", "Tencho", "TokyoDirect"],
-            mappings: { "4901330112813": ["4901330119999", "4901330122222"] },
-            products: { "4901330112813": { itemCode: "WHH005", name: "Calbee 卡樂比 經典原味蝦條 70g", imgUrl: "https://m.media-amazon.com/images/I/81e5iG0nLzL._AC_SL1500_.jpg" } },
-            itemToBarcode: { "WHH005": "4901330112813" },
-            quotes: [
-                { id: "q1", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 100, container: "CTN-2024-01", note: "舊價格", date: "2024-01-01" },
-                { id: "q2", itemCode: "WHH005", barcode: "4901330112813", supplier: "SilkRoad", price: 108, container: "CTN-2024-02", note: "最新調漲", date: "2024-02-01" },
-                { id: "q3", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 110, container: "CTN-2024-01", note: "舊價格", date: "2024-01-01" },
-                { id: "q4", itemCode: "WHH005", barcode: "4901330112813", supplier: "Tencho", price: 102, container: "CTN-2024-02", note: "最新降價", date: "2024-02-01" }
-            ]
-        };
-        saveFirebaseData();
-        alert("已載入示範資料！");
-    });
-  });
-
-  // 採購決策單 CSV 匯出 (僅帶入預計採購數量)
-  function exportPurchaseRecommendation() {
-    const rawText = document.getElementById("batchSearchInput").value.trim();
-    if (!rawText) return alert("請先在文字框中貼入要查詢的 Barcode！");
-    
-    const parsedBatch = parseBatchInputLines(rawText);
-    const filterSup = document.getElementById("filterSupplier").value;
-
-    let csvContent = "\uFEFF";
-    csvContent += "您查詢的條碼,預計採購數量,系統主條碼(Primary),內部料號,商品名稱,建議採購廠商,最低單價(JPY/個),次低報價備案(廠商與單價),最高低價差(%),最低價報價日期,最低價貨櫃號\n";
-
-    parsedBatch.forEach(item => {
-        const queriedB = item.barcode;
-        const qty = item.qty || 1;
-
-        const primaryB = getPrimaryBarcode(queriedB, "");
-        let row = `="${queriedB}","${qty}",`;
-
-        if (!primaryB || (!window.appData.products[primaryB] && !window.appData.quotes.some(q => q.barcode === primaryB))) {
-            row += `"查無主檔","","查無此商品資訊","無報價紀錄","0","","","",""`;
-            csvContent += row + "\n";
-            return;
-        }
-
-        const productInfo = window.appData.products[primaryB] || { itemCode: "", name: "未命名商品" };
-        row += `="${primaryB}","${productInfo.itemCode || ''}","${productInfo.name || ''}",`;
-
-        const quotes = window.appData.quotes.filter(q => getPrimaryBarcode(q.barcode, q.itemCode) === primaryB);
-
-        let latestBySupplier = {};
-        quotes.forEach(q => {
-            if (filterSup && q.supplier !== filterSup) return;
+        matchedQuotes.forEach(q => {
             if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
                 latestBySupplier[q.supplier] = q;
             }
@@ -1469,25 +627,82 @@
 
         const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
 
+        let row = `"${queryBarcode}","${item.qty}","${primaryB}","${p.itemCode || ''}","${p.name || '查無品名'}",`;
+
         if (sortedSuppliers.length === 0) {
-            row += `"無符合報價","0","","","",""`;
+            row += `"無符合報價","0","-","-","-","-","查無報價"`;
         } else {
-            const lowest = sortedSuppliers[0];
+            const registeredSuppliers = window.appData.suppliers || [];
+            
+            // 檢查價格 > 0 的有效報價
+            const validQuotes = sortedSuppliers.filter(s => s.price > 0);
+            const zeroQuotes = sortedSuppliers.filter(s => s.price === 0);
+
+            let recommendedSupplier = "";
+            let lowestPrice = 0;
             let secondLowestStr = "-";
             let diffStr = "-";
+            let purchaseNote = "";
 
-            if (sortedSuppliers.length > 1) {
-                const secondLowest = sortedSuppliers[1];
-                secondLowestStr = `${secondLowest.supplier} (¥${secondLowest.price})`;
-                const highest = sortedSuppliers[sortedSuppliers.length - 1];
-                if (highest.price > lowest.price) {
-                    const diffPercent = (((highest.price - lowest.price) / highest.price) * 100).toFixed(1);
-                    diffStr = `差 ${diffPercent}%`;
+            if (validQuotes.length === 0) {
+                // 全部報價皆為 $0 (停產/等待報價)
+                recommendedSupplier = "Pending";
+                lowestPrice = 0;
+                purchaseNote = "廠商報價皆為$0 (停產/等待報價)";
+            } else {
+                const lowest = validQuotes[0];
+                lowestPrice = lowest.price;
+
+                // 檢查是否有同價格競爭者
+                const sameLowest = validQuotes.filter(s => s.price === lowest.price);
+
+                if (sameLowest.length > 1) {
+                    // 規則 2: 報價相同，不分配任何廠商，標示「報價相同」
+                    recommendedSupplier = "報價相同";
+                    purchaseNote = `多間廠商報價相同 (${sameLowest.map(s => s.supplier).join(' / ')})`;
+                    if (validQuotes.length > sameLowest.length) {
+                        const nextQuote = validQuotes[sameLowest.length];
+                        secondLowestStr = `${nextQuote.supplier} (¥${nextQuote.price})`;
+                    }
                 } else {
-                    diffStr = "無價差";
+                    // 最低價廠商明確存在
+                    if (zeroQuotes.length > 0) {
+                        // 規則 3: 遇到另一個廠商報價為 $0 時
+                        // 若市場上還有其他廠商「查無報價」？ 判斷是否所有其他廠商都有報價紀錄
+                        const suppliersWithQuote = Object.keys(latestBySupplier);
+                        const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
+
+                        if (missingSuppliers.length > 0) {
+                            // 另一個廠商查無報價，才分配廠商，並註明另個廠商沒有提供報價
+                            recommendedSupplier = lowest.supplier;
+                            purchaseNote = `另有廠商(${missingSuppliers.join('/')})查無報價；部分廠商報價$0`;
+                        } else {
+                            // 另個廠商有報價且為 $0 -> 不分配廠商，寫 Pending
+                            recommendedSupplier = "Pending";
+                            purchaseNote = `有廠商報價為$0 (待確認)`;
+                        }
+                    } else {
+                        // 標準比價邏輯
+                        recommendedSupplier = lowest.supplier;
+                        if (validQuotes.length > 1) {
+                            const second = validQuotes[1];
+                            secondLowestStr = `${second.supplier} (¥${second.price})`;
+                            const diffPercent = (((second.price - lowest.price) / second.price) * 100).toFixed(1);
+                            diffStr = `省 ${diffPercent}%`;
+                        }
+                        
+                        // 若有系統廠商完全查無報價，補充註記
+                        const suppliersWithQuote = Object.keys(latestBySupplier);
+                        const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
+                        if (missingSuppliers.length > 0) {
+                            purchaseNote = `廠商 (${missingSuppliers.join('/')}) 沒有提供報價`;
+                        }
+                    }
                 }
             }
-            row += `"${lowest.supplier}","${lowest.price}","${secondLowestStr}","${diffStr}","${lowest.date}","${lowest.container}"`;
+
+            const latestQuoteObj = validQuotes[0] || sortedSuppliers[0];
+            row += `"${recommendedSupplier}","${lowestPrice}","${secondLowestStr}","${diffStr}","${latestQuoteObj.date || ''}","${latestQuoteObj.container || ''}","${purchaseNote}"`;
         }
         csvContent += row + "\n";
     });
@@ -1498,6 +713,878 @@
     link.download = `採購決策建議單_${getTimestampString()}.csv`;
     link.click();
   }
+
+  function resolveToPrimaryBarcode(barcode) {
+    if (!barcode) return "";
+    barcode = cleanBarcode(barcode);
+    if (window.appData.itemToBarcode[barcode]) {
+        barcode = window.appData.itemToBarcode[barcode];
+    }
+    for (let mainB in window.appData.mappings) {
+        if (mainB === barcode) return mainB;
+        if ((window.appData.mappings[mainB] || []).includes(barcode)) {
+            return mainB;
+        }
+    }
+    return barcode;
+  }
+
+  function renderSupplierOptions() {
+    const filterSelect = document.getElementById("filterSupplier");
+    const inputSelect = document.getElementById("inputSupplier");
+    
+    if (filterSelect) {
+      const currentFilter = filterSelect.value;
+      filterSelect.innerHTML = '<option value="">全部廠商比對</option>';
+      (window.appData.suppliers || []).forEach(s => {
+        filterSelect.innerHTML += `<option value="${s}">${s}</option>`;
+      });
+      filterSelect.value = currentFilter;
+    }
+
+    if (inputSelect) {
+      const currentInput = inputSelect.value;
+      inputSelect.innerHTML = '';
+      (window.appData.suppliers || []).forEach(s => {
+        inputSelect.innerHTML += `<option value="${s}">${s}</option>`;
+      });
+      inputSelect.value = currentInput;
+    }
+
+    const listContainer = document.getElementById("supplierList");
+    if (listContainer) {
+      listContainer.innerHTML = '';
+      (window.appData.suppliers || []).forEach(s => {
+        listContainer.innerHTML += `
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            ${s}
+            <button class="btn btn-sm btn-outline-danger btn-delete-supplier" data-supplier="${s}"><i class="fa-solid fa-xmark"></i></button>
+          </li>
+        `;
+      });
+      
+      document.querySelectorAll(".btn-delete-supplier").forEach(btn => {
+        btn.addEventListener("click", function() {
+          const sup = this.getAttribute("data-supplier");
+          if (confirm(`確定刪除廠商「${sup}」？`)) {
+            window.appData.suppliers = window.appData.suppliers.filter(x => x !== sup);
+            saveFirebaseData();
+          }
+        });
+      });
+    }
+  }
+
+  function renderCompareList() {
+    const resultsContainer = document.getElementById("compareResultsContainer");
+    const summaryContainer = document.getElementById("batchSummaryContainer");
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = '';
+    summaryContainer.innerHTML = '';
+
+    const filterSupplierVal = document.getElementById("filterSupplier") ? document.getElementById("filterSupplier").value : '';
+
+    if (window.searchMode === 'single') {
+        const searchVal = cleanBarcode(document.getElementById("searchInput") ? document.getElementById("searchInput").value : '');
+        let targetPrimaryBarcodes = [];
+
+        if (!searchVal) {
+            targetPrimaryBarcodes = Object.keys(window.appData.products || {});
+            window.appData.quotes.forEach(q => {
+                const pb = resolveToPrimaryBarcode(q.barcode);
+                if (!targetPrimaryBarcodes.includes(pb)) targetPrimaryBarcodes.push(pb);
+            });
+        } else {
+            for (let mainB in window.appData.products) {
+                const p = window.appData.products[mainB];
+                const aliases = window.appData.mappings[mainB] || [];
+                if (mainB.includes(searchVal) || 
+                    (p.itemCode && p.itemCode.toLowerCase().includes(searchVal.toLowerCase())) ||
+                    (p.name && p.name.toLowerCase().includes(searchVal.toLowerCase())) ||
+                    aliases.some(a => a.includes(searchVal))) {
+                    targetPrimaryBarcodes.push(mainB);
+                }
+            }
+            window.appData.quotes.forEach(q => {
+                const pb = resolveToPrimaryBarcode(q.barcode);
+                if ((q.barcode.includes(searchVal) || (q.itemCode && q.itemCode.toLowerCase().includes(searchVal.toLowerCase()))) && !targetPrimaryBarcodes.includes(pb)) {
+                    targetPrimaryBarcodes.push(pb);
+                }
+            });
+        }
+
+        if (targetPrimaryBarcodes.length === 0) {
+            resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
+            return;
+        }
+
+        targetPrimaryBarcodes.forEach(primaryB => {
+            renderProductCard(primaryB, filterSupplierVal, resultsContainer, 1);
+        });
+
+    } else {
+        const rawInput = document.getElementById("batchSearchInput").value;
+        const items = parseBatchInputLines(rawInput);
+
+        if (items.length === 0) {
+            resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted">請在上方貼入條碼與數量進行批次比對。</div>';
+            return;
+        }
+
+        summaryContainer.innerHTML = `
+            <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
+                <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
+                <small class="text-muted">比對結果已依輸入順序排版</small>
+            </div>
+        `;
+
+        items.forEach(item => {
+            const queryBarcode = cleanBarcode(item.barcode);
+            let primaryB = resolveToPrimaryBarcode(queryBarcode);
+            renderProductCard(primaryB, filterSupplierVal, resultsContainer, item.qty, queryBarcode);
+        });
+    }
+  }
+
+  function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
+    const p = window.appData.products[primaryB] || {};
+    let aliases = window.appData.mappings[primaryB] || [];
+
+    let allRelatedBarcodes = [primaryB, ...aliases];
+    if (queryBarcode && !allRelatedBarcodes.includes(queryBarcode)) {
+        allRelatedBarcodes.push(queryBarcode);
+    }
+
+    let quotes = window.appData.quotes.filter(q => allRelatedBarcodes.includes(q.barcode));
+
+    if (filterSupplierVal) {
+        quotes = quotes.filter(q => q.supplier === filterSupplierVal);
+    }
+
+    const latestBySupplier = {};
+    const supplierHistory = {};
+
+    quotes.forEach(q => {
+        if (!supplierHistory[q.supplier]) supplierHistory[q.supplier] = [];
+        supplierHistory[q.supplier].push(q);
+
+        if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
+            latestBySupplier[q.supplier] = q;
+        }
+    });
+
+    for (let sup in supplierHistory) {
+        supplierHistory[sup].sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    const activeSuppliers = Object.keys(latestBySupplier);
+    let lowestPrice = Infinity;
+    if (activeSuppliers.length > 0) {
+        activeSuppliers.forEach(sup => {
+            const pr = latestBySupplier[sup].price;
+            if (pr > 0 && pr < lowestPrice) lowestPrice = pr;
+        });
+    }
+    if (lowestPrice === Infinity) lowestPrice = 0;
+
+    let aliasesBadgeHtml = aliases.map(a => `<span class="badge badge-alias">${a}</span>`).join('');
+
+    let suppliersCardHtml = '';
+    const registeredSuppliers = window.appData.suppliers || [];
+
+    registeredSuppliers.forEach(sup => {
+        if (filterSupplierVal && filterSupplierVal !== sup) return;
+
+        const latestQ = latestBySupplier[sup];
+        const history = supplierHistory[sup] || [];
+
+        if (latestQ) {
+            const isLowest = (latestQ.price === lowestPrice && lowestPrice > 0);
+            let trendHtml = '';
+            
+            if (history.length > 1) {
+                const currentP = history[0].price;
+                const prevP = history[1].price;
+                if (currentP > prevP) {
+                    const diff = (currentP - prevP).toFixed(2);
+                    trendHtml = `<span class="trend-up ms-2"><i class="fa-solid fa-arrow-trend-up"></i> +¥${diff}</span>`;
+                } else if (currentP < prevP) {
+                    const diff = (prevP - currentP).toFixed(2);
+                    trendHtml = `<span class="trend-down ms-2"><i class="fa-solid fa-arrow-trend-down"></i> -¥${diff}</span>`;
+                } else {
+                    trendHtml = `<span class="trend-same ms-2"><i class="fa-solid fa-minus"></i> 持平</span>`;
+                }
+            }
+
+            let historyAccordionHtml = '';
+            if (history.length > 0) {
+                const accordionId = `acc_${primaryB}_${sup}`.replace(/[^a-zA-Z0-9]/g, '_');
+                let historyRows = history.map(h => `
+                    <tr>
+                        <td class="small py-1">${h.date || ''}</td>
+                        <td class="small py-1">${h.container || ''}</td>
+                        <td class="small py-1 fw-bold text-end">${h.price === 0 ? '停產/等價' : '¥' + h.price}</td>
+                        <td class="small py-1 text-muted ms-2">${h.note || ''}</td>
+                        <td class="small py-1 text-end"><button class="btn btn-link text-danger btn-sm p-0 btn-delete-quote" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `).join('');
+
+                historyAccordionHtml = `
+                    <div class="accordion mt-2" id="${accordionId}">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-1 px-2 small bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#c_${accordionId}">
+                                    查看歷史報價 (${history.length} 筆)
+                                </button>
+                            </h2>
+                            <div id="c_${accordionId}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                                <div class="accordion-body p-2">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tbody>${historyRows}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            suppliersCardHtml += `
+                <div class="col-md-6 mb-2">
+                    <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : 'bg-white'}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">${sup}</span>
+                            <div>
+                                ${isLowest ? '<span class="lowest-price me-1"><i class="fa-solid fa-crown me-1"></i>最低價</span>' : ''}
+                                <span class="price-tag fw-bold ${isLowest ? 'text-success' : 'text-dark'}">
+                                    ${latestQ.price === 0 ? '<span class="badge bg-secondary">停產/等待報價</span>' : '¥' + latestQ.price}
+                                </span>
+                                ${trendHtml}
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
+                            <span><i class="fa-solid fa-box me-1"></i>${latestQ.container || '-'}</span>
+                            <span><i class="fa-solid fa-clock me-1"></i>${latestQ.date || '-'}</span>
+                        </div>
+                        ${latestQ.note ? `<div class="small text-muted mt-1 bg-light p-1 rounded"><i class="fa-solid fa-comment-dots me-1"></i>${latestQ.note}</div>` : ''}
+                        ${historyAccordionHtml}
+                    </div>
+                </div>
+            `;
+        } else {
+            suppliersCardHtml += `
+                <div class="col-md-6 mb-2">
+                    <div class="p-2 border rounded bg-white text-muted opacity-75">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>${sup}</span>
+                            <span class="badge bg-light text-secondary border">無報價</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    const imgSrc = p.imgUrl || '';
+    const imgHtml = imgSrc ? 
+        `<img src="${imgSrc}" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">` :
+        `<div class="no-img-placeholder"><i class="fa-solid fa-image"></i>無圖</div>`;
+
+    const cardHtml = `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="img-wrapper">${imgHtml}</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    ${p.name || '（未命名商品）'}
+                                    ${qty > 1 ? `<span class="qty-badge ms-2">需求: ${qty}</span>` : ''}
+                                </h5>
+                                <div class="mb-2">
+                                    <span class="item-code-badge me-2">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
+                                    <span class="fw-bold text-dark me-2">JAN: ${primaryB}</span>
+                                    ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
+                                    ${aliasesBadgeHtml}
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm btn-quick-add-quote" data-barcode="${primaryB}" data-itemcode="${p.itemCode || ''}" data-name="${p.name || ''}" data-img="${p.imgUrl || ''}">
+                                <i class="fa-solid fa-plus me-1"></i>錄入報價
+                            </button>
+                        </div>
+
+                        <div class="row g-2 mt-2 border-top pt-2">
+                            ${suppliersCardHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML += cardHtml;
+
+    document.querySelectorAll(".img-preview").forEach(img => {
+        img.onclick = function() {
+            document.getElementById("modalImage").src = this.getAttribute("data-src");
+            new bootstrap.Modal(document.getElementById('imageModal')).show();
+        };
+    });
+
+    document.querySelectorAll(".btn-delete-quote").forEach(btn => {
+        btn.onclick = function() {
+            const qId = this.getAttribute("data-id");
+            if (confirm("確定刪除此筆報價紀錄？")) {
+                window.appData.quotes = window.appData.quotes.filter(q => q.id !== qId);
+                saveFirebaseData();
+            }
+        };
+    });
+
+    document.querySelectorAll(".btn-quick-add-quote").forEach(btn => {
+        btn.onclick = function() {
+            const bc = this.getAttribute("data-barcode");
+            const ic = this.getAttribute("data-itemcode");
+            const nm = this.getAttribute("data-name");
+            const img = this.getAttribute("data-img");
+
+            document.getElementById("inputBarcode").value = bc;
+            document.getElementById("inputItemCode").value = ic;
+            document.getElementById("inputName").value = nm;
+            document.getElementById("inputImgUrl").value = img;
+
+            const addTabBtn = document.getElementById("add-tab");
+            if (addTabBtn) new bootstrap.Tab(addTabBtn).show();
+        };
+    });
+  }
+
+  function renderMappingTable() {
+    const tbody = document.getElementById("mappingTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const mappings = window.appData.mappings || {};
+    const primaryBarcodes = Object.keys(mappings);
+
+    if (primaryBarcodes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">目前尚無條碼綁定紀錄。</td></tr>';
+        return;
+    }
+
+    primaryBarcodes.forEach(mainB => {
+        const aliases = mappings[mainB] || [];
+        const p = window.appData.products[mainB] || {};
+        const aliasBadges = aliases.map(a => `<span class="badge badge-alias m-1">${a} <i class="fa-solid fa-xmark text-danger ms-1 btn-remove-alias" data-main="${mainB}" data-alias="${a}" style="cursor:pointer;"></i></span>`).join('');
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${mainB}</td>
+                <td>${p.itemCode || '-'}</td>
+                <td>${p.name || '-'}</td>
+                <td>${aliasBadges}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger btn-delete-mapping-all" data-main="${mainB}">解開全部綁定</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    document.querySelectorAll(".btn-remove-alias").forEach(icon => {
+        icon.onclick = function() {
+            const mainB = this.getAttribute("data-main");
+            const alias = this.getAttribute("data-alias");
+            if (confirm(`確定解除 ${mainB} 與 ${alias} 的綁定？`)) {
+                window.appData.mappings[mainB] = window.appData.mappings[mainB].filter(a => a !== alias);
+                if (window.appData.mappings[mainB].length === 0) {
+                    delete window.appData.mappings[mainB];
+                }
+                saveFirebaseData();
+            }
+        };
+    });
+
+    document.querySelectorAll(".btn-delete-mapping-all").forEach(btn => {
+        btn.onclick = function() {
+            const mainB = this.getAttribute("data-main");
+            if (confirm(`確定解除 ${mainB} 的所有條碼綁定？`)) {
+                delete window.appData.mappings[mainB];
+                saveFirebaseData();
+            }
+        };
+    });
+  }
+
+  function renderMasterTable() {
+    const tbody = document.getElementById("masterTableBody");
+    const countHeader = document.getElementById("masterCountHeader");
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const products = window.appData.products || {};
+    const keys = Object.keys(products);
+
+    if (countHeader) countHeader.innerText = `已存在的主檔商品 (${keys.length} 項)`;
+
+    if (keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前商品主檔為空。</td></tr>';
+        return;
+    }
+
+    keys.forEach(mainB => {
+        const p = products[mainB] || {};
+        const imgHtml = p.imgUrl ? 
+            `<img src="${p.imgUrl}" class="product-img-thumb img-preview" data-src="${p.imgUrl}" style="width:40px;height:40px;">` :
+            `<span class="text-muted small">無圖片</span>`;
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${imgHtml}</td>
+                <td class="fw-bold">${mainB}</td>
+                <td>${p.itemCode || '-'}</td>
+                <td>${p.name || '-'}</td>
+                <td class="small text-truncate" style="max-width:150px;">${p.imgUrl || '-'}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary btn-edit-master me-1" data-barcode="${mainB}"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-sm btn-outline-danger btn-delete-master" data-barcode="${mainB}"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    document.querySelectorAll(".btn-edit-master").forEach(btn => {
+        btn.onclick = function() {
+            const bc = this.getAttribute("data-barcode");
+            const p = window.appData.products[bc] || {};
+            document.getElementById("editMasterPrimaryBarcode").value = bc;
+            document.getElementById("editMasterBarcodeDisplay").value = bc;
+            document.getElementById("editMasterItemCode").value = p.itemCode || '';
+            document.getElementById("editMasterName").value = p.name || '';
+            document.getElementById("editMasterImgUrl").value = p.imgUrl || '';
+            new bootstrap.Modal(document.getElementById('editMasterModal')).show();
+        };
+    });
+
+    document.querySelectorAll(".btn-delete-master").forEach(btn => {
+        btn.onclick = function() {
+            const bc = this.getAttribute("data-barcode");
+            if (confirm(`確定從主檔刪除商品 ${bc} ？`)) {
+                delete window.appData.products[bc];
+                saveFirebaseData();
+            }
+        };
+    });
+  }
+
+  function renderContainerDeleteOptions() {
+    const select = document.getElementById("selectContainerToDelete");
+    if (!select) return;
+    select.innerHTML = '<option value="">請選擇要刪除的貨櫃號碼...</option>';
+
+    const containers = [...new Set((window.appData.quotes || []).map(q => q.container).filter(Boolean))];
+    containers.forEach(c => {
+        select.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+  }
+
+  // 事件監聽綁定
+  document.addEventListener("DOMContentLoaded", () => {
+    
+    // 搜尋模式切換
+    document.getElementById("btnSingleMode").onclick = function() {
+        window.searchMode = 'single';
+        this.className = "btn btn-sm btn-primary";
+        document.getElementById("btnBatchMode").className = "btn btn-sm btn-outline-primary";
+        document.getElementById("singleSearchBox").classList.remove("d-none");
+        document.getElementById("batchSearchBox").classList.add("d-none");
+        renderCompareList();
+    };
+
+    document.getElementById("btnBatchMode").onclick = function() {
+        window.searchMode = 'batch';
+        this.className = "btn btn-sm btn-primary";
+        document.getElementById("btnSingleMode").className = "btn btn-sm btn-outline-primary";
+        document.getElementById("singleSearchBox").classList.add("d-none");
+        document.getElementById("batchSearchBox").classList.remove("d-none");
+        renderCompareList();
+    };
+
+    document.getElementById("searchInput").oninput = renderCompareList;
+    document.getElementById("batchSearchInput").oninput = renderCompareList;
+    document.getElementById("filterSupplier").onchange = renderCompareList;
+
+    document.getElementById("btnClearBatchSearch").onclick = function() {
+        document.getElementById("batchSearchInput").value = '';
+        renderCompareList();
+    };
+
+    document.getElementById("btnExportPurchase").onclick = exportPurchaseDecisionCSV;
+    document.getElementById("btnDownloadTemplate").onclick = downloadQuoteTemplate;
+    document.getElementById("btnDownloadMasterTemplate").onclick = downloadMasterTemplate;
+
+    // 單筆新增報價表單
+    document.getElementById("priceForm").onsubmit = function(e) {
+        e.preventDefault();
+        const barcode = cleanBarcode(document.getElementById("inputBarcode").value);
+        const itemCode = document.getElementById("inputItemCode").value.trim();
+        const name = document.getElementById("inputName").value.trim();
+        const imgUrl = document.getElementById("inputImgUrl").value.trim();
+        const supplier = document.getElementById("inputSupplier").value;
+        const price = parseFloat(document.getElementById("inputPrice").value) || 0;
+        const container = document.getElementById("inputContainer").value.trim();
+        const note = document.getElementById("inputNote").value.trim();
+
+        if (!barcode || !supplier || !container) {
+            alert("請填寫必填欄位 (Barcode, 廠商, 貨櫃號碼)");
+            return;
+        }
+
+        let primaryB = resolveToPrimaryBarcode(barcode);
+
+        if (!window.appData.products[primaryB]) {
+            window.appData.products[primaryB] = {
+                itemCode: itemCode,
+                name: name,
+                imgUrl: imgUrl
+            };
+        } else {
+            if (itemCode && !window.appData.products[primaryB].itemCode) window.appData.products[primaryB].itemCode = itemCode;
+            if (name && !window.appData.products[primaryB].name) window.appData.products[primaryB].name = name;
+            if (imgUrl && !window.appData.products[primaryB].imgUrl) window.appData.products[primaryB].imgUrl = imgUrl;
+        }
+
+        if (itemCode) {
+            window.appData.itemToBarcode[itemCode] = primaryB;
+        }
+
+        const newQuote = {
+            id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            barcode: barcode,
+            itemCode: itemCode,
+            supplier: supplier,
+            price: price,
+            container: container,
+            note: note,
+            date: new Date().toISOString().split('T')[0]
+        };
+
+        window.appData.quotes.push(newQuote);
+        saveFirebaseData();
+
+        alert("報價新增成功！");
+        this.reset();
+        const compareTabBtn = document.getElementById("compare-tab");
+        if (compareTabBtn) new bootstrap.Tab(compareTabBtn).show();
+    };
+
+    // 新增條碼綁定
+    document.getElementById("btnAddMapping").onclick = function() {
+        const primaryB = cleanBarcode(document.getElementById("mapPrimaryBarcode").value);
+        const aliasB = cleanBarcode(document.getElementById("mapAliasBarcode").value);
+
+        if (!primaryB || !aliasB) {
+            alert("請填寫主要條碼與要綁定的關聯條碼！");
+            return;
+        }
+
+        if (primaryB === aliasB) {
+            alert("主要條碼與關聯條碼不能相同！");
+            return;
+        }
+
+        if (!window.appData.mappings[primaryB]) {
+            window.appData.mappings[primaryB] = [];
+        }
+
+        if (!window.appData.mappings[primaryB].includes(aliasB)) {
+            window.appData.mappings[primaryB].push(aliasB);
+            saveFirebaseData();
+            document.getElementById("mapAliasBarcode").value = '';
+            alert("關聯條碼綁定成功！");
+        } else {
+            alert("該關聯條碼已存在於綁定清單中！");
+        }
+    };
+
+    // 儲存快速編輯商品主檔 Modal
+    document.getElementById("btnSaveMasterEdit").onclick = function() {
+        const bc = document.getElementById("editMasterPrimaryBarcode").value;
+        const ic = document.getElementById("editMasterItemCode").value.trim();
+        const nm = document.getElementById("editMasterName").value.trim();
+        const img = document.getElementById("editMasterImgUrl").value.trim();
+
+        if (!window.appData.products[bc]) {
+            window.appData.products[bc] = {};
+        }
+
+        window.appData.products[bc].itemCode = ic;
+        window.appData.products[bc].name = nm;
+        window.appData.products[bc].imgUrl = img;
+
+        if (ic) {
+            window.appData.itemToBarcode[ic] = bc;
+        }
+
+        saveFirebaseData();
+        bootstrap.Modal.getInstance(document.getElementById('editMasterModal')).hide();
+    };
+
+    // 新增廠商
+    document.getElementById("btnAddSupplier").onclick = function() {
+        const name = document.getElementById("newSupplierName").value.trim();
+        if (!name) return;
+        if (!window.appData.suppliers.includes(name)) {
+            window.appData.suppliers.push(name);
+            saveFirebaseData();
+            document.getElementById("newSupplierName").value = '';
+        } else {
+            alert("該廠商名稱已存在！");
+        }
+    };
+
+    // 匯出完整系統備份與主檔
+    document.getElementById("btnExportCSV").onclick = exportToCSV;
+    document.getElementById("btnExportMasterCSV").onclick = exportMasterProductsToCSV;
+
+    // 批次匯入報價 (CSV / TXT)
+    document.getElementById("btnImportBatchCSV").onclick = function() {
+        const fileInput = document.getElementById("batchQuoteCSVFile");
+        const encoding = document.getElementById("quoteEncodingSelect").value;
+        if (!fileInput.files.length) {
+            alert("請先選擇要匯入的 CSV 或 TXT 檔案！");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/);
+            let importedCount = 0;
+
+            lines.forEach((line, idx) => {
+                if (idx === 0 && (line.includes("JAN") || line.includes("Barcode") || line.includes("條碼"))) return;
+                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+
+                if (cols.length >= 4) {
+                    const bc = cleanBarcode(cols[0]);
+                    const ic = cols[1] || '';
+                    const nm = cols[2] || '';
+                    const sup = cols[3] || (window.appData.suppliers[0] || 'SilkRoad');
+                    const pr = parseFloat(cols[4]) || 0;
+                    const ctn = cols[5] || ('BATCH_' + getTimestampString());
+                    const note = cols[6] || '';
+
+                    if (bc) {
+                        let primaryB = resolveToPrimaryBarcode(bc);
+                        if (!window.appData.products[primaryB]) {
+                            window.appData.products[primaryB] = { itemCode: ic, name: nm, imgUrl: '' };
+                        } else {
+                            if (ic && !window.appData.products[primaryB].itemCode) window.appData.products[primaryB].itemCode = ic;
+                            if (nm && !window.appData.products[primaryB].name) window.appData.products[primaryB].name = nm;
+                        }
+
+                        if (ic) window.appData.itemToBarcode[ic] = primaryB;
+
+                        window.appData.quotes.push({
+                            id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                            barcode: bc,
+                            itemCode: ic,
+                            supplier: sup,
+                            price: pr,
+                            container: ctn,
+                            note: note,
+                            date: new Date().toISOString().split('T')[0]
+                        });
+                        importedCount++;
+                    }
+                }
+            });
+
+            saveFirebaseData();
+            alert(`成功匯入 ${importedCount} 筆報價紀錄！`);
+            fileInput.value = '';
+        };
+
+        if (encoding === 'auto' || encoding === 'utf-8') {
+            reader.readAsText(file, 'UTF-8');
+        } else {
+            reader.readAsText(file, encoding);
+        }
+    };
+
+    // 匯入商品主檔
+    document.getElementById("btnImportMasterCSV").onclick = function() {
+        const fileInput = document.getElementById("masterCSVFile");
+        const encoding = document.getElementById("masterEncodingSelect").value;
+        if (!fileInput.files.length) {
+            alert("請選擇主檔 CSV/TXT 檔案！");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/);
+            let count = 0;
+
+            lines.forEach((line, idx) => {
+                if (idx === 0 && (line.includes("Barcode") || line.includes("條碼"))) return;
+                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+
+                if (cols.length >= 1) {
+                    const bc = cleanBarcode(cols[0]);
+                    const ic = cols[1] || '';
+                    const nm = cols[2] || '';
+                    const img = cols[3] || '';
+
+                    if (bc) {
+                        window.appData.products[bc] = { itemCode: ic, name: nm, imgUrl: img };
+                        if (ic) window.appData.itemToBarcode[ic] = bc;
+                        count++;
+                    }
+                }
+            });
+
+            saveFirebaseData();
+            alert(`成功批次更新/匯入 ${count} 筆商品主檔！`);
+            fileInput.value = '';
+        };
+
+        if (encoding === 'auto' || encoding === 'utf-8') {
+            reader.readAsText(file, 'UTF-8');
+        } else {
+            reader.readAsText(file, encoding);
+        }
+    };
+
+    // 批次刪除特定貨櫃報價
+    document.getElementById("btnDeleteByContainer").onclick = function() {
+        const ctn = document.getElementById("selectContainerToDelete").value;
+        if (!ctn) {
+            alert("請選擇要刪除的貨櫃號碼！");
+            return;
+        }
+
+        if (confirm(`危險操作：確定要刪除貨櫃「${ctn}」內的所有報價紀錄嗎？`)) {
+            const initialCount = window.appData.quotes.length;
+            window.appData.quotes = window.appData.quotes.filter(q => q.container !== ctn);
+            const deletedCount = initialCount - window.appData.quotes.length;
+
+            saveFirebaseData();
+            alert(`已順利刪除貨櫃「${ctn}」共 ${deletedCount} 筆報價！`);
+        }
+    };
+
+    // 清空資料
+    document.getElementById("btnClearData").onclick = function() {
+        if (confirm("警告！確定要清空雲端資料庫的所有商品主檔、條碼綁定與報價紀錄？")) {
+            window.appData = {
+                suppliers: ["SilkRoad", "Tencho"],
+                mappings: {},
+                products: {},
+                itemToBarcode: {},
+                quotes: []
+            };
+            saveFirebaseData();
+            alert("資料已清空！");
+        }
+    };
+
+    // 載入 Demo 範例資料
+    document.getElementById("btnLoadDemo").onclick = function() {
+        if (confirm("載入範例資料將覆蓋現有內容，確定繼續？")) {
+            window.appData = {
+                suppliers: ["SilkRoad", "Tencho"],
+                mappings: {
+                    "4901330112813": ["4901330119999"]
+                },
+                products: {
+                    "4901330112813": { itemCode: "WHH005", name: "Calbee 蝦條 白鹽味 70g", imgUrl: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300" },
+                    "4901330122222": { itemCode: "WHH006", name: "Calbee 堅果餅乾 80g", imgUrl: "" }
+                },
+                itemToBarcode: {
+                    "WHH005": "4901330112813",
+                    "WHH006": "4901330122222"
+                },
+                quotes: [
+                    { id: "q1", barcode: "4901330112813", itemCode: "WHH005", supplier: "SilkRoad", price: 128.5, container: "CTN-2024-001", note: "特價箱規", date: "2024-05-10" },
+                    { id: "q2", barcode: "4901330119999", itemCode: "WHH005", supplier: "Tencho", price: 125.0, container: "CTN-2024-002", note: "新條碼樣品", date: "2024-05-12" },
+                    { id: "q3", barcode: "4901330122222", itemCode: "WHH006", supplier: "SilkRoad", price: 0, container: "CTN-2024-002", note: "等待報價", date: "2024-05-12" }
+                ]
+            };
+            saveFirebaseData();
+            alert("範例資料載入成功！");
+        }
+    };
+
+    // 恢復系統全資料備份 CSV
+    document.getElementById("importCSVFile").onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const text = evt.target.result;
+            const lines = text.split(/\r?\n/);
+
+            const newData = {
+                suppliers: [],
+                mappings: {},
+                products: {},
+                itemToBarcode: {},
+                quotes: []
+            };
+
+            lines.forEach((line, idx) => {
+                if (idx === 0) return;
+                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                const type = cols[0];
+
+                if (type === 'SUPPLIER' && cols[1]) {
+                    if (!newData.suppliers.includes(cols[1])) newData.suppliers.push(cols[1]);
+                } else if (type === 'MAPPING' && cols[1] && cols[2]) {
+                    if (!newData.mappings[cols[1]]) newData.mappings[cols[1]] = [];
+                    if (!newData.mappings[cols[1]].includes(cols[2])) newData.mappings[cols[1]].push(cols[2]);
+                } else if (type === 'PRODUCT' && cols[1]) {
+                    newData.products[cols[1]] = {
+                        itemCode: cols[2] || '',
+                        name: cols[3] || '',
+                        imgUrl: cols[4] || ''
+                    };
+                    if (cols[2]) newData.itemToBarcode[cols[2]] = cols[1];
+                } else if (type === 'QUOTE' && cols[1]) {
+                    newData.quotes.push({
+                        id: cols[1],
+                        itemCode: cols[2] || '',
+                        barcode: cols[3] || '',
+                        supplier: cols[4] || '',
+                        price: parseFloat(cols[5]) || 0,
+                        container: cols[6] || '',
+                        note: cols[7] || '',
+                        date: cols[8] || ''
+                    });
+                }
+            });
+
+            if (newData.suppliers.length === 0) newData.suppliers = ["SilkRoad", "Tencho"];
+
+            window.appData = newData;
+            saveFirebaseData();
+            alert("系統資料備份已成功恢復！");
+            e.target.value = '';
+        };
+
+        reader.readAsText(file, 'UTF-8');
+    };
+
+  });
 </script>
+
 </body>
 </html>
