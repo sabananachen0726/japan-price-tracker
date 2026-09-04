@@ -1150,11 +1150,22 @@
                   </h5>
                   <div class="mb-2">
                     <span class="item-code-badge me-1">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
-                    ${p.itemCode ? `<button type="button" class="btn btn-link btn-sm p-0 me-2 text-secondary btn-copy-value" data-copy="${p.itemCode}" title="複製 Item Code"><i class="fa-regular fa-copy"></i></button>` : ''}
                     <span class="fw-bold text-dark me-1">JAN: ${primaryB}</span>
-                    <button type="button" class="btn btn-link btn-sm p-0 me-2 text-secondary btn-copy-value" data-copy="${primaryB}" title="複製 JAN"><i class="fa-regular fa-copy"></i></button>
                     ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
                     ${aliasesBadgeHtml}
+                  </div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mt-2 purchase-copy-row">
+                    <div class="input-group input-group-sm" style="width: 135px;">
+                      <span class="input-group-text">數量</span>
+                      <input type="number" class="form-control purchase-copy-qty" min="1" step="1" value="${Math.max(1, Number(qty) || 1)}" aria-label="採購數量">
+                    </div>
+                    <button type="button" class="btn btn-success btn-sm btn-copy-purchase"
+                      data-itemcode="${p.itemCode || ''}"
+                      data-jancode="${primaryB}"
+                      data-lowest="${lowestPrice > 0 ? lowestPrice : ''}">
+                      <i class="fa-regular fa-copy me-1"></i>複製採購資訊
+                    </button>
+                    <small class="text-muted">${lowestPrice > 0 ? `最低價 ¥${lowestPrice}` : '最低價 Pending'}</small>
                   </div>
                 </div>
                 <button class="btn btn-outline-primary btn-sm btn-quick-add-quote" data-barcode="${primaryB}" data-itemcode="${p.itemCode || ''}" data-name="${p.name || ''}" data-img="${p.imgUrl || ''}">
@@ -1392,6 +1403,48 @@
             window.appData.quotes = window.appData.quotes.filter(q => q.id !== qId);
             saveFirebaseData();
           }
+          return;
+        }
+
+        const purchaseCopyBtn = e.target.closest(".btn-copy-purchase");
+        if (purchaseCopyBtn) {
+          const card = purchaseCopyBtn.closest('.card');
+          const qtyInput = card ? card.querySelector('.purchase-copy-qty') : null;
+          const qty = Math.max(1, parseInt(qtyInput ? qtyInput.value : '1', 10) || 1);
+          if (qtyInput) qtyInput.value = qty;
+
+          const itemCode = purchaseCopyBtn.getAttribute('data-itemcode') || '-';
+          const janCode = purchaseCopyBtn.getAttribute('data-jancode') || '-';
+          const lowestRaw = purchaseCopyBtn.getAttribute('data-lowest') || '';
+          const lowestText = lowestRaw ? `¥${lowestRaw}` : 'Pending';
+          const copyText = `Item Code: ${itemCode}\nJAN Code: ${janCode}\n數量: ${qty}\n最低價格: ${lowestText}`;
+
+          const doFallbackCopy = () => {
+            const ta = document.createElement('textarea');
+            ta.value = copyText;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          };
+
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(copyText).catch(doFallbackCopy);
+          } else {
+            doFallbackCopy();
+          }
+
+          const oldHtml = purchaseCopyBtn.innerHTML;
+          purchaseCopyBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i>已複製';
+          purchaseCopyBtn.classList.remove('btn-success');
+          purchaseCopyBtn.classList.add('btn-outline-success');
+          setTimeout(() => {
+            purchaseCopyBtn.innerHTML = oldHtml;
+            purchaseCopyBtn.classList.remove('btn-outline-success');
+            purchaseCopyBtn.classList.add('btn-success');
+          }, 1200);
           return;
         }
 
