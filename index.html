@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -494,6 +495,8 @@
   });
 
   async function saveFirebaseData() {
+    // 資料有任何變動時，下一次搜尋自動重新建立索引。
+    searchCache.valid = false;
     const statusBadge = document.getElementById("cloudStatus");
     try {
       if (statusBadge) {
@@ -516,7 +519,83 @@
   }
   window.saveFirebaseData = saveFirebaseData;
 
+  // ==================== 搜尋效能最佳化 ====================
+  // 將原本每次搜尋都要掃描 products / mappings / quotes 的做法，
+  // 改成資料同步後建立索引。搜尋時只查索引，並把報價按 barcode 分組快取。
+  let searchCache = {
+    valid: false,
+    aliasToPrimary: new Map(),
+    productEntries: [],
+    quoteByBarcode: new Map(),
+    allPrimaryBarcodes: []
+  };
+
+  function rebuildSearchCache() {
+    const data = window.appData || {};
+    const products = data.products || {};
+    const mappings = data.mappings || {};
+    const quotes = data.quotes || [];
+
+    const aliasToPrimary = new Map();
+    const productEntries = [];
+    const allPrimarySet = new Set(Object.keys(products));
+    const quoteByBarcode = new Map();
+
+    // 先建立 alias -> primary，讓 resolveToPrimaryBarcode 從 O(所有 mapping)
+    // 變成 O(1)。
+    for (const mainB of Object.keys(mappings)) {
+      const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
+      for (const alias of aliases) {
+        aliasToPrimary.set(cleanBarcode(alias), mainB);
+      }
+    }
+
+    // 商品搜尋索引：barcode / item code / 商品名稱 / aliases
+    for (const mainB of Object.keys(products)) {
+      const p = products[mainB] || {};
+      const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
+      productEntries.push({
+        barcode: cleanBarcode(mainB).toLowerCase(),
+        itemCode: String(p.itemCode || '').trim().toLowerCase(),
+        name: String(p.name || '').trim().toLowerCase(),
+        aliases: aliases.map(a => cleanBarcode(a).toLowerCase()),
+        primary: mainB
+      });
+    }
+
+    // 報價按 barcode 建立索引，避免每張商品卡都重新掃完整 quotes。
+    for (const q of quotes) {
+      const bc = cleanBarcode(q.barcode);
+      if (!bc) continue;
+      if (!quoteByBarcode.has(bc)) quoteByBarcode.set(bc, []);
+      quoteByBarcode.get(bc).push(q);
+      allPrimarySet.add(resolveToPrimaryBarcodeFromCache(bc, aliasToPrimary, data.itemToBarcode || {}));
+    }
+
+    searchCache = {
+      valid: true,
+      aliasToPrimary,
+      productEntries,
+      quoteByBarcode,
+      allPrimaryBarcodes: [...allPrimarySet]
+    };
+  }
+
+  function resolveToPrimaryBarcodeFromCache(barcode, aliasToPrimary, itemToBarcode) {
+    let value = cleanBarcode(barcode);
+    if (!value) return '';
+    if (itemToBarcode && itemToBarcode[value]) value = cleanBarcode(itemToBarcode[value]);
+    return aliasToPrimary.get(value) || value;
+  }
+
+  function ensureSearchCache() {
+    if (!searchCache.valid) rebuildSearchCache();
+    return searchCache;
+  }
+
   function refreshUI() {
+    // Firebase 資料更新後只重建一次搜尋索引。
+    rebuildSearchCache();
     renderSupplierOptions();
     renderCompareList();
     renderMappingTable();
@@ -608,15 +687,8 @@
         let primaryB = resolveToPrimaryBarcode(queryBarcode);
         const p = window.appData.products[primaryB] || {};
         
-        let allRelated = [primaryB];
-        for (let m in window.appData.mappings) {
-            if (m === primaryB) {
-                allRelated = allRelated.concat(window.appData.mappings[m]);
-            }
-        }
-        allRelated = [...new Set(allRelated)];
-
-        let matchedQuotes = window.appData.quotes.filter(q => allRelated.includes(q.barcode));
+        // 使用報價索引，不再每個批次商品都掃描整份 quotes。
+        let matchedQuotes = getRelatedQuotes(primaryB);
 
         let latestBySupplier = {};
         matchedQuotes.forEach(q => {
@@ -716,17 +788,12 @@
 
   function resolveToPrimaryBarcode(barcode) {
     if (!barcode) return "";
-    barcode = cleanBarcode(barcode);
-    if (window.appData.itemToBarcode[barcode]) {
-        barcode = window.appData.itemToBarcode[barcode];
-    }
-    for (let mainB in window.appData.mappings) {
-        if (mainB === barcode) return mainB;
-        if ((window.appData.mappings[mainB] || []).includes(barcode)) {
-            return mainB;
-        }
-    }
-    return barcode;
+    const cache = ensureSearchCache();
+    return resolveToPrimaryBarcodeFromCache(
+      barcode,
+      cache.aliasToPrimary,
+      window.appData.itemToBarcode || {}
+    );
   }
 
   function renderSupplierOptions() {
@@ -775,290 +842,269 @@
     }
   }
 
+  function getRelatedQuotes(primaryB, queryBarcode = '') {
+    const cache = ensureSearchCache();
+    const aliases = window.appData.mappings[primaryB] || [];
+    const related = new Set([cleanBarcode(primaryB), ...aliases.map(cleanBarcode)]);
+    if (queryBarcode) related.add(cleanBarcode(queryBarcode));
+
+    const quotes = [];
+    for (const bc of related) {
+      const list = cache.quoteByBarcode.get(bc);
+      if (list) quotes.push(...list);
+    }
+    return quotes;
+  }
+
   function renderCompareList() {
     const resultsContainer = document.getElementById("compareResultsContainer");
     const summaryContainer = document.getElementById("batchSummaryContainer");
     if (!resultsContainer) return;
 
     resultsContainer.innerHTML = '';
-    summaryContainer.innerHTML = '';
+    if (summaryContainer) summaryContainer.innerHTML = '';
 
     const filterSupplierVal = document.getElementById("filterSupplier") ? document.getElementById("filterSupplier").value : '';
+    const cache = ensureSearchCache();
+    const data = window.appData || {};
+    let targetPrimaryBarcodes = [];
 
     if (window.searchMode === 'single') {
-        const searchVal = cleanBarcode(document.getElementById("searchInput") ? document.getElementById("searchInput").value : '');
-        let targetPrimaryBarcodes = [];
+      const searchInput = document.getElementById("searchInput");
+      const rawSearch = searchInput ? searchInput.value : '';
+      const searchVal = cleanBarcode(rawSearch);
+      const normalizedSearch = searchVal.toLowerCase();
 
-        if (!searchVal) {
-            targetPrimaryBarcodes = Object.keys(window.appData.products || {});
-            window.appData.quotes.forEach(q => {
-                const pb = resolveToPrimaryBarcode(q.barcode);
-                if (!targetPrimaryBarcodes.includes(pb)) targetPrimaryBarcodes.push(pb);
-            });
-        } else {
-            for (let mainB in window.appData.products) {
-                const p = window.appData.products[mainB];
-                const aliases = window.appData.mappings[mainB] || [];
-                if (mainB.includes(searchVal) || 
-                    (p.itemCode && p.itemCode.toLowerCase().includes(searchVal.toLowerCase())) ||
-                    (p.name && p.name.toLowerCase().includes(searchVal.toLowerCase())) ||
-                    aliases.some(a => a.includes(searchVal))) {
-                    targetPrimaryBarcodes.push(mainB);
-                }
-            }
-            window.appData.quotes.forEach(q => {
-                const pb = resolveToPrimaryBarcode(q.barcode);
-                if ((q.barcode.includes(searchVal) || (q.itemCode && q.itemCode.toLowerCase().includes(searchVal.toLowerCase()))) && !targetPrimaryBarcodes.includes(pb)) {
-                    targetPrimaryBarcodes.push(pb);
-                }
-            });
+      if (!searchVal) {
+        targetPrimaryBarcodes = cache.allPrimaryBarcodes.slice();
+      } else {
+        const matched = new Set();
+
+        // 商品主檔索引搜尋：barcode / item code / 商品名稱 / aliases
+        for (const entry of cache.productEntries) {
+          if (
+            entry.barcode.includes(normalizedSearch) ||
+            (entry.itemCode && entry.itemCode.includes(normalizedSearch)) ||
+            (entry.name && entry.name.includes(normalizedSearch)) ||
+            entry.aliases.some(a => a.includes(normalizedSearch))
+          ) {
+            matched.add(entry.primary);
+          }
         }
 
-        if (targetPrimaryBarcodes.length === 0) {
-            resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
-            return;
+        // 報價索引搜尋：保留原本「報價 barcode / item code」也可以找到商品的功能。
+        for (const q of data.quotes || []) {
+          const qBarcode = cleanBarcode(q.barcode).toLowerCase();
+          const qItemCode = String(q.itemCode || '').trim().toLowerCase();
+          if (qBarcode.includes(normalizedSearch) || (qItemCode && qItemCode.includes(normalizedSearch))) {
+            matched.add(resolveToPrimaryBarcode(q.barcode));
+          }
         }
 
-        targetPrimaryBarcodes.forEach(primaryB => {
-            renderProductCard(primaryB, filterSupplierVal, resultsContainer, 1);
-        });
-
+        targetPrimaryBarcodes = [...matched];
+      }
     } else {
-        const rawInput = document.getElementById("batchSearchInput").value;
-        const items = parseBatchInputLines(rawInput);
+      const batchInput = document.getElementById("batchSearchInput");
+      const rawInput = batchInput ? batchInput.value : '';
+      const items = parseBatchInputLines(rawInput);
 
-        if (items.length === 0) {
-            resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted">請在上方貼入條碼與數量進行批次比對。</div>';
-            return;
-        }
+      if (items.length === 0) {
+        resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted">請在上方貼入條碼與數量進行批次比對。</div>';
+        return;
+      }
 
+      if (summaryContainer) {
         summaryContainer.innerHTML = `
-            <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
-                <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
-                <small class="text-muted">比對結果已依輸入順序排版</small>
-            </div>
+          <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
+            <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
+            <small class="text-muted">比對結果已依輸入順序排版</small>
+          </div>
         `;
+      }
 
-        items.forEach(item => {
-            const queryBarcode = cleanBarcode(item.barcode);
-            let primaryB = resolveToPrimaryBarcode(queryBarcode);
-            renderProductCard(primaryB, filterSupplierVal, resultsContainer, item.qty, queryBarcode);
-        });
+      // 批次模式保留輸入順序，並避免同一商品在一次輸入中重複造成額外搜尋。
+      const cards = [];
+      for (const item of items) {
+        const queryBarcode = cleanBarcode(item.barcode);
+        const primaryB = resolveToPrimaryBarcode(queryBarcode);
+        cards.push(renderProductCard(primaryB, filterSupplierVal, null, item.qty, queryBarcode));
+      }
+      resultsContainer.innerHTML = cards.join('');
+      return;
     }
+
+    if (targetPrimaryBarcodes.length === 0) {
+      resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
+      return;
+    }
+
+    // 一次組好 HTML 再寫入 DOM，避免原本每張卡都 innerHTML += 造成反覆重排。
+    const cards = targetPrimaryBarcodes.map(primaryB =>
+      renderProductCard(primaryB, filterSupplierVal, null, 1)
+    );
+    resultsContainer.innerHTML = cards.join('');
   }
 
   function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
     const p = window.appData.products[primaryB] || {};
-    let aliases = window.appData.mappings[primaryB] || [];
-
-    let allRelatedBarcodes = [primaryB, ...aliases];
-    if (queryBarcode && !allRelatedBarcodes.includes(queryBarcode)) {
-        allRelatedBarcodes.push(queryBarcode);
-    }
-
-    let quotes = window.appData.quotes.filter(q => allRelatedBarcodes.includes(q.barcode));
+    const aliases = window.appData.mappings[primaryB] || [];
+    let quotes = getRelatedQuotes(primaryB, queryBarcode);
 
     if (filterSupplierVal) {
-        quotes = quotes.filter(q => q.supplier === filterSupplierVal);
+      quotes = quotes.filter(q => q.supplier === filterSupplierVal);
     }
 
     const latestBySupplier = {};
     const supplierHistory = {};
 
-    quotes.forEach(q => {
-        if (!supplierHistory[q.supplier]) supplierHistory[q.supplier] = [];
-        supplierHistory[q.supplier].push(q);
+    for (const q of quotes) {
+      if (!supplierHistory[q.supplier]) supplierHistory[q.supplier] = [];
+      supplierHistory[q.supplier].push(q);
 
-        if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
-            latestBySupplier[q.supplier] = q;
-        }
-    });
+      if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
+        latestBySupplier[q.supplier] = q;
+      }
+    }
 
-    for (let sup in supplierHistory) {
-        supplierHistory[sup].sort((a, b) => new Date(b.date) - new Date(a.date));
+    for (const sup in supplierHistory) {
+      supplierHistory[sup].sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
     const activeSuppliers = Object.keys(latestBySupplier);
     let lowestPrice = Infinity;
-    if (activeSuppliers.length > 0) {
-        activeSuppliers.forEach(sup => {
-            const pr = latestBySupplier[sup].price;
-            if (pr > 0 && pr < lowestPrice) lowestPrice = pr;
-        });
+    for (const sup of activeSuppliers) {
+      const pr = latestBySupplier[sup].price;
+      if (pr > 0 && pr < lowestPrice) lowestPrice = pr;
     }
     if (lowestPrice === Infinity) lowestPrice = 0;
 
-    let aliasesBadgeHtml = aliases.map(a => `<span class="badge badge-alias">${a}</span>`).join('');
-
+    const aliasesBadgeHtml = aliases.map(a => `<span class="badge badge-alias">${a}</span>`).join('');
     let suppliersCardHtml = '';
     const registeredSuppliers = window.appData.suppliers || [];
 
     registeredSuppliers.forEach(sup => {
-        if (filterSupplierVal && filterSupplierVal !== sup) return;
+      if (filterSupplierVal && filterSupplierVal !== sup) return;
 
-        const latestQ = latestBySupplier[sup];
-        const history = supplierHistory[sup] || [];
+      const latestQ = latestBySupplier[sup];
+      const history = supplierHistory[sup] || [];
 
-        if (latestQ) {
-            const isLowest = (latestQ.price === lowestPrice && lowestPrice > 0);
-            let trendHtml = '';
-            
-            if (history.length > 1) {
-                const currentP = history[0].price;
-                const prevP = history[1].price;
-                if (currentP > prevP) {
-                    const diff = (currentP - prevP).toFixed(2);
-                    trendHtml = `<span class="trend-up ms-2"><i class="fa-solid fa-arrow-trend-up"></i> +¥${diff}</span>`;
-                } else if (currentP < prevP) {
-                    const diff = (prevP - currentP).toFixed(2);
-                    trendHtml = `<span class="trend-down ms-2"><i class="fa-solid fa-arrow-trend-down"></i> -¥${diff}</span>`;
-                } else {
-                    trendHtml = `<span class="trend-same ms-2"><i class="fa-solid fa-minus"></i> 持平</span>`;
-                }
-            }
+      if (latestQ) {
+        const isLowest = (latestQ.price === lowestPrice && lowestPrice > 0);
+        let trendHtml = '';
 
-            let historyAccordionHtml = '';
-            if (history.length > 0) {
-                const accordionId = `acc_${primaryB}_${sup}`.replace(/[^a-zA-Z0-9]/g, '_');
-                let historyRows = history.map(h => `
-                    <tr>
-                        <td class="small py-1">${h.date || ''}</td>
-                        <td class="small py-1">${h.container || ''}</td>
-                        <td class="small py-1 fw-bold text-end">${h.price === 0 ? '停產/等價' : '¥' + h.price}</td>
-                        <td class="small py-1 text-muted ms-2">${h.note || ''}</td>
-                        <td class="small py-1 text-end"><button class="btn btn-link text-danger btn-sm p-0 btn-delete-quote" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button></td>
-                    </tr>
-                `).join('');
-
-                historyAccordionHtml = `
-                    <div class="accordion mt-2" id="${accordionId}">
-                        <div class="accordion-item border-0">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed py-1 px-2 small bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#c_${accordionId}">
-                                    查看歷史報價 (${history.length} 筆)
-                                </button>
-                            </h2>
-                            <div id="c_${accordionId}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
-                                <div class="accordion-body p-2">
-                                    <table class="table table-sm table-borderless mb-0">
-                                        <tbody>${historyRows}</tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            suppliersCardHtml += `
-                <div class="col-md-6 mb-2">
-                    <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : 'bg-white'}">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">${sup}</span>
-                            <div>
-                                ${isLowest ? '<span class="lowest-price me-1"><i class="fa-solid fa-crown me-1"></i>最低價</span>' : ''}
-                                <span class="price-tag fw-bold ${isLowest ? 'text-success' : 'text-dark'}">
-                                    ${latestQ.price === 0 ? '<span class="badge bg-secondary">停產/等待報價</span>' : '¥' + latestQ.price}
-                                </span>
-                                ${trendHtml}
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
-                            <span><i class="fa-solid fa-box me-1"></i>${latestQ.container || '-'}</span>
-                            <span><i class="fa-solid fa-clock me-1"></i>${latestQ.date || '-'}</span>
-                        </div>
-                        ${latestQ.note ? `<div class="small text-muted mt-1 bg-light p-1 rounded"><i class="fa-solid fa-comment-dots me-1"></i>${latestQ.note}</div>` : ''}
-                        ${historyAccordionHtml}
-                    </div>
-                </div>
-            `;
-        } else {
-            suppliersCardHtml += `
-                <div class="col-md-6 mb-2">
-                    <div class="p-2 border rounded bg-white text-muted opacity-75">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span>${sup}</span>
-                            <span class="badge bg-light text-secondary border">無報價</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+        if (history.length > 1) {
+          const currentP = history[0].price;
+          const prevP = history[1].price;
+          if (currentP > prevP) {
+            trendHtml = `<span class="trend-up ms-2"><i class="fa-solid fa-arrow-trend-up"></i> +¥${(currentP - prevP).toFixed(2)}</span>`;
+          } else if (currentP < prevP) {
+            trendHtml = `<span class="trend-down ms-2"><i class="fa-solid fa-arrow-trend-down"></i> -¥${(prevP - currentP).toFixed(2)}</span>`;
+          } else {
+            trendHtml = `<span class="trend-same ms-2"><i class="fa-solid fa-minus"></i> 持平</span>`;
+          }
         }
+
+        let historyAccordionHtml = '';
+        if (history.length > 0) {
+          const accordionId = `acc_${primaryB}_${sup}`.replace(/[^a-zA-Z0-9]/g, '_');
+          const historyRows = history.map(h => `
+            <tr>
+              <td class="small py-1">${h.date || ''}</td>
+              <td class="small py-1">${h.container || ''}</td>
+              <td class="small py-1 fw-bold text-end">${h.price === 0 ? '停產/等價' : '¥' + h.price}</td>
+              <td class="small py-1 text-muted ms-2">${h.note || ''}</td>
+              <td class="small py-1 text-end"><button class="btn btn-link text-danger btn-sm p-0 btn-delete-quote" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+          `).join('');
+
+          historyAccordionHtml = `
+            <div class="accordion mt-2" id="${accordionId}">
+              <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed py-1 px-2 small bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#c_${accordionId}">
+                    查看歷史報價 (${history.length} 筆)
+                  </button>
+                </h2>
+                <div id="c_${accordionId}" class="accordion-collapse collapse" data-bs-parent="#${accordionId}">
+                  <div class="accordion-body p-2">
+                    <table class="table table-sm table-borderless mb-0"><tbody>${historyRows}</tbody></table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        suppliersCardHtml += `
+          <div class="col-md-6 mb-2">
+            <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : 'bg-white'}">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">${sup}</span>
+                <div>
+                  ${isLowest ? '<span class="lowest-price me-1"><i class="fa-solid fa-crown me-1"></i>最低價</span>' : ''}
+                  <span class="price-tag fw-bold ${isLowest ? 'text-success' : 'text-dark'}">
+                    ${latestQ.price === 0 ? '<span class="badge bg-secondary">停產/等待報價</span>' : '¥' + latestQ.price}
+                  </span>
+                  ${trendHtml}
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
+                <span><i class="fa-solid fa-box me-1"></i>${latestQ.container || '-'}</span>
+                <span><i class="fa-solid fa-clock me-1"></i>${latestQ.date || '-'}</span>
+              </div>
+              ${latestQ.note ? `<div class="small text-muted mt-1 bg-light p-1 rounded"><i class="fa-solid fa-comment-dots me-1"></i>${latestQ.note}</div>` : ''}
+              ${historyAccordionHtml}
+            </div>
+          </div>
+        `;
+      } else {
+        suppliersCardHtml += `
+          <div class="col-md-6 mb-2">
+            <div class="p-2 border rounded bg-white text-muted opacity-75">
+              <div class="d-flex justify-content-between align-items-center">
+                <span>${sup}</span>
+                <span class="badge bg-light text-secondary border">無報價</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }
     });
 
     const imgSrc = p.imgUrl || '';
-    const imgHtml = imgSrc ? 
-        `<img src="${imgSrc}" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">` :
-        `<div class="no-img-placeholder"><i class="fa-solid fa-image"></i>無圖</div>`;
+    const imgHtml = imgSrc
+      ? `<img src="${imgSrc}" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">`
+      : `<div class="no-img-placeholder"><i class="fa-solid fa-image"></i>無圖</div>`;
 
-    const cardHtml = `
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="img-wrapper">${imgHtml}</div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="card-title mb-1">
-                                    ${p.name || '（未命名商品）'}
-                                    ${qty > 1 ? `<span class="qty-badge ms-2">需求: ${qty}</span>` : ''}
-                                </h5>
-                                <div class="mb-2">
-                                    <span class="item-code-badge me-2">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
-                                    <span class="fw-bold text-dark me-2">JAN: ${primaryB}</span>
-                                    ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
-                                    ${aliasesBadgeHtml}
-                                </div>
-                            </div>
-                            <button class="btn btn-outline-primary btn-sm btn-quick-add-quote" data-barcode="${primaryB}" data-itemcode="${p.itemCode || ''}" data-name="${p.name || ''}" data-img="${p.imgUrl || ''}">
-                                <i class="fa-solid fa-plus me-1"></i>錄入報價
-                            </button>
-                        </div>
-
-                        <div class="row g-2 mt-2 border-top pt-2">
-                            ${suppliersCardHtml}
-                        </div>
-                    </div>
+    return `
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex align-items-start gap-3">
+            <div class="img-wrapper">${imgHtml}</div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5 class="card-title mb-1">
+                    ${p.name || '（未命名商品）'}
+                    ${qty > 1 ? `<span class="qty-badge ms-2">需求: ${qty}</span>` : ''}
+                  </h5>
+                  <div class="mb-2">
+                    <span class="item-code-badge me-2">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
+                    <span class="fw-bold text-dark me-2">JAN: ${primaryB}</span>
+                    ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
+                    ${aliasesBadgeHtml}
+                  </div>
                 </div>
+                <button class="btn btn-outline-primary btn-sm btn-quick-add-quote" data-barcode="${primaryB}" data-itemcode="${p.itemCode || ''}" data-name="${p.name || ''}" data-img="${p.imgUrl || ''}">
+                  <i class="fa-solid fa-plus me-1"></i>錄入報價
+                </button>
+              </div>
+              <div class="row g-2 mt-2 border-top pt-2">${suppliersCardHtml}</div>
             </div>
+          </div>
         </div>
+      </div>
     `;
-
-    container.innerHTML += cardHtml;
-
-    document.querySelectorAll(".img-preview").forEach(img => {
-        img.onclick = function() {
-            document.getElementById("modalImage").src = this.getAttribute("data-src");
-            new bootstrap.Modal(document.getElementById('imageModal')).show();
-        };
-    });
-
-    document.querySelectorAll(".btn-delete-quote").forEach(btn => {
-        btn.onclick = function() {
-            const qId = this.getAttribute("data-id");
-            if (confirm("確定刪除此筆報價紀錄？")) {
-                window.appData.quotes = window.appData.quotes.filter(q => q.id !== qId);
-                saveFirebaseData();
-            }
-        };
-    });
-
-    document.querySelectorAll(".btn-quick-add-quote").forEach(btn => {
-        btn.onclick = function() {
-            const bc = this.getAttribute("data-barcode");
-            const ic = this.getAttribute("data-itemcode");
-            const nm = this.getAttribute("data-name");
-            const img = this.getAttribute("data-img");
-
-            document.getElementById("inputBarcode").value = bc;
-            document.getElementById("inputItemCode").value = ic;
-            document.getElementById("inputName").value = nm;
-            document.getElementById("inputImgUrl").value = img;
-
-            const addTabBtn = document.getElementById("add-tab");
-            if (addTabBtn) new bootstrap.Tab(addTabBtn).show();
-        };
-    });
   }
 
   function renderMappingTable() {
@@ -1211,9 +1257,82 @@
         renderCompareList();
     };
 
-    document.getElementById("searchInput").oninput = renderCompareList;
-    document.getElementById("batchSearchInput").oninput = renderCompareList;
+    // 單筆搜尋：停止輸入 350ms 才執行，避免每打一個字就完整重繪整個結果區。
+    // Enter 可立即搜尋。中文輸入法組字期間不搜尋。
+    let searchDebounceTimer = null;
+    let searchComposing = false;
+
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+      searchInput.addEventListener("compositionstart", () => {
+        searchComposing = true;
+      });
+
+      searchInput.addEventListener("compositionend", () => {
+        searchComposing = false;
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(renderCompareList, 200);
+      });
+
+      searchInput.addEventListener("input", () => {
+        if (searchComposing) return;
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(renderCompareList, 350);
+      });
+
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          clearTimeout(searchDebounceTimer);
+          renderCompareList();
+        }
+      });
+    }
+
+    // 批次貼上通常一次就完成，但快速連續修改時也稍微緩衝，避免反覆重繪。
+    const batchSearchInput = document.getElementById("batchSearchInput");
+    if (batchSearchInput) {
+      batchSearchInput.addEventListener("input", () => {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(renderCompareList, 200);
+      });
+    }
+
     document.getElementById("filterSupplier").onchange = renderCompareList;
+
+    // 結果區使用事件委派：不再每產生一張卡就 querySelectorAll + 綁定一次事件。
+    const compareResultsContainer = document.getElementById("compareResultsContainer");
+    if (compareResultsContainer) {
+      compareResultsContainer.addEventListener("click", function(e) {
+        const img = e.target.closest(".img-preview");
+        if (img) {
+          document.getElementById("modalImage").src = img.getAttribute("data-src");
+          new bootstrap.Modal(document.getElementById('imageModal')).show();
+          return;
+        }
+
+        const deleteBtn = e.target.closest(".btn-delete-quote");
+        if (deleteBtn) {
+          const qId = deleteBtn.getAttribute("data-id");
+          if (confirm("確定刪除此筆報價紀錄？")) {
+            window.appData.quotes = window.appData.quotes.filter(q => q.id !== qId);
+            saveFirebaseData();
+          }
+          return;
+        }
+
+        const quickAddBtn = e.target.closest(".btn-quick-add-quote");
+        if (quickAddBtn) {
+          document.getElementById("inputBarcode").value = quickAddBtn.getAttribute("data-barcode") || '';
+          document.getElementById("inputItemCode").value = quickAddBtn.getAttribute("data-itemcode") || '';
+          document.getElementById("inputName").value = quickAddBtn.getAttribute("data-name") || '';
+          document.getElementById("inputImgUrl").value = quickAddBtn.getAttribute("data-img") || '';
+
+          const addTabBtn = document.getElementById("add-tab");
+          if (addTabBtn) new bootstrap.Tab(addTabBtn).show();
+        }
+      });
+    }
 
     document.getElementById("btnClearBatchSearch").onclick = function() {
         document.getElementById("batchSearchInput").value = '';
