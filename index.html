@@ -259,6 +259,21 @@
                                 <tbody id="masterTableBody"></tbody>
                             </table>
                         </div>
+                        <div id="masterPagination" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted">每頁</small>
+                                <select id="masterPageSize" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                                <small id="masterPageInfo" class="text-muted"></small>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" id="btnMasterPrev" class="btn btn-outline-secondary"><i class="fa-solid fa-chevron-left me-1"></i>上一頁</button>
+                                <button type="button" id="btnMasterNext" class="btn btn-outline-secondary">下一頁<i class="fa-solid fa-chevron-right ms-1"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -527,8 +542,12 @@
     aliasToPrimary: new Map(),
     productEntries: [],
     quoteByBarcode: new Map(),
+    quoteBundlesByPrimary: new Map(),
     allPrimaryBarcodes: []
   };
+
+  const PRICE_ANOMALY_THRESHOLD = 0.20; // 最新有效報價較前次上漲 20% 以上時提醒
+  let masterCurrentPage = 1;
 
   function rebuildSearchCache() {
     const data = window.appData || {};
@@ -540,17 +559,13 @@
     const productEntries = [];
     const allPrimarySet = new Set(Object.keys(products));
     const quoteByBarcode = new Map();
+    const quoteBundlesByPrimary = new Map();
 
-    // 先建立 alias -> primary，讓 resolveToPrimaryBarcode 從 O(所有 mapping)
-    // 變成 O(1)。
     for (const mainB of Object.keys(mappings)) {
       const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
-      for (const alias of aliases) {
-        aliasToPrimary.set(cleanBarcode(alias), mainB);
-      }
+      for (const alias of aliases) aliasToPrimary.set(cleanBarcode(alias), mainB);
     }
 
-    // 商品搜尋索引：barcode / item code / 商品名稱 / aliases
     for (const mainB of Object.keys(products)) {
       const p = products[mainB] || {};
       const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
@@ -563,13 +578,31 @@
       });
     }
 
-    // 報價按 barcode 建立索引，避免每張商品卡都重新掃完整 quotes。
+    // 報價一次整理成 barcode 索引 + primary 商品 bundle。
+    // renderProductCard 之後直接取整理好的 latest/history，不再每張卡重做 group + sort。
     for (const q of quotes) {
       const bc = cleanBarcode(q.barcode);
       if (!bc) continue;
       if (!quoteByBarcode.has(bc)) quoteByBarcode.set(bc, []);
       quoteByBarcode.get(bc).push(q);
-      allPrimarySet.add(resolveToPrimaryBarcodeFromCache(bc, aliasToPrimary, data.itemToBarcode || {}));
+
+      const primary = resolveToPrimaryBarcodeFromCache(bc, aliasToPrimary, data.itemToBarcode || {});
+      if (!primary) continue;
+      allPrimarySet.add(primary);
+      if (!quoteBundlesByPrimary.has(primary)) {
+        quoteBundlesByPrimary.set(primary, { latestBySupplier: {}, supplierHistory: {} });
+      }
+      const bundle = quoteBundlesByPrimary.get(primary);
+      const sup = q.supplier || '';
+      if (!bundle.supplierHistory[sup]) bundle.supplierHistory[sup] = [];
+      bundle.supplierHistory[sup].push(q);
+    }
+
+    for (const bundle of quoteBundlesByPrimary.values()) {
+      for (const sup of Object.keys(bundle.supplierHistory)) {
+        bundle.supplierHistory[sup].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        bundle.latestBySupplier[sup] = bundle.supplierHistory[sup][0];
+      }
     }
 
     searchCache = {
@@ -577,6 +610,7 @@
       aliasToPrimary,
       productEntries,
       quoteByBarcode,
+      quoteBundlesByPrimary,
       allPrimaryBarcodes: [...allPrimarySet]
     };
   }
@@ -671,119 +705,135 @@
     link.click();
   }
 
-  // 採購決策建議單匯出邏輯 (滿足規則 2 & 規則 3)
+  function csvEscape(value) {
+    const text = String(value ?? '').replace(/\r?\n/g, ' ').replace(/"/g, '""');
+    return `"${text}"`;
+  }
+
+  function downloadCSV(filename, rows) {
+    // UTF-8 BOM + CRLF：直接用 Windows / Mac Excel 開啟中文、日文較穩定。
+    const csvContent = "\uFEFF" + rows.map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  // 採購決策建議單匯出邏輯 (保留原本採購規則，新增「狀態」欄與 Excel-friendly CSV)
   function exportPurchaseDecisionCSV() {
     const rawInput = document.getElementById("batchSearchInput").value;
     const items = parseBatchInputLines(rawInput);
     if (items.length === 0) {
-        alert("請先在輸入框貼入需要比對的 Barcode 與數量！");
-        return;
+      alert("請先在輸入框貼入需要比對的 Barcode 與數量！");
+      return;
     }
 
-    let csvContent = "\uFEFF\"需求條碼/商品\",\"需求數量\",\"主檔條碼\",\"Item Code\",\"商品名稱\",\"最低價廠商(建議採購)\",\"最低日圓單價\",\"次低價廠商/價格\",\"價差%\",\"最新報價日期\",\"最新貨櫃號碼\",\"採購備註\"\n";
+    const rows = [[
+      "需求條碼/商品", "需求數量", "主檔條碼", "Item Code", "商品名稱",
+      "狀態", "最低價廠商(建議採購)", "最低日圓單價", "次低價廠商/價格",
+      "價差%", "最新報價日期", "最新貨櫃號碼", "採購備註"
+    ]];
 
     items.forEach(item => {
-        const queryBarcode = cleanBarcode(item.barcode);
-        let primaryB = resolveToPrimaryBarcode(queryBarcode);
-        const p = window.appData.products[primaryB] || {};
-        
-        // 使用報價索引，不再每個批次商品都掃描整份 quotes。
-        let matchedQuotes = getRelatedQuotes(primaryB);
+      const queryBarcode = cleanBarcode(item.barcode);
+      const primaryB = resolveToPrimaryBarcode(queryBarcode);
+      const p = window.appData.products[primaryB] || {};
+      const matchedQuotes = getRelatedQuotes(primaryB);
 
-        let latestBySupplier = {};
-        matchedQuotes.forEach(q => {
-            if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
-                latestBySupplier[q.supplier] = q;
-            }
-        });
-
-        const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
-
-        let row = `"${queryBarcode}","${item.qty}","${primaryB}","${p.itemCode || ''}","${p.name || '查無品名'}",`;
-
-        if (sortedSuppliers.length === 0) {
-            row += `"無符合報價","0","-","-","-","-","查無報價"`;
-        } else {
-            const registeredSuppliers = window.appData.suppliers || [];
-            
-            // 檢查價格 > 0 的有效報價
-            const validQuotes = sortedSuppliers.filter(s => s.price > 0);
-            const zeroQuotes = sortedSuppliers.filter(s => s.price === 0);
-
-            let recommendedSupplier = "";
-            let lowestPrice = 0;
-            let secondLowestStr = "-";
-            let diffStr = "-";
-            let purchaseNote = "";
-
-            if (validQuotes.length === 0) {
-                // 全部報價皆為 $0 (停產/等待報價)
-                recommendedSupplier = "Pending";
-                lowestPrice = 0;
-                purchaseNote = "廠商報價皆為$0 (停產/等待報價)";
-            } else {
-                const lowest = validQuotes[0];
-                lowestPrice = lowest.price;
-
-                // 檢查是否有同價格競爭者
-                const sameLowest = validQuotes.filter(s => s.price === lowest.price);
-
-                if (sameLowest.length > 1) {
-                    // 規則 2: 報價相同，不分配任何廠商，標示「報價相同」
-                    recommendedSupplier = "報價相同";
-                    purchaseNote = `多間廠商報價相同 (${sameLowest.map(s => s.supplier).join(' / ')})`;
-                    if (validQuotes.length > sameLowest.length) {
-                        const nextQuote = validQuotes[sameLowest.length];
-                        secondLowestStr = `${nextQuote.supplier} (¥${nextQuote.price})`;
-                    }
-                } else {
-                    // 最低價廠商明確存在
-                    if (zeroQuotes.length > 0) {
-                        // 規則 3: 遇到另一個廠商報價為 $0 時
-                        // 若市場上還有其他廠商「查無報價」？ 判斷是否所有其他廠商都有報價紀錄
-                        const suppliersWithQuote = Object.keys(latestBySupplier);
-                        const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
-
-                        if (missingSuppliers.length > 0) {
-                            // 另一個廠商查無報價，才分配廠商，並註明另個廠商沒有提供報價
-                            recommendedSupplier = lowest.supplier;
-                            purchaseNote = `另有廠商(${missingSuppliers.join('/')})查無報價；部分廠商報價$0`;
-                        } else {
-                            // 另個廠商有報價且為 $0 -> 不分配廠商，寫 Pending
-                            recommendedSupplier = "Pending";
-                            purchaseNote = `有廠商報價為$0 (待確認)`;
-                        }
-                    } else {
-                        // 標準比價邏輯
-                        recommendedSupplier = lowest.supplier;
-                        if (validQuotes.length > 1) {
-                            const second = validQuotes[1];
-                            secondLowestStr = `${second.supplier} (¥${second.price})`;
-                            const diffPercent = (((second.price - lowest.price) / second.price) * 100).toFixed(1);
-                            diffStr = `省 ${diffPercent}%`;
-                        }
-                        
-                        // 若有系統廠商完全查無報價，補充註記
-                        const suppliersWithQuote = Object.keys(latestBySupplier);
-                        const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
-                        if (missingSuppliers.length > 0) {
-                            purchaseNote = `廠商 (${missingSuppliers.join('/')}) 沒有提供報價`;
-                        }
-                    }
-                }
-            }
-
-            const latestQuoteObj = validQuotes[0] || sortedSuppliers[0];
-            row += `"${recommendedSupplier}","${lowestPrice}","${secondLowestStr}","${diffStr}","${latestQuoteObj.date || ''}","${latestQuoteObj.container || ''}","${purchaseNote}"`;
+      const latestBySupplier = {};
+      matchedQuotes.forEach(q => {
+        if (!latestBySupplier[q.supplier] || new Date(q.date || 0) > new Date(latestBySupplier[q.supplier].date || 0)) {
+          latestBySupplier[q.supplier] = q;
         }
-        csvContent += row + "\n";
+      });
+
+      const sortedSuppliers = Object.values(latestBySupplier).sort((a, b) => a.price - b.price);
+      let status = "";
+      let recommendedSupplier = "";
+      let lowestPrice = 0;
+      let secondLowestStr = "-";
+      let diffStr = "-";
+      let purchaseNote = "";
+      let latestQuoteObj = null;
+
+      if (sortedSuppliers.length === 0) {
+        status = "查無報價";
+        recommendedSupplier = "無符合報價";
+        purchaseNote = "查無報價";
+      } else {
+        const registeredSuppliers = window.appData.suppliers || [];
+        const validQuotes = sortedSuppliers.filter(s => s.price > 0);
+        const zeroQuotes = sortedSuppliers.filter(s => s.price === 0);
+
+        if (validQuotes.length === 0) {
+          status = "Pending";
+          recommendedSupplier = "Pending";
+          purchaseNote = "廠商報價皆為$0 (停產/等待報價)";
+        } else {
+          const lowest = validQuotes[0];
+          lowestPrice = lowest.price;
+          const sameLowest = validQuotes.filter(s => s.price === lowest.price);
+
+          if (sameLowest.length > 1) {
+            status = "報價相同";
+            recommendedSupplier = "報價相同";
+            purchaseNote = `多間廠商報價相同 (${sameLowest.map(s => s.supplier).join(' / ')})`;
+            if (validQuotes.length > sameLowest.length) {
+              const nextQuote = validQuotes[sameLowest.length];
+              secondLowestStr = `${nextQuote.supplier} (¥${nextQuote.price})`;
+            }
+          } else if (zeroQuotes.length > 0) {
+            const suppliersWithQuote = Object.keys(latestBySupplier);
+            const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
+
+            if (missingSuppliers.length > 0) {
+              status = "建議採購";
+              recommendedSupplier = lowest.supplier;
+              purchaseNote = `另有廠商(${missingSuppliers.join('/')})查無報價；部分廠商報價$0`;
+            } else {
+              status = "Pending";
+              recommendedSupplier = "Pending";
+              purchaseNote = "有廠商報價為$0 (待確認)";
+            }
+          } else {
+            status = "建議採購";
+            recommendedSupplier = lowest.supplier;
+            if (validQuotes.length > 1) {
+              const second = validQuotes[1];
+              secondLowestStr = `${second.supplier} (¥${second.price})`;
+              const diffPercent = (((second.price - lowest.price) / second.price) * 100).toFixed(1);
+              diffStr = `省 ${diffPercent}%`;
+            }
+            const suppliersWithQuote = Object.keys(latestBySupplier);
+            const missingSuppliers = registeredSuppliers.filter(s => !suppliersWithQuote.includes(s));
+            if (missingSuppliers.length > 0) purchaseNote = `廠商 (${missingSuppliers.join('/')}) 沒有提供報價`;
+          }
+        }
+
+        // 保留原本日期 / 貨櫃邏輯，不在這次改動範圍內。
+        latestQuoteObj = validQuotes[0] || sortedSuppliers[0];
+      }
+
+      rows.push([
+        queryBarcode,
+        item.qty,
+        primaryB,
+        p.itemCode || '',
+        p.name || '查無品名',
+        status,
+        recommendedSupplier,
+        lowestPrice,
+        secondLowestStr,
+        diffStr,
+        latestQuoteObj?.date || '-',
+        latestQuoteObj?.container || '-',
+        purchaseNote
+      ]);
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `採購決策建議單_${getTimestampString()}.csv`;
-    link.click();
+    downloadCSV(`採購決策建議單_${getTimestampString()}.csv`, rows);
   }
 
   function resolveToPrimaryBarcode(barcode) {
@@ -844,10 +894,13 @@
 
   function getRelatedQuotes(primaryB, queryBarcode = '') {
     const cache = ensureSearchCache();
+    const bundle = cache.quoteBundlesByPrimary.get(primaryB);
+    if (bundle) return Object.values(bundle.supplierHistory).flat();
+
+    // fallback：主檔尚未建立 / 特殊查詢條碼仍保留原本行為
     const aliases = window.appData.mappings[primaryB] || [];
     const related = new Set([cleanBarcode(primaryB), ...aliases.map(cleanBarcode)]);
     if (queryBarcode) related.add(cleanBarcode(queryBarcode));
-
     const quotes = [];
     for (const bc of related) {
       const list = cache.quoteByBarcode.get(bc);
@@ -861,114 +914,107 @@
     const summaryContainer = document.getElementById("batchSummaryContainer");
     if (!resultsContainer) return;
 
-    resultsContainer.innerHTML = '';
     if (summaryContainer) summaryContainer.innerHTML = '';
-
     const filterSupplierVal = document.getElementById("filterSupplier") ? document.getElementById("filterSupplier").value : '';
     const cache = ensureSearchCache();
     const data = window.appData || {};
-    let targetPrimaryBarcodes = [];
 
     if (window.searchMode === 'single') {
       const searchInput = document.getElementById("searchInput");
       const rawSearch = searchInput ? searchInput.value : '';
-      const searchVal = cleanBarcode(rawSearch);
-      const normalizedSearch = searchVal.toLowerCase();
+      const normalizedSearch = cleanBarcode(rawSearch).toLowerCase();
 
-      if (!searchVal) {
-        targetPrimaryBarcodes = cache.allPrimaryBarcodes.slice();
-      } else {
-        const matched = new Set();
-
-        // 商品主檔索引搜尋：barcode / item code / 商品名稱 / aliases
-        for (const entry of cache.productEntries) {
-          if (
-            entry.barcode.includes(normalizedSearch) ||
-            (entry.itemCode && entry.itemCode.includes(normalizedSearch)) ||
-            (entry.name && entry.name.includes(normalizedSearch)) ||
-            entry.aliases.some(a => a.includes(normalizedSearch))
-          ) {
-            matched.add(entry.primary);
-          }
-        }
-
-        // 報價索引搜尋：保留原本「報價 barcode / item code」也可以找到商品的功能。
-        for (const q of data.quotes || []) {
-          const qBarcode = cleanBarcode(q.barcode).toLowerCase();
-          const qItemCode = String(q.itemCode || '').trim().toLowerCase();
-          if (qBarcode.includes(normalizedSearch) || (qItemCode && qItemCode.includes(normalizedSearch))) {
-            matched.add(resolveToPrimaryBarcode(q.barcode));
-          }
-        }
-
-        targetPrimaryBarcodes = [...matched];
-      }
-    } else {
-      const batchInput = document.getElementById("batchSearchInput");
-      const rawInput = batchInput ? batchInput.value : '';
-      const items = parseBatchInputLines(rawInput);
-
-      if (items.length === 0) {
-        resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted">請在上方貼入條碼與數量進行批次比對。</div>';
+      // 空白搜尋不再一次產生全商品 DOM；使用者輸入關鍵字後才渲染。
+      if (!normalizedSearch) {
+        resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted border"><i class="fa-solid fa-keyboard me-2"></i>請輸入 Barcode、Item Code 或商品名稱開始搜尋。</div>';
         return;
       }
 
-      if (summaryContainer) {
-        summaryContainer.innerHTML = `
-          <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
-            <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
-            <small class="text-muted">比對結果已依輸入順序排版</small>
-          </div>
-        `;
+      const scoreByPrimary = new Map();
+      const addScore = (primary, score) => {
+        if (!primary) return;
+        const current = scoreByPrimary.get(primary) || 0;
+        if (score > current) scoreByPrimary.set(primary, score);
+      };
+
+      // 搜尋優先順序：完全相符 > 開頭相符 > 內容包含；barcode / item code 優先於品名。
+      for (const entry of cache.productEntries) {
+        let score = 0;
+        if (entry.barcode === normalizedSearch) score = 100;
+        else if (entry.itemCode === normalizedSearch) score = 98;
+        else if (entry.aliases.includes(normalizedSearch)) score = 96;
+        else if (entry.barcode.startsWith(normalizedSearch)) score = 90;
+        else if (entry.itemCode && entry.itemCode.startsWith(normalizedSearch)) score = 88;
+        else if (entry.aliases.some(a => a.startsWith(normalizedSearch))) score = 86;
+        else if (entry.name && entry.name.startsWith(normalizedSearch)) score = 78;
+        else if (entry.barcode.includes(normalizedSearch)) score = 72;
+        else if (entry.itemCode && entry.itemCode.includes(normalizedSearch)) score = 70;
+        else if (entry.aliases.some(a => a.includes(normalizedSearch))) score = 68;
+        else if (entry.name && entry.name.includes(normalizedSearch)) score = 60;
+        if (score) addScore(entry.primary, score);
       }
 
-      // 批次模式保留輸入順序，並避免同一商品在一次輸入中重複造成額外搜尋。
-      const cards = [];
-      for (const item of items) {
-        const queryBarcode = cleanBarcode(item.barcode);
-        const primaryB = resolveToPrimaryBarcode(queryBarcode);
-        cards.push(renderProductCard(primaryB, filterSupplierVal, null, item.qty, queryBarcode));
+      // 報價中存在、但尚未完整進商品主檔的 barcode / item code 也可以找到。
+      for (const q of data.quotes || []) {
+        const qBarcode = cleanBarcode(q.barcode).toLowerCase();
+        const qItemCode = String(q.itemCode || '').trim().toLowerCase();
+        let score = 0;
+        if (qBarcode === normalizedSearch) score = 94;
+        else if (qItemCode === normalizedSearch) score = 92;
+        else if (qBarcode.startsWith(normalizedSearch)) score = 84;
+        else if (qItemCode && qItemCode.startsWith(normalizedSearch)) score = 82;
+        else if (qBarcode.includes(normalizedSearch)) score = 64;
+        else if (qItemCode && qItemCode.includes(normalizedSearch)) score = 62;
+        if (score) addScore(resolveToPrimaryBarcode(q.barcode), score);
       }
-      resultsContainer.innerHTML = cards.join('');
+
+      const targetPrimaryBarcodes = [...scoreByPrimary.entries()]
+        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+        .map(([primary]) => primary);
+
+      if (targetPrimaryBarcodes.length === 0) {
+        resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = targetPrimaryBarcodes.map(primaryB =>
+        renderProductCard(primaryB, filterSupplierVal, null, 1)
+      ).join('');
       return;
     }
 
-    if (targetPrimaryBarcodes.length === 0) {
-      resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
+    const batchInput = document.getElementById("batchSearchInput");
+    const rawInput = batchInput ? batchInput.value : '';
+    const items = parseBatchInputLines(rawInput);
+
+    if (items.length === 0) {
+      resultsContainer.innerHTML = '<div class="alert alert-light text-center text-muted">請在上方貼入條碼與數量進行批次比對。</div>';
       return;
     }
 
-    // 一次組好 HTML 再寫入 DOM，避免原本每張卡都 innerHTML += 造成反覆重排。
-    const cards = targetPrimaryBarcodes.map(primaryB =>
-      renderProductCard(primaryB, filterSupplierVal, null, 1)
-    );
-    resultsContainer.innerHTML = cards.join('');
+    if (summaryContainer) {
+      summaryContainer.innerHTML = `
+        <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
+          <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
+          <small class="text-muted">比對結果已依輸入順序排版</small>
+        </div>
+      `;
+    }
+
+    resultsContainer.innerHTML = items.map(item => {
+      const queryBarcode = cleanBarcode(item.barcode);
+      const primaryB = resolveToPrimaryBarcode(queryBarcode);
+      return renderProductCard(primaryB, filterSupplierVal, null, item.qty, queryBarcode);
+    }).join('');
   }
 
   function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
     const p = window.appData.products[primaryB] || {};
     const aliases = window.appData.mappings[primaryB] || [];
-    let quotes = getRelatedQuotes(primaryB, queryBarcode);
-
-    if (filterSupplierVal) {
-      quotes = quotes.filter(q => q.supplier === filterSupplierVal);
-    }
-
-    const latestBySupplier = {};
-    const supplierHistory = {};
-
-    for (const q of quotes) {
-      if (!supplierHistory[q.supplier]) supplierHistory[q.supplier] = [];
-      supplierHistory[q.supplier].push(q);
-
-      if (!latestBySupplier[q.supplier] || new Date(q.date) > new Date(latestBySupplier[q.supplier].date)) {
-        latestBySupplier[q.supplier] = q;
-      }
-    }
-
-    for (const sup in supplierHistory) {
-      supplierHistory[sup].sort((a, b) => new Date(b.date) - new Date(a.date));
-    }
+    const cache = ensureSearchCache();
+    const cachedBundle = cache.quoteBundlesByPrimary.get(primaryB) || { latestBySupplier: {}, supplierHistory: {} };
+    const latestBySupplier = cachedBundle.latestBySupplier;
+    const supplierHistory = cachedBundle.supplierHistory;
 
     const activeSuppliers = Object.keys(latestBySupplier);
     let lowestPrice = Infinity;
@@ -1001,6 +1047,19 @@
             trendHtml = `<span class="trend-down ms-2"><i class="fa-solid fa-arrow-trend-down"></i> -¥${(prevP - currentP).toFixed(2)}</span>`;
           } else {
             trendHtml = `<span class="trend-same ms-2"><i class="fa-solid fa-minus"></i> 持平</span>`;
+          }
+        }
+
+        let anomalyHtml = '';
+        const positiveHistory = history.filter(h => Number(h.price) > 0);
+        if (positiveHistory.length > 1) {
+          const currentP = Number(positiveHistory[0].price);
+          const prevP = Number(positiveHistory[1].price);
+          if (prevP > 0) {
+            const changeRatio = (currentP - prevP) / prevP;
+            if (changeRatio >= PRICE_ANOMALY_THRESHOLD) {
+              anomalyHtml = `<span class="badge bg-danger ms-2" title="較前次有效報價上漲 ${(changeRatio * 100).toFixed(1)}%"><i class="fa-solid fa-triangle-exclamation me-1"></i>價格異常 +${(changeRatio * 100).toFixed(1)}%</span>`;
+            }
           }
         }
 
@@ -1046,6 +1105,7 @@
                     ${latestQ.price === 0 ? '<span class="badge bg-secondary">停產/等待報價</span>' : '¥' + latestQ.price}
                   </span>
                   ${trendHtml}
+                  ${anomalyHtml}
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
@@ -1073,7 +1133,7 @@
 
     const imgSrc = p.imgUrl || '';
     const imgHtml = imgSrc
-      ? `<img src="${imgSrc}" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">`
+      ? `<img src="${imgSrc}" loading="lazy" decoding="async" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">`
       : `<div class="no-img-placeholder"><i class="fa-solid fa-image"></i>無圖</div>`;
 
     return `
@@ -1089,8 +1149,10 @@
                     ${qty > 1 ? `<span class="qty-badge ms-2">需求: ${qty}</span>` : ''}
                   </h5>
                   <div class="mb-2">
-                    <span class="item-code-badge me-2">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
-                    <span class="fw-bold text-dark me-2">JAN: ${primaryB}</span>
+                    <span class="item-code-badge me-1">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
+                    ${p.itemCode ? `<button type="button" class="btn btn-link btn-sm p-0 me-2 text-secondary btn-copy-value" data-copy="${p.itemCode}" title="複製 Item Code"><i class="fa-regular fa-copy"></i></button>` : ''}
+                    <span class="fw-bold text-dark me-1">JAN: ${primaryB}</span>
+                    <button type="button" class="btn btn-link btn-sm p-0 me-2 text-secondary btn-copy-value" data-copy="${primaryB}" title="複製 JAN"><i class="fa-regular fa-copy"></i></button>
                     ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
                     ${aliasesBadgeHtml}
                   </div>
@@ -1166,61 +1228,73 @@
   function renderMasterTable() {
     const tbody = document.getElementById("masterTableBody");
     const countHeader = document.getElementById("masterCountHeader");
+    const pageSizeSelect = document.getElementById("masterPageSize");
+    const pageInfo = document.getElementById("masterPageInfo");
+    const prevBtn = document.getElementById("btnMasterPrev");
+    const nextBtn = document.getElementById("btnMasterNext");
     if (!tbody) return;
-    tbody.innerHTML = '';
 
     const products = window.appData.products || {};
     const keys = Object.keys(products);
+    const pageSize = Math.max(1, parseInt(pageSizeSelect?.value || '50', 10));
+    const totalPages = Math.max(1, Math.ceil(keys.length / pageSize));
+    masterCurrentPage = Math.min(Math.max(1, masterCurrentPage), totalPages);
 
     if (countHeader) countHeader.innerText = `已存在的主檔商品 (${keys.length} 項)`;
+    if (pageInfo) pageInfo.innerText = keys.length ? `第 ${masterCurrentPage} / ${totalPages} 頁` : '';
+    if (prevBtn) prevBtn.disabled = masterCurrentPage <= 1;
+    if (nextBtn) nextBtn.disabled = masterCurrentPage >= totalPages || keys.length === 0;
 
     if (keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前商品主檔為空。</td></tr>';
-        return;
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前商品主檔為空。</td></tr>';
+      return;
     }
 
-    keys.forEach(mainB => {
-        const p = products[mainB] || {};
-        const imgHtml = p.imgUrl ? 
-            `<img src="${p.imgUrl}" class="product-img-thumb img-preview" data-src="${p.imgUrl}" style="width:40px;height:40px;">` :
-            `<span class="text-muted small">無圖片</span>`;
+    const startIndex = (masterCurrentPage - 1) * pageSize;
+    const pageKeys = keys.slice(startIndex, startIndex + pageSize);
 
-        tbody.innerHTML += `
-            <tr>
-                <td>${imgHtml}</td>
-                <td class="fw-bold">${mainB}</td>
-                <td>${p.itemCode || '-'}</td>
-                <td>${p.name || '-'}</td>
-                <td class="small text-truncate" style="max-width:150px;">${p.imgUrl || '-'}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary btn-edit-master me-1" data-barcode="${mainB}"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-sm btn-outline-danger btn-delete-master" data-barcode="${mainB}"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
+    tbody.innerHTML = pageKeys.map(mainB => {
+      const p = products[mainB] || {};
+      const imgHtml = p.imgUrl
+        ? `<img src="${p.imgUrl}" loading="lazy" decoding="async" class="product-img-thumb img-preview" data-src="${p.imgUrl}" style="width:40px;height:40px;">`
+        : `<span class="text-muted small">無圖片</span>`;
+
+      return `
+        <tr>
+          <td>${imgHtml}</td>
+          <td class="fw-bold">${mainB}</td>
+          <td>${p.itemCode || '-'}</td>
+          <td>${p.name || '-'}</td>
+          <td class="small text-truncate" style="max-width:150px;">${p.imgUrl || '-'}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary btn-edit-master me-1" data-barcode="${mainB}"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger btn-delete-master" data-barcode="${mainB}"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.querySelectorAll(".btn-edit-master").forEach(btn => {
+      btn.onclick = function() {
+        const bc = this.getAttribute("data-barcode");
+        const p = window.appData.products[bc] || {};
+        document.getElementById("editMasterPrimaryBarcode").value = bc;
+        document.getElementById("editMasterBarcodeDisplay").value = bc;
+        document.getElementById("editMasterItemCode").value = p.itemCode || '';
+        document.getElementById("editMasterName").value = p.name || '';
+        document.getElementById("editMasterImgUrl").value = p.imgUrl || '';
+        new bootstrap.Modal(document.getElementById('editMasterModal')).show();
+      };
     });
 
-    document.querySelectorAll(".btn-edit-master").forEach(btn => {
-        btn.onclick = function() {
-            const bc = this.getAttribute("data-barcode");
-            const p = window.appData.products[bc] || {};
-            document.getElementById("editMasterPrimaryBarcode").value = bc;
-            document.getElementById("editMasterBarcodeDisplay").value = bc;
-            document.getElementById("editMasterItemCode").value = p.itemCode || '';
-            document.getElementById("editMasterName").value = p.name || '';
-            document.getElementById("editMasterImgUrl").value = p.imgUrl || '';
-            new bootstrap.Modal(document.getElementById('editMasterModal')).show();
-        };
-    });
-
-    document.querySelectorAll(".btn-delete-master").forEach(btn => {
-        btn.onclick = function() {
-            const bc = this.getAttribute("data-barcode");
-            if (confirm(`確定從主檔刪除商品 ${bc} ？`)) {
-                delete window.appData.products[bc];
-                saveFirebaseData();
-            }
-        };
+    tbody.querySelectorAll(".btn-delete-master").forEach(btn => {
+      btn.onclick = function() {
+        const bc = this.getAttribute("data-barcode");
+        if (confirm(`確定從主檔刪除商品 ${bc} ？`)) {
+          delete window.appData.products[bc];
+          saveFirebaseData();
+        }
+      };
     });
   }
 
@@ -1321,6 +1395,33 @@
           return;
         }
 
+        const copyBtn = e.target.closest(".btn-copy-value");
+        if (copyBtn) {
+          const value = copyBtn.getAttribute("data-copy") || '';
+          if (value) {
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(value).catch(() => {});
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = value;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              ta.remove();
+            }
+            const oldTitle = copyBtn.getAttribute('title') || '複製';
+            copyBtn.setAttribute('title', '已複製');
+            copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            setTimeout(() => {
+              copyBtn.setAttribute('title', oldTitle);
+              copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            }, 900);
+          }
+          return;
+        }
+
         const quickAddBtn = e.target.closest(".btn-quick-add-quote");
         if (quickAddBtn) {
           document.getElementById("inputBarcode").value = quickAddBtn.getAttribute("data-barcode") || '';
@@ -1333,6 +1434,26 @@
         }
       });
     }
+
+    const masterPageSize = document.getElementById("masterPageSize");
+    if (masterPageSize) {
+      masterPageSize.onchange = () => {
+        masterCurrentPage = 1;
+        renderMasterTable();
+      };
+    }
+    const btnMasterPrev = document.getElementById("btnMasterPrev");
+    if (btnMasterPrev) btnMasterPrev.onclick = () => {
+      if (masterCurrentPage > 1) {
+        masterCurrentPage--;
+        renderMasterTable();
+      }
+    };
+    const btnMasterNext = document.getElementById("btnMasterNext");
+    if (btnMasterNext) btnMasterNext.onclick = () => {
+      masterCurrentPage++;
+      renderMasterTable();
+    };
 
     document.getElementById("btnClearBatchSearch").onclick = function() {
         document.getElementById("batchSearchInput").value = '';
