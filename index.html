@@ -264,11 +264,21 @@
                             </div>
                         </div>
 
-                        <h5 id="masterCountHeader">已存在的主檔商品</h5>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <h5 id="masterCountHeader" class="mb-0">已存在的主檔商品</h5>
+                            <div class="d-flex flex-wrap gap-2">
+                                <input id="masterSearchInput" class="form-control form-control-sm" style="width:260px;" placeholder="搜尋 Item Code / JAN / 商品名稱">
+                                <button id="btnSelectAllMasterFiltered" class="btn btn-sm btn-outline-secondary" type="button"><i class="fa-solid fa-check-double me-1"></i>全選搜尋結果</button>
+                                <button id="btnClearMasterSelection" class="btn btn-sm btn-outline-secondary" type="button">取消全選</button>
+                                <button id="btnDeleteSelectedMaster" class="btn btn-sm btn-danger" type="button" disabled><i class="fa-solid fa-trash me-1"></i>刪除選取 (0)</button>
+                            </div>
+                        </div>
+                        <div class="alert alert-light border py-2 small mb-2">主檔匯入規則：<b>以 Item Code 為優先唯一識別</b>；已存在 Item Code 會用新檔覆蓋，新的 Item Code 才新增。舊主檔中未出現在本次檔案的商品會保留。</div>
                         <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
+                                        <th style="width:34px;"><input class="form-check-input" type="checkbox" id="masterPageSelectAll" title="全選本頁"></th>
                                         <th>圖片</th>
                                         <th>Primary Barcode (必填)</th>
                                         <th>Item Code (選填)</th>
@@ -637,6 +647,8 @@
 
   const PRICE_ANOMALY_THRESHOLD = 0.20; // 最新有效報價較前次上漲 20% 以上時提醒
   let masterCurrentPage = 1;
+  let masterSearchTerm = '';
+  const masterSelectedProducts = new Set();
 
   function rebuildSearchCache() {
     const data = window.appData || {};
@@ -1436,6 +1448,24 @@
     });
   }
 
+  function normalizeItemCode(v) { return String(v || '').trim().toUpperCase(); }
+
+  function rebuildItemToBarcode() {
+    window.appData.itemToBarcode = {};
+    Object.entries(window.appData.products || {}).forEach(([bc, p]) => {
+      const ic = String(p?.itemCode || '').trim();
+      if (ic) window.appData.itemToBarcode[ic] = bc;
+    });
+  }
+
+  function updateMasterSelectionUI() {
+    const btn = document.getElementById('btnDeleteSelectedMaster');
+    if (btn) {
+      btn.disabled = masterSelectedProducts.size === 0;
+      btn.innerHTML = `<i class="fa-solid fa-trash me-1"></i>刪除選取 (${masterSelectedProducts.size})`;
+    }
+  }
+
   function renderMasterTable() {
     const tbody = document.getElementById("masterTableBody");
     const countHeader = document.getElementById("masterCountHeader");
@@ -1446,18 +1476,24 @@
     if (!tbody) return;
 
     const products = window.appData.products || {};
-    const keys = Object.keys(products);
+    const term = (masterSearchTerm || '').trim().toLowerCase();
+    const allKeys = Object.keys(products);
+    const keys = allKeys.filter(bc => {
+      if (!term) return true;
+      const p = products[bc] || {};
+      return [bc, p.itemCode, p.name].some(v => String(v || '').toLowerCase().includes(term));
+    });
     const pageSize = Math.max(1, parseInt(pageSizeSelect?.value || '50', 10));
     const totalPages = Math.max(1, Math.ceil(keys.length / pageSize));
     masterCurrentPage = Math.min(Math.max(1, masterCurrentPage), totalPages);
 
-    if (countHeader) countHeader.innerText = `已存在的主檔商品 (${keys.length} 項)`;
+    if (countHeader) countHeader.innerText = term ? `商品主檔：搜尋到 ${keys.length} / 共 ${allKeys.length} 項` : `已存在的主檔商品 (${allKeys.length} 項)`;
     if (pageInfo) pageInfo.innerText = keys.length ? `第 ${masterCurrentPage} / ${totalPages} 頁` : '';
     if (prevBtn) prevBtn.disabled = masterCurrentPage <= 1;
     if (nextBtn) nextBtn.disabled = masterCurrentPage >= totalPages || keys.length === 0;
 
     if (keys.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前商品主檔為空。</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">目前商品主檔為空。</td></tr>';
       return;
     }
 
@@ -1472,6 +1508,7 @@
 
       return `
         <tr>
+          <td><input class="form-check-input master-row-check" type="checkbox" data-barcode="${mainB}" ${masterSelectedProducts.has(mainB) ? 'checked' : ''}></td>
           <td>${imgHtml}</td>
           <td class="fw-bold">${mainB}</td>
           <td>${p.itemCode || '-'}</td>
@@ -1484,6 +1521,22 @@
         </tr>
       `;
     }).join('');
+
+    tbody.querySelectorAll(".master-row-check").forEach(cb => {
+      cb.onchange = function() {
+        const bc = this.getAttribute("data-barcode");
+        if (this.checked) masterSelectedProducts.add(bc); else masterSelectedProducts.delete(bc);
+        updateMasterSelectionUI();
+      };
+    });
+    const pageAll = document.getElementById('masterPageSelectAll');
+    if (pageAll) {
+      pageAll.checked = pageKeys.length > 0 && pageKeys.every(k => masterSelectedProducts.has(k));
+      pageAll.onchange = () => {
+        pageKeys.forEach(k => pageAll.checked ? masterSelectedProducts.add(k) : masterSelectedProducts.delete(k));
+        renderMasterTable(); updateMasterSelectionUI();
+      };
+    }
 
     tbody.querySelectorAll(".btn-edit-master").forEach(btn => {
       btn.onclick = function() {
@@ -1503,6 +1556,8 @@
         const bc = this.getAttribute("data-barcode");
         if (confirm(`確定從主檔刪除商品 ${bc} ？`)) {
           delete window.appData.products[bc];
+          masterSelectedProducts.delete(bc);
+          rebuildItemToBarcode();
           saveFirebaseData();
         }
       };
@@ -1736,6 +1791,30 @@
         }
       });
     }
+
+    const masterSearchInput = document.getElementById('masterSearchInput');
+    if (masterSearchInput) masterSearchInput.oninput = () => { masterSearchTerm = masterSearchInput.value; masterCurrentPage = 1; renderMasterTable(); updateMasterSelectionUI(); };
+    const btnSelectAllMasterFiltered = document.getElementById('btnSelectAllMasterFiltered');
+    if (btnSelectAllMasterFiltered) btnSelectAllMasterFiltered.onclick = () => {
+      const term = (masterSearchTerm || '').trim().toLowerCase();
+      Object.entries(window.appData.products || {}).forEach(([bc,p]) => {
+        if (!term || [bc,p?.itemCode,p?.name].some(v => String(v||'').toLowerCase().includes(term))) masterSelectedProducts.add(bc);
+      });
+      renderMasterTable(); updateMasterSelectionUI();
+    };
+    const btnClearMasterSelection = document.getElementById('btnClearMasterSelection');
+    if (btnClearMasterSelection) btnClearMasterSelection.onclick = () => { masterSelectedProducts.clear(); renderMasterTable(); updateMasterSelectionUI(); };
+    const btnDeleteSelectedMaster = document.getElementById('btnDeleteSelectedMaster');
+    if (btnDeleteSelectedMaster) btnDeleteSelectedMaster.onclick = () => {
+      const selected = [...masterSelectedProducts].filter(bc => window.appData.products?.[bc]);
+      if (!selected.length) return;
+      if (!confirm(`即將刪除 ${selected.length} 個商品主檔。\n\n只刪除商品主檔，不刪除歷史報價資料。\n確定繼續？`)) return;
+      selected.forEach(bc => delete window.appData.products[bc]);
+      masterSelectedProducts.clear();
+      rebuildItemToBarcode();
+      saveFirebaseData();
+      updateMasterSelectionUI();
+    };
 
     const masterPageSize = document.getElementById("masterPageSize");
     if (masterPageSize) {
@@ -1996,28 +2075,64 @@
         reader.onload = function(e) {
             const text = e.target.result;
             const lines = text.split(/\r?\n/);
-            let count = 0;
+            const incoming = [];
+            let blankItemCode = 0, blankBarcode = 0, duplicateInFile = 0;
+            const seenItems = new Set();
 
             lines.forEach((line, idx) => {
+                if (!line.trim()) return;
                 if (idx === 0 && (line.includes("Barcode") || line.includes("條碼"))) return;
-                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-
-                if (cols.length >= 1) {
-                    const bc = cleanBarcode(cols[0]);
-                    const ic = cols[1] || '';
-                    const nm = cols[2] || '';
-                    const img = cols[3] || '';
-
-                    if (bc) {
-                        window.appData.products[bc] = { itemCode: ic, name: nm, imgUrl: img };
-                        if (ic) window.appData.itemToBarcode[ic] = bc;
-                        count++;
-                    }
-                }
+                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^\"|\"$/g, '').trim());
+                const bc = cleanBarcode(cols[0] || '');
+                const icRaw = cols[1] || '';
+                const icNorm = normalizeItemCode(icRaw);
+                const nm = cols[2] || '';
+                const img = cols[3] || '';
+                if (!bc) { blankBarcode++; return; }
+                if (!icNorm) { blankItemCode++; return; }
+                if (seenItems.has(icNorm)) duplicateInFile++;
+                seenItems.add(icNorm);
+                incoming.push({ bc, itemCode: icRaw.trim(), icNorm, name: nm, imgUrl: img });
             });
 
+            // 同一檔案 Item Code 重複時，以最後一筆為準
+            const byItem = new Map();
+            incoming.forEach(r => byItem.set(r.icNorm, r));
+            const rows = [...byItem.values()];
+            const products = window.appData.products || {};
+            const existingByItem = new Map();
+            Object.entries(products).forEach(([bc,p]) => {
+              const n = normalizeItemCode(p?.itemCode);
+              if (n) existingByItem.set(n, bc);
+            });
+
+            let addCount = 0, updateCount = 0, barcodeChangeCount = 0;
+            rows.forEach(r => {
+              const oldBc = existingByItem.get(r.icNorm);
+              if (oldBc) { updateCount++; if (oldBc !== r.bc) barcodeChangeCount++; } else addCount++;
+            });
+            const retainedCount = Math.max(0, Object.keys(products).length - updateCount);
+            const projected = retainedCount + rows.length;
+            const preview = `本次商品主檔匯入預覽\n\n` +
+              `新增：${addCount} 筆\n更新（同 Item Code 強制覆蓋）：${updateCount} 筆\n` +
+              `其中 Primary Barcode/JAN 變更：${barcodeChangeCount} 筆\n` +
+              `保留舊主檔、但本次檔案未出現：約 ${retainedCount} 筆\n` +
+              `Item Code 空白：${blankItemCode} 筆（略過）\nPrimary Barcode 空白：${blankBarcode} 筆（略過）\n` +
+              `檔案內 Item Code 重複：${duplicateInFile} 筆（以最後一筆為準）\n\n` +
+              `匯入後預計主檔：約 ${projected} 筆\n\n確定執行嗎？`;
+            if (!confirm(preview)) return;
+
+            rows.forEach(r => {
+              const oldBc = existingByItem.get(r.icNorm);
+              if (oldBc && oldBc !== r.bc) delete products[oldBc];
+              products[r.bc] = { itemCode: r.itemCode, name: r.name, imgUrl: r.imgUrl };
+            });
+            window.appData.products = products;
+            rebuildItemToBarcode();
+            masterSelectedProducts.clear();
+            masterCurrentPage = 1;
             saveFirebaseData();
-            alert(`成功批次更新/匯入 ${count} 筆商品主檔！`);
+            alert(`商品主檔更新完成！\n新增 ${addCount} 筆，覆蓋更新 ${updateCount} 筆。\n未出現在本次檔案的舊商品已保留。`);
             fileInput.value = '';
         };
 
