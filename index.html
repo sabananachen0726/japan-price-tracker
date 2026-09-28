@@ -264,6 +264,16 @@
                             </div>
                         </div>
 
+                        <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div>
+                                    <h6 class="mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i>主檔匯入紀錄 / 復原</h6>
+                                    <small class="text-muted">從此版本開始記錄最近 5 次匯入。可查看檔名與新增/更新筆數，並復原指定批次。舊版本已匯入的資料無法追溯到原始檔案。</small>
+                                </div>
+                            </div>
+                            <div id="masterImportHistory" class="small text-muted">尚無可復原的匯入紀錄。</div>
+                        </div>
+
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                             <h5 id="masterCountHeader" class="mb-0">已存在的主檔商品</h5>
                             <div class="d-flex flex-wrap gap-2">
@@ -494,7 +504,8 @@
     mappings: {},
     products: {},
     itemToBarcode: {},
-    quotes: []
+    quotes: [],
+    masterImportBatches: []
   };
 
   window.searchMode = 'single';
@@ -552,6 +563,7 @@
       if (!window.appData.mappings) window.appData.mappings = {};
       if (!window.appData.products) window.appData.products = {};
       if (!window.appData.quotes) window.appData.quotes = [];
+      if (!window.appData.masterImportBatches) window.appData.masterImportBatches = [];
       
       if (statusBadge) {
         statusBadge.className = "badge bg-success";
@@ -735,6 +747,7 @@
     renderCompareList();
     renderMappingTable();
     renderMasterTable();
+    renderMasterImportHistory();
     renderContainerDeleteOptions();
   }
 
@@ -2060,6 +2073,51 @@
         }
     };
 
+    function renderMasterImportHistory() {
+        const box = document.getElementById('masterImportHistory');
+        if (!box) return;
+        const batches = window.appData.masterImportBatches || [];
+        if (!batches.length) { box.innerHTML = '<span class="text-muted">尚無可復原的匯入紀錄。</span>'; return; }
+        box.innerHTML = batches.slice().reverse().map(b => `
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-top py-2">
+            <div><b>${escapeHtml(b.fileName || '未命名檔案')}</b><br><span class="text-muted">${escapeHtml(b.importedAt || '')}｜新增 ${b.addCount||0}｜更新 ${b.updateCount||0}</span></div>
+            <button class="btn btn-sm btn-outline-danger btnRollbackMasterBatch" data-batch-id="${b.id}"><i class="fa-solid fa-rotate-left me-1"></i>復原此批匯入</button>
+          </div>`).join('');
+    }
+
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.btnRollbackMasterBatch');
+      if (!btn) return;
+      const id = btn.dataset.batchId;
+      const batches = window.appData.masterImportBatches || [];
+      const idx = batches.findIndex(b => b.id === id);
+      if (idx < 0) return;
+      const b = batches[idx];
+      const later = batches.slice(idx + 1);
+      if (later.length) {
+        const ok = confirm(`注意：這不是最新一次匯入。後面還有 ${later.length} 個較新的主檔批次。\n\n復原舊批次可能會影響後續更新過的相同 Item Code。\n建議由最新批次開始往回復原。\n\n仍要繼續嗎？`);
+        if (!ok) return;
+      }
+      if (!confirm(`確定復原主檔匯入？\n\n檔案：${b.fileName}\n新增：${b.addCount||0} 筆\n更新：${b.updateCount||0} 筆\n\n新增商品會移除；被覆蓋的舊商品會恢復成匯入前內容。\n報價歷史不會刪除。`)) return;
+      const products = window.appData.products || {};
+      (b.added || []).forEach(x => {
+        const current = Object.entries(products).find(([bc,p]) => normalizeItemCode(p?.itemCode) === x.itemNorm);
+        if (current) delete products[current[0]];
+      });
+      (b.updatedBefore || []).forEach(x => {
+        Object.keys(products).forEach(bc => { if (normalizeItemCode(products[bc]?.itemCode) === x.itemNorm) delete products[bc]; });
+        products[x.barcode] = x.product;
+      });
+      window.appData.products = products;
+      window.appData.masterImportBatches = batches.filter(x => x.id !== id);
+      rebuildItemToBarcode();
+      masterSelectedProducts.clear();
+      masterCurrentPage = 1;
+      saveFirebaseData();
+      renderMasterImportHistory();
+      alert(`已復原「${b.fileName}」這一批主檔匯入。`);
+    });
+
     // 匯入商品主檔
     document.getElementById("btnImportMasterCSV").onclick = function() {
         const fileInput = document.getElementById("masterCSVFile");
@@ -2122,16 +2180,29 @@
               `匯入後預計主檔：約 ${projected} 筆\n\n確定執行嗎？`;
             if (!confirm(preview)) return;
 
+            const batchId = `master_${Date.now()}`;
+            const added = [];
+            const updatedBefore = [];
             rows.forEach(r => {
               const oldBc = existingByItem.get(r.icNorm);
-              if (oldBc && oldBc !== r.bc) delete products[oldBc];
+              if (oldBc) {
+                updatedBefore.push({ itemNorm: r.icNorm, barcode: oldBc, product: { ...(products[oldBc] || {}) } });
+                if (oldBc !== r.bc) delete products[oldBc];
+              } else {
+                added.push({ itemNorm: r.icNorm, barcode: r.bc });
+              }
               products[r.bc] = { itemCode: r.itemCode, name: r.name, imgUrl: r.imgUrl };
             });
             window.appData.products = products;
+            const history = window.appData.masterImportBatches || [];
+            history.push({ id: batchId, fileName: file.name, importedAt: new Date().toLocaleString('zh-TW'), addCount, updateCount, added, updatedBefore });
+            // 此系統目前把資料集中在單一 Firestore 文件；只保留最近 5 次完整復原資料，避免文件無限制膨脹。
+            window.appData.masterImportBatches = history.slice(-5);
             rebuildItemToBarcode();
             masterSelectedProducts.clear();
             masterCurrentPage = 1;
             saveFirebaseData();
+            renderMasterImportHistory();
             alert(`商品主檔更新完成！\n新增 ${addCount} 筆，覆蓋更新 ${updateCount} 筆。\n未出現在本次檔案的舊商品已保留。`);
             fileInput.value = '';
         };
@@ -2201,7 +2272,8 @@
                 mappings: {},
                 products: {},
                 itemToBarcode: {},
-                quotes: []
+                quotes: [],
+                masterImportBatches: []
             };
             saveFirebaseData();
             alert("資料已清空！");
@@ -2250,7 +2322,8 @@
                 mappings: {},
                 products: {},
                 itemToBarcode: {},
-                quotes: []
+                quotes: [],
+                masterImportBatches: []
             };
 
             lines.forEach((line, idx) => {
