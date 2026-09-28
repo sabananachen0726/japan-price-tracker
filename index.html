@@ -1,10 +1,11 @@
 
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本廠商價格比對與管理系統 (雲端同步版)</title>
+    <title>日本廠商價格比對與管理系統 V2｜採購工作台</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -25,14 +26,32 @@
         .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
         .trend-same { color: #6c757d; font-size: 0.75rem; }
         .qty-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .stale-quote { border-color:#ffc107 !important; background:#fffdf2 !important; }
+        .workbench-table th { white-space: nowrap; }
+        .workbench-table td { vertical-align: middle; }
+        .workbench-total { font-size: 1.05rem; font-weight: 700; }
+        .status-pill { font-size:.75rem; }
+        .supplier-copy-box { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.8rem; }
     </style>
 </head>
 <body>
+<div id="authGate" class="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex align-items-center justify-content-center" style="z-index:2000;">
+  <div class="card p-4 shadow" style="width:min(92vw,420px);">
+    <div class="text-center mb-3"><i class="fa-solid fa-lock fa-2x text-primary"></i><h4 class="mt-2 mb-1">日本採購系統登入</h4><div class="text-muted small">請使用公司授權帳號登入</div></div>
+    <form id="loginForm">
+      <div class="mb-3"><label class="form-label">Email</label><input id="loginEmail" type="email" class="form-control" autocomplete="username" required></div>
+      <div class="mb-3"><label class="form-label">Password</label><input id="loginPassword" type="password" class="form-control" autocomplete="current-password" required></div>
+      <div id="loginError" class="alert alert-danger py-2 small d-none"></div>
+      <button id="btnLogin" class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-right-to-bracket me-1"></i>登入</button>
+    </form>
+  </div>
+</div>
+<div id="protectedApp" class="d-none">
 
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>連線中...</span>
+        <div class="d-flex align-items-center gap-2"><span id="authUser" class="small text-muted d-none"></span><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -74,6 +93,7 @@
                             <div class="d-flex justify-content-between align-items-center mt-2">
                                 <small class="text-muted">自動比對貼入的條碼與需求數量。</small>
                                 <div>
+                                    <button id="btnOpenWorkbench" class="btn btn-sm btn-primary me-2"><i class="fa-solid fa-cart-shopping me-1"></i>開啟採購工作台</button>
                                     <button id="btnExportPurchase" class="btn btn-sm btn-success me-2"><i class="fa-solid fa-file-csv me-1"></i>匯出採購決策建議單 (CSV)</button>
                                     <button id="btnClearBatchSearch" class="btn btn-sm btn-outline-secondary">清空輸入</button>
                                 </div>
@@ -90,6 +110,7 @@
             </div>
 
             <div id="batchSummaryContainer"></div>
+            <div id="purchaseWorkbenchContainer"></div>
             <div id="compareResultsContainer"></div>
         </div>
 
@@ -411,11 +432,13 @@
   </div>
 </div>
 
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
   import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCPFkJo7MTDpr8AHLC7yI9FTpmJtpNhd80",
@@ -429,6 +452,8 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+  let unsubscribeData = null;
 
   window.appData = {
     suppliers: ["SilkRoad", "Tencho"],
@@ -482,7 +507,9 @@
     return `${dateStr}_${timeStr}`;
   }
 
-  onSnapshot(docRef, (snapshot) => {
+  function startDataListener() {
+    if (unsubscribeData) unsubscribeData();
+    unsubscribeData = onSnapshot(docRef, (snapshot) => {
     const statusBadge = document.getElementById("cloudStatus");
     if (snapshot.exists()) {
       window.appData = snapshot.data();
@@ -508,8 +535,46 @@
       statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>連線權限錯誤';
     }
   });
+  }
+
+
+
+  const authGate = document.getElementById('authGate');
+  const protectedApp = document.getElementById('protectedApp');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const btnLogout = document.getElementById('btnLogout');
+  const authUser = document.getElementById('authUser');
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.classList.add('d-none');
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true; btn.textContent = '登入中...';
+    try {
+      await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
+      document.getElementById('loginPassword').value = '';
+    } catch (err) {
+      loginError.textContent = '登入失敗：Email 或密碼不正確，或此帳號尚未啟用。';
+      loginError.classList.remove('d-none');
+    } finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-1"></i>登入'; }
+  });
+  btnLogout.addEventListener('click', () => signOut(auth));
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      authGate.classList.add('d-none'); protectedApp.classList.remove('d-none');
+      btnLogout.classList.remove('d-none'); authUser.classList.remove('d-none'); authUser.textContent = user.email || '已登入';
+      startDataListener();
+    } else {
+      if (unsubscribeData) { unsubscribeData(); unsubscribeData = null; }
+      protectedApp.classList.add('d-none'); authGate.classList.remove('d-none');
+      btnLogout.classList.add('d-none'); authUser.classList.add('d-none');
+    }
+  });
 
   async function saveFirebaseData() {
+    if (!auth.currentUser) { alert("登入已失效，請重新登入。"); return; }
     // 資料有任何變動時，下一次搜尋自動重新建立索引。
     searchCache.valid = false;
     const statusBadge = document.getElementById("cloudStatus");
@@ -1008,6 +1073,38 @@
     }).join('');
   }
 
+  const STALE_QUOTE_DAYS = 90;
+
+  function quoteStatus(q) {
+    if (!q) return 'missing';
+    if (Number(q.price) > 0) return 'normal';
+    const note = String(q.note || '').toLowerCase();
+    if (/停產|discontinued|廃番|廃盤/.test(note)) return 'discontinued';
+    if (/等待|pending|待報|確認|未報/.test(note)) return 'pending';
+    return 'unavailable';
+  }
+
+  function quoteStatusLabel(q) {
+    const st = quoteStatus(q);
+    if (st === 'discontinued') return '停產';
+    if (st === 'pending') return '等待報價';
+    if (st === 'unavailable') return '無有效報價';
+    if (st === 'missing') return '無報價';
+    return '正常';
+  }
+
+  function quoteAgeDays(q) {
+    if (!q || !q.date) return null;
+    const d = new Date(q.date + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+  }
+
+  function isQuoteStale(q) {
+    const age = quoteAgeDays(q);
+    return Number(q?.price) > 0 && age !== null && age > STALE_QUOTE_DAYS;
+  }
+
   function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
     const p = window.appData.products[primaryB] || {};
     const aliases = window.appData.mappings[primaryB] || [];
@@ -1036,6 +1133,8 @@
 
       if (latestQ) {
         const isLowest = (latestQ.price === lowestPrice && lowestPrice > 0);
+        const stale = isQuoteStale(latestQ);
+        const ageDays = quoteAgeDays(latestQ);
         let trendHtml = '';
 
         if (history.length > 1) {
@@ -1070,7 +1169,7 @@
             <tr>
               <td class="small py-1">${h.date || ''}</td>
               <td class="small py-1">${h.container || ''}</td>
-              <td class="small py-1 fw-bold text-end">${h.price === 0 ? '停產/等價' : '¥' + h.price}</td>
+              <td class="small py-1 fw-bold text-end">${Number(h.price) === 0 ? quoteStatusLabel(h) : '¥' + h.price}</td>
               <td class="small py-1 text-muted ms-2">${h.note || ''}</td>
               <td class="small py-1 text-end"><button class="btn btn-link text-danger btn-sm p-0 btn-delete-quote" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
@@ -1096,16 +1195,17 @@
 
         suppliersCardHtml += `
           <div class="col-md-6 mb-2">
-            <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : 'bg-white'}">
+            <div class="p-2 border rounded ${stale ? 'stale-quote' : (isLowest ? 'border-success bg-light' : 'bg-white')}">
               <div class="d-flex justify-content-between align-items-center">
                 <span class="fw-bold">${sup}</span>
                 <div>
                   ${isLowest ? '<span class="lowest-price me-1"><i class="fa-solid fa-crown me-1"></i>最低價</span>' : ''}
                   <span class="price-tag fw-bold ${isLowest ? 'text-success' : 'text-dark'}">
-                    ${latestQ.price === 0 ? '<span class="badge bg-secondary">停產/等待報價</span>' : '¥' + latestQ.price}
+                    ${Number(latestQ.price) === 0 ? `<span class="badge ${quoteStatus(latestQ) === 'discontinued' ? 'bg-danger' : 'bg-warning text-dark'}">${quoteStatusLabel(latestQ)}</span>` : '¥' + latestQ.price}
                   </span>
                   ${trendHtml}
                   ${anomalyHtml}
+                  ${stale ? `<span class="badge bg-warning text-dark ms-2"><i class="fa-solid fa-hourglass-half me-1"></i>${ageDays} 天未更新</span>` : ''}
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
@@ -1178,6 +1278,82 @@
         </div>
       </div>
     `;
+  }
+
+  function buildPurchaseWorkbenchRows() {
+    const input = document.getElementById('batchSearchInput');
+    const items = parseBatchInputLines(input ? input.value : '');
+    const suppliers = window.appData.suppliers || [];
+    return items.map(item => {
+      const query = cleanBarcode(item.barcode);
+      const primary = resolveToPrimaryBarcode(query);
+      const p = window.appData.products[primary] || {};
+      const bundle = ensureSearchCache().quoteBundlesByPrimary.get(primary) || {latestBySupplier:{}};
+      const quotes = suppliers.map(supplier => ({supplier, q:bundle.latestBySupplier[supplier]}));
+      const valid = quotes.filter(x => x.q && Number(x.q.price)>0 && !isQuoteStale(x.q)).sort((a,b)=>Number(a.q.price)-Number(b.q.price));
+      const fallback = quotes.filter(x => x.q && Number(x.q.price)>0).sort((a,b)=>Number(a.q.price)-Number(b.q.price));
+      const best = valid[0] || fallback[0] || null;
+      return {query, primary, itemCode:p.itemCode||'', name:p.name||'查無品名', qty:Math.max(1,Number(item.qty)||1), quotes, selected:best?.supplier||'', bestPrice:best?Number(best.q.price):0};
+    });
+  }
+
+  function renderPurchaseWorkbench() {
+    const box = document.getElementById('purchaseWorkbenchContainer');
+    if (!box) return;
+    const rows = buildPurchaseWorkbenchRows();
+    if (!rows.length) { box.innerHTML='<div class="alert alert-warning">請先貼入 Barcode + 數量，再開啟採購工作台。</div>'; return; }
+    const suppliers = window.appData.suppliers || [];
+    const supplierHeads = suppliers.map(s=>`<th class="text-end">${s}</th>`).join('');
+    const body = rows.map((r,i)=>{
+      const quoteCells = r.quotes.map(x=>{
+        if(!x.q) return '<td class="text-end text-muted">—</td>';
+        const stale=isQuoteStale(x.q);
+        return `<td class="text-end ${stale?'text-warning':''}">${Number(x.q.price)>0?'¥'+Number(x.q.price).toLocaleString():'<span class="badge bg-light text-dark border">'+quoteStatusLabel(x.q)+'</span>'}${stale?'<div class="small">過舊</div>':''}</td>`;
+      }).join('');
+      const opts=['<option value="">Pending</option>',...suppliers.map(s=>`<option value="${s}" ${s===r.selected?'selected':''}>${s}</option>`)].join('');
+      return `<tr data-row="${i}" data-primary="${r.primary}" data-itemcode="${r.itemCode}" data-qty="${r.qty}">
+        <td><div class="fw-bold">${r.itemCode||'-'}</div><div class="small text-muted">${r.name}</div><div class="small">${r.primary}</div></td>
+        <td style="width:90px"><input class="form-control form-control-sm wb-qty" type="number" min="1" value="${r.qty}"></td>
+        ${quoteCells}
+        <td style="min-width:145px"><select class="form-select form-select-sm wb-supplier">${opts}</select></td>
+        <td class="text-end wb-price">${r.bestPrice?'¥'+r.bestPrice.toLocaleString():'Pending'}</td>
+        <td class="text-end fw-bold wb-subtotal">${r.bestPrice?'¥'+(r.bestPrice*r.qty).toLocaleString():'-'}</td>
+      </tr>`;
+    }).join('');
+    box.innerHTML=`<div class="card p-3 mb-4 border-primary"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h4 class="mb-1"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>採購工作台</h4><div class="small text-muted">預設避開超過 ${STALE_QUOTE_DAYS} 天的舊報價；你仍可人工改選廠商。</div></div><div><button id="btnCopySupplierOrders" class="btn btn-success btn-sm me-2"><i class="fa-regular fa-copy me-1"></i>依廠商整批複製</button><button id="btnCloseWorkbench" class="btn btn-outline-secondary btn-sm">收起</button></div></div><div class="table-responsive"><table class="table table-sm table-hover workbench-table"><thead><tr><th>商品</th><th>Qty</th>${supplierHeads}<th>實際採購</th><th class="text-end">單價</th><th class="text-end">小計</th></tr></thead><tbody>${body}</tbody><tfoot><tr class="table-light"><td colspan="${suppliers.length+4}" class="text-end">總計</td><td id="wbGrandTotal" class="text-end workbench-total">¥0</td></tr></tfoot></table></div><div id="wbSupplierTotals" class="d-flex flex-wrap gap-2 justify-content-end"></div></div>`;
+    updateWorkbenchTotals();
+  }
+
+  function updateWorkbenchTotals(){
+    const box=document.getElementById('purchaseWorkbenchContainer'); if(!box)return;
+    const totals={}; let grand=0;
+    box.querySelectorAll('tbody tr').forEach(tr=>{
+      const primary=tr.dataset.primary, qty=Math.max(1,Number(tr.querySelector('.wb-qty').value)||1), supplier=tr.querySelector('.wb-supplier').value;
+      const bundle=ensureSearchCache().quoteBundlesByPrimary.get(primary)||{latestBySupplier:{}};
+      const q=bundle.latestBySupplier[supplier]; const price=q&&Number(q.price)>0?Number(q.price):0; const subtotal=price*qty;
+      tr.querySelector('.wb-price').textContent=price?'¥'+price.toLocaleString():'Pending';
+      tr.querySelector('.wb-subtotal').textContent=price?'¥'+subtotal.toLocaleString():'-';
+      if(price&&supplier){totals[supplier]=(totals[supplier]||0)+subtotal;grand+=subtotal;}
+    });
+    const g=document.getElementById('wbGrandTotal'); if(g)g.textContent='¥'+grand.toLocaleString();
+    const t=document.getElementById('wbSupplierTotals'); if(t)t.innerHTML=Object.entries(totals).map(([s,v])=>`<span class="badge bg-primary p-2">${s}: ¥${v.toLocaleString()}</span>`).join('');
+  }
+
+  function copySupplierOrders(){
+    const box=document.getElementById('purchaseWorkbenchContainer'); if(!box)return;
+    const groups={};
+    box.querySelectorAll('tbody tr').forEach(tr=>{
+      const supplier=tr.querySelector('.wb-supplier').value; if(!supplier)return;
+      const qty=Math.max(1,Number(tr.querySelector('.wb-qty').value)||1), primary=tr.dataset.primary, itemCode=tr.dataset.itemcode||'-';
+      const q=(ensureSearchCache().quoteBundlesByPrimary.get(primary)||{latestBySupplier:{}}).latestBySupplier[supplier];
+      if(!q||Number(q.price)<=0)return;
+      (groups[supplier] ||= []).push(`${itemCode}\t${primary}\t${qty}\t¥${Number(q.price)}`);
+    });
+    const textOut=Object.entries(groups).map(([s,lines])=>`【${s}】\nItem Code\tJAN Code\t數量\t單價\n${lines.join('\n')}`).join('\n\n');
+    if(!textOut){alert('目前沒有可複製的採購項目。');return;}
+    const fallback=()=>{const ta=document.createElement('textarea');ta.value=textOut;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();};
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(textOut).catch(fallback);else fallback();
+    alert('已依廠商整理並複製採購資訊！');
   }
 
   function renderMappingTable() {
@@ -1514,6 +1690,17 @@
     };
 
     document.getElementById("btnExportPurchase").onclick = exportPurchaseDecisionCSV;
+    document.getElementById("btnOpenWorkbench").onclick = renderPurchaseWorkbench;
+    document.getElementById("purchaseWorkbenchContainer").addEventListener("change", (e) => {
+      if (e.target.matches('.wb-qty,.wb-supplier')) updateWorkbenchTotals();
+    });
+    document.getElementById("purchaseWorkbenchContainer").addEventListener("input", (e) => {
+      if (e.target.matches('.wb-qty')) updateWorkbenchTotals();
+    });
+    document.getElementById("purchaseWorkbenchContainer").addEventListener("click", (e) => {
+      if (e.target.closest('#btnCopySupplierOrders')) copySupplierOrders();
+      if (e.target.closest('#btnCloseWorkbench')) document.getElementById('purchaseWorkbenchContainer').innerHTML='';
+    });
     document.getElementById("btnDownloadTemplate").onclick = downloadQuoteTemplate;
     document.getElementById("btnDownloadMasterTemplate").onclick = downloadMasterTemplate;
 
@@ -1656,6 +1843,18 @@
         reader.onload = function(e) {
             const text = e.target.result;
             const lines = text.split(/\r?\n/);
+            const previewRows = [];
+            lines.forEach((line, idx) => {
+                if (idx === 0 && (line.includes("JAN") || line.includes("Barcode") || line.includes("條碼"))) return;
+                if (!line.trim()) return;
+                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^\"|\"$/g, '').trim());
+                if (cols.length >= 4) previewRows.push(cols);
+            });
+            const badBarcode = previewRows.filter(c => !cleanBarcode(c[0])).length;
+            const unknownSupplier = previewRows.filter(c => c[3] && !(window.appData.suppliers || []).includes(c[3])).length;
+            const zeroPrice = previewRows.filter(c => (parseFloat(c[4]) || 0) === 0).length;
+            const msg = `匯入預覽：\n總列數：${previewRows.length}\nBarcode 空白：${badBarcode}\n未登記廠商：${unknownSupplier}\n¥0 / Pending / 停產：${zeroPrice}\n\n確認要繼續匯入嗎？`;
+            if (!confirm(msg)) return;
             let importedCount = 0;
 
             lines.forEach((line, idx) => {
