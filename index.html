@@ -308,8 +308,32 @@
                                     <option value="">請選擇要刪除的貨櫃號碼...</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <button id="btnDeleteByContainer" class="btn btn-danger w-100"><i class="fa-solid fa-trash-can me-1"></i>批次刪除該貨櫃報價</button>
+                            <div class="col-md-3">
+                                <button id="btnManageContainer" class="btn btn-outline-primary w-100"><i class="fa-solid fa-list-check me-1"></i>查看 / 管理內容</button>
+                            </div>
+                            <div class="col-md-3">
+                                <button id="btnDeleteByContainer" class="btn btn-danger w-100"><i class="fa-solid fa-trash-can me-1"></i>整櫃刪除</button>
+                            </div>
+                        </div>
+                        <div id="containerManagerPanel" class="mt-4 d-none">
+                            <hr>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div><strong id="containerManagerTitle">貨櫃內容</strong> <span id="containerManagerCount" class="badge bg-secondary"></span></div>
+                                <div class="d-flex gap-2">
+                                    <input id="containerItemSearch" class="form-control form-control-sm" style="min-width:220px" placeholder="搜尋 Item Code / JAN / 商品名">
+                                    <button id="btnSelectAllContainerItems" class="btn btn-sm btn-outline-secondary">全選</button>
+                                    <button id="btnClearContainerSelection" class="btn btn-sm btn-outline-secondary">取消全選</button>
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="max-height:420px; overflow:auto;">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light sticky-top"><tr><th style="width:42px"></th><th>Item Code</th><th>JAN Code</th><th>商品名稱</th><th>廠商</th><th class="text-end">價格</th><th>日期</th></tr></thead>
+                                    <tbody id="containerManagerBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <small id="containerSelectionInfo" class="text-muted">已選 0 筆</small>
+                                <button id="btnDeleteSelectedContainerItems" class="btn btn-danger" disabled><i class="fa-solid fa-trash-can me-1"></i>刪除選取項目</button>
                             </div>
                         </div>
                     </div>
@@ -1496,6 +1520,55 @@
     });
   }
 
+  let activeManagedContainer = '';
+
+  function escapeContainerText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function getManagedContainerQuotes() {
+    if (!activeManagedContainer) return [];
+    return (window.appData.quotes || []).filter(q => q.container === activeManagedContainer);
+  }
+
+  function updateContainerSelectionInfo() {
+    const checks = [...document.querySelectorAll('.container-item-check')];
+    const selected = checks.filter(c => c.checked).length;
+    const info = document.getElementById('containerSelectionInfo');
+    const delBtn = document.getElementById('btnDeleteSelectedContainerItems');
+    if (info) info.textContent = `已選 ${selected} 筆`;
+    if (delBtn) delBtn.disabled = selected === 0;
+  }
+
+  function renderContainerManager() {
+    const panel = document.getElementById('containerManagerPanel');
+    const body = document.getElementById('containerManagerBody');
+    if (!panel || !body || !activeManagedContainer) return;
+    panel.classList.remove('d-none');
+    const allRows = getManagedContainerQuotes();
+    const keyword = (document.getElementById('containerItemSearch')?.value || '').trim().toLowerCase();
+    const rows = allRows.filter(q => {
+      const product = (window.appData.products || {})[q.barcode] || {};
+      return [q.itemCode, q.barcode, product.name, q.supplier, q.note].some(v => String(v || '').toLowerCase().includes(keyword));
+    });
+    document.getElementById('containerManagerTitle').textContent = `貨櫃 ${activeManagedContainer}`;
+    document.getElementById('containerManagerCount').textContent = `${allRows.length} 筆`;
+    body.innerHTML = rows.length ? rows.map(q => {
+      const product = (window.appData.products || {})[q.barcode] || {};
+      return `<tr>
+        <td><input class="form-check-input container-item-check" type="checkbox" data-quote-id="${escapeContainerText(q.id)}"></td>
+        <td>${escapeContainerText(q.itemCode || product.itemCode || '-')}</td>
+        <td class="small">${escapeContainerText(q.barcode || '-')}</td>
+        <td>${escapeContainerText(product.name || '-')}</td>
+        <td>${escapeContainerText(q.supplier || '-')}</td>
+        <td class="text-end">${Number(q.price) > 0 ? '¥' + Number(q.price).toLocaleString() : escapeContainerText(quoteStatusLabel(q))}</td>
+        <td>${escapeContainerText(q.date || '-')}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="7" class="text-center text-muted py-4">沒有符合的項目</td></tr>';
+    body.querySelectorAll('.container-item-check').forEach(cb => cb.addEventListener('change', updateContainerSelectionInfo));
+    updateContainerSelectionInfo();
+  }
+
   // 事件監聽綁定
   document.addEventListener("DOMContentLoaded", () => {
     
@@ -1954,6 +2027,38 @@
             reader.readAsText(file, encoding);
         }
     };
+
+    // 查看 / 管理特定貨櫃內容
+    document.getElementById("btnManageContainer").onclick = function() {
+        const ctn = document.getElementById("selectContainerToDelete").value;
+        if (!ctn) { alert("請先選擇貨櫃號碼！"); return; }
+        activeManagedContainer = ctn;
+        document.getElementById('containerItemSearch').value = '';
+        renderContainerManager();
+    };
+    document.getElementById('containerItemSearch').addEventListener('input', renderContainerManager);
+    document.getElementById('btnSelectAllContainerItems').onclick = function() {
+        document.querySelectorAll('.container-item-check').forEach(c => c.checked = true);
+        updateContainerSelectionInfo();
+    };
+    document.getElementById('btnClearContainerSelection').onclick = function() {
+        document.querySelectorAll('.container-item-check').forEach(c => c.checked = false);
+        updateContainerSelectionInfo();
+    };
+    document.getElementById('btnDeleteSelectedContainerItems').onclick = function() {
+        const ids = [...document.querySelectorAll('.container-item-check:checked')].map(c => c.dataset.quoteId);
+        if (!ids.length) return;
+        if (!confirm(`確定要從貨櫃「${activeManagedContainer}」刪除選取的 ${ids.length} 筆報價嗎？\n\n此操作會同步更新雲端資料。`)) return;
+        const idSet = new Set(ids);
+        window.appData.quotes = (window.appData.quotes || []).filter(q => !idSet.has(String(q.id)));
+        saveFirebaseData();
+        renderContainerManager();
+        alert(`已刪除 ${ids.length} 筆報價。`);
+    };
+    document.getElementById('selectContainerToDelete').addEventListener('change', function() {
+        activeManagedContainer = '';
+        document.getElementById('containerManagerPanel').classList.add('d-none');
+    });
 
     // 批次刪除特定貨櫃報價
     document.getElementById("btnDeleteByContainer").onclick = function() {
