@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本廠商價格比對與管理系統 V4｜LIVE / TEST</title>
+    <title>日本廠商價格比對與管理系統 V4.1｜LIVE / TEST</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -31,6 +31,8 @@
         .workbench-table td { vertical-align: middle; }
         .workbench-total { font-size: 1.05rem; font-weight: 700; }
         .status-pill { font-size:.75rem; }
+        .frozen-badge { display:inline-flex; align-items:center; gap:.25rem; background:#e7f5ff; color:#0b5ed7; border:1px solid #74c0fc; border-radius:999px; padding:1px 7px; font-size:.72rem; font-weight:700; white-space:nowrap; }
+        .frozen-container-row { background:#f1f9ff !important; }
         .supplier-copy-box { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.8rem; }
     </style>
 </head>
@@ -157,7 +159,7 @@
                         <p class="text-muted small mb-3">先選廠商與貨櫃，再從 Excel 直接貼上多行。每行格式：<b>Item Code / JAN</b>、<b>價格</b>、<b>備註（可空白）</b>。支援 Tab、逗號或空白分隔。</p>
                         <div class="row g-2 mb-2">
                             <div class="col-md-4"><select id="quickBatchSupplier" class="form-select"></select></div>
-                            <div class="col-md-4"><input id="quickBatchContainer" class="form-control" placeholder="貨櫃號碼，例如 JSR0903"></div>
+                            <div class="col-md-4"><input id="quickBatchContainer" class="form-control" placeholder="貨櫃號碼，例如 JSR26B0901 / JSR26B1101F"></div>
                             <div class="col-md-4"><button id="btnQuickBatchImport" class="btn btn-success w-100"><i class="fa-solid fa-bolt me-1"></i>一次錄入全部報價</button></div>
                         </div>
                         <textarea id="quickBatchText" class="form-control font-monospace" rows="7" placeholder="WHH001	125
@@ -564,6 +566,81 @@ WHH002	138	賞味期限 2027/03
     return str.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
   }
 
+  function normalizeContainerNo(value) {
+    return String(value || '').trim().toUpperCase();
+  }
+
+  function parseContainerNo(value) {
+    const raw = normalizeContainerNo(value);
+    // Standard: J + SR/TC + YY + B + MM + sequence + optional F (Frozen)
+    // Examples: JSR26B0901, JTC26B1002, JSR26B1101F
+    const m = raw.match(/^J(?:SR|TC)(\d{2})B(\d{2})(\d{2})(F)?$/);
+    if (!m) return null;
+    return { raw, year: 2000 + Number(m[1]), month: Number(m[2]), seq: Number(m[3]), frozen: !!m[4] };
+  }
+
+  function isFrozenContainer(value) {
+    const parsed = parseContainerNo(value);
+    return parsed ? parsed.frozen : /F$/i.test(normalizeContainerNo(value));
+  }
+
+  function frozenBadgeHtml(value) {
+    return isFrozenContainer(value) ? '<span class="frozen-badge ms-1"><i class="fa-solid fa-snowflake"></i>FROZEN</span>' : '';
+  }
+
+  function compareContainerNo(a, b) {
+    const pa = parseContainerNo(a), pb = parseContainerNo(b);
+    if (pa && pb) {
+      return (pa.year - pb.year) || (pa.month - pb.month) || (pa.seq - pb.seq) || pa.raw.localeCompare(pb.raw);
+    }
+    if (pa) return -1;
+    if (pb) return 1;
+    return normalizeContainerNo(a).localeCompare(normalizeContainerNo(b), undefined, {numeric:true, sensitivity:'base'});
+  }
+
+  function compareQuotesByContainerNewest(a, b) {
+    const pa = parseContainerNo(a?.container), pb = parseContainerNo(b?.container);
+    if (pa && pb) return -compareContainerNo(a.container, b.container) || (new Date(b.date || 0) - new Date(a.date || 0));
+    if (pa) return -1;
+    if (pb) return 1;
+    return (new Date(b?.date || 0) - new Date(a?.date || 0)) || normalizeContainerNo(b?.container).localeCompare(normalizeContainerNo(a?.container), undefined, {numeric:true});
+  }
+
+  function mergePriceUpdateNote(existingNote, incomingNote) {
+    const parts = [];
+    const add = v => { const t=String(v||'').trim(); if (t && !parts.includes(t)) parts.push(t); };
+    add(incomingNote);
+    add(existingNote);
+    if (!parts.some(x => x.includes('價錢更新'))) parts.push('價錢更新');
+    return parts.join('｜');
+  }
+
+  // One product + one container keeps only one quote record. Same price = skip; changed price = update in place.
+  function upsertContainerQuote({barcode, itemCode='', supplier='', price=0, container='', note='', date=''}) {
+    const primary = resolveToPrimaryBarcode(cleanBarcode(barcode));
+    const ctn = normalizeContainerNo(container);
+    const quotes = window.appData.quotes || (window.appData.quotes = []);
+    const existing = quotes.find(q => resolveToPrimaryBarcode(cleanBarcode(q.barcode)) === primary && normalizeContainerNo(q.container) === ctn);
+    const numericPrice = Number(price) || 0;
+    if (existing) {
+      if (Number(existing.price) === numericPrice) return {action:'skipped', quote:existing};
+      const oldPrice = Number(existing.price) || 0;
+      existing.price = numericPrice;
+      existing.itemCode = itemCode || existing.itemCode || '';
+      existing.supplier = supplier || existing.supplier || '';
+      existing.container = ctn;
+      existing.note = mergePriceUpdateNote(existing.note, note);
+      existing.date = date || new Date().toISOString().split('T')[0];
+      return {action:'updated', quote:existing, oldPrice};
+    }
+    const q = {
+      id:'q_'+Date.now()+'_'+Math.random().toString(36).substr(2,6), barcode:primary || cleanBarcode(barcode), itemCode, supplier,
+      price:numericPrice, container:ctn, note, date:date || new Date().toISOString().split('T')[0]
+    };
+    quotes.push(q);
+    return {action:'added', quote:q};
+  }
+
   function parseBatchInputLines(text) {
     if (!text) return [];
     const lines = text.split(/\r?\n/);
@@ -892,7 +969,7 @@ WHH002	138	賞味期限 2027/03
 
     for (const bundle of quoteBundlesByPrimary.values()) {
       for (const sup of Object.keys(bundle.supplierHistory)) {
-        bundle.supplierHistory[sup].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        bundle.supplierHistory[sup].sort(compareQuotesByContainerNewest);
         bundle.latestBySupplier[sup] = bundle.supplierHistory[sup][0];
       }
     }
@@ -1283,29 +1360,50 @@ WHH002	138	賞味期限 2027/03
         if (score > current) scoreByPrimary.set(primary, score);
       };
 
-      // 搜尋優先順序保留精確匹配，同時加入跨欄位智慧模糊匹配。
+      // V4.1.1：完整 Item Code / JAN / Alias 精確命中時，只顯示精確商品。
+      // 只有沒有精確命中時，才啟動前綴 / 包含 / 跨欄位智慧搜尋（例如 UL爽）。
+      const exactPrimary = new Set();
       for (const entry of cache.productEntries) {
-        const score = smartProductMatchScore(rawSearch, entry);
-        if (score) addScore(entry.primary, score);
+        const barcode = normalizeSmartText(entry.barcode);
+        const itemCode = normalizeSmartText(entry.itemCode);
+        const aliases = (entry.aliases || []).map(normalizeSmartText);
+        if (barcode === normalizedSearch || itemCode === normalizedSearch || aliases.includes(normalizedSearch)) {
+          exactPrimary.add(entry.primary);
+        }
       }
-
-      // 報價中存在、但尚未完整進商品主檔的 barcode / item code 也可以找到。
       for (const q of data.quotes || []) {
         const qBarcode = cleanBarcode(q.barcode).toLowerCase();
         const qItemCode = String(q.itemCode || '').trim().toLowerCase();
-        let score = 0;
-        if (qBarcode === normalizedSearch) score = 94;
-        else if (qItemCode === normalizedSearch) score = 92;
-        else if (qBarcode.startsWith(normalizedSearch)) score = 84;
-        else if (qItemCode && qItemCode.startsWith(normalizedSearch)) score = 82;
-        else if (qBarcode.includes(normalizedSearch)) score = 64;
-        else if (qItemCode && qItemCode.includes(normalizedSearch)) score = 62;
-        if (score) addScore(resolveToPrimaryBarcode(q.barcode), score);
+        if (qBarcode === normalizedSearch || qItemCode === normalizedSearch) {
+          exactPrimary.add(resolveToPrimaryBarcode(q.barcode));
+        }
       }
 
-      const targetPrimaryBarcodes = [...scoreByPrimary.entries()]
-        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-        .map(([primary]) => primary);
+      let targetPrimaryBarcodes;
+      if (exactPrimary.size > 0) {
+        targetPrimaryBarcodes = [...exactPrimary].sort((a, b) => String(a).localeCompare(String(b)));
+      } else {
+        for (const entry of cache.productEntries) {
+          const score = smartProductMatchScore(rawSearch, entry);
+          if (score) addScore(entry.primary, score);
+        }
+
+        // 報價中存在、但尚未完整進商品主檔的 barcode / item code 也可以找到。
+        for (const q of data.quotes || []) {
+          const qBarcode = cleanBarcode(q.barcode).toLowerCase();
+          const qItemCode = String(q.itemCode || '').trim().toLowerCase();
+          let score = 0;
+          if (qBarcode.startsWith(normalizedSearch)) score = 84;
+          else if (qItemCode && qItemCode.startsWith(normalizedSearch)) score = 82;
+          else if (qBarcode.includes(normalizedSearch)) score = 64;
+          else if (qItemCode && qItemCode.includes(normalizedSearch)) score = 62;
+          if (score) addScore(resolveToPrimaryBarcode(q.barcode), score);
+        }
+
+        targetPrimaryBarcodes = [...scoreByPrimary.entries()]
+          .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+          .map(([primary]) => primary);
+      }
 
       if (targetPrimaryBarcodes.length === 0) {
         resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
@@ -1438,7 +1536,7 @@ WHH002	138	賞味期限 2027/03
           const historyRows = history.map(h => `
             <tr>
               <td class="small py-1">${h.date || ''}</td>
-              <td class="small py-1">${h.container || ''}</td>
+              <td class="small py-1 ${isFrozenContainer(h.container) ? 'frozen-container-row' : ''}">${h.container || ''} ${frozenBadgeHtml(h.container)}</td>
               <td class="small py-1 fw-bold text-end">${Number(h.price) === 0 ? quoteStatusLabel(h) : '¥' + h.price}</td>
               <td class="small py-1 text-muted ms-2">${h.note || ''}</td>
               <td class="small py-1 text-end"><button class="btn btn-link text-danger btn-sm p-0 btn-delete-quote" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button></td>
@@ -1479,7 +1577,7 @@ WHH002	138	賞味期限 2027/03
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
-                <span><i class="fa-solid fa-box me-1"></i>${latestQ.container || '-'}</span>
+                <span><i class="fa-solid fa-box me-1"></i>${latestQ.container || '-'} ${frozenBadgeHtml(latestQ.container)}</span>
                 <span><i class="fa-solid fa-clock me-1"></i>${latestQ.date || '-'}</span>
               </div>
               ${latestQ.note ? `<div class="small text-muted mt-1 bg-light p-1 rounded"><i class="fa-solid fa-comment-dots me-1"></i>${latestQ.note}</div>` : ''}
@@ -1803,9 +1901,9 @@ WHH002	138	賞味期限 2027/03
     if (!select) return;
     select.innerHTML = '<option value="">請選擇要刪除的貨櫃號碼...</option>';
 
-    const containers = [...new Set((window.appData.quotes || []).map(q => q.container).filter(Boolean))];
+    const containers = [...new Set((window.appData.quotes || []).map(q => normalizeContainerNo(q.container)).filter(Boolean))].sort(compareContainerNo);
     containers.forEach(c => {
-        select.innerHTML += `<option value="${c}">${c}</option>`;
+        select.innerHTML += `<option value="${c}">${isFrozenContainer(c) ? '❄️ ' : ''}${c}${isFrozenContainer(c) ? ' — FROZEN' : ''}</option>`;
     });
   }
 
@@ -1840,7 +1938,7 @@ WHH002	138	賞味期限 2027/03
       const product = (window.appData.products || {})[q.barcode] || {};
       return [q.itemCode, q.barcode, product.name, q.supplier, q.note].some(v => String(v || '').toLowerCase().includes(keyword));
     });
-    document.getElementById('containerManagerTitle').textContent = `貨櫃 ${activeManagedContainer}`;
+    document.getElementById('containerManagerTitle').innerHTML = `貨櫃 ${escapeContainerText(activeManagedContainer)} ${frozenBadgeHtml(activeManagedContainer)}`;
     document.getElementById('containerManagerCount').textContent = `${allRows.length} 筆`;
     body.innerHTML = rows.length ? rows.map(q => {
       const product = (window.appData.products || {})[q.barcode] || {};
@@ -2155,18 +2253,7 @@ WHH002	138	賞味期限 2027/03
             window.appData.itemToBarcode[itemCode] = primaryB;
         }
 
-        const newQuote = {
-            id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            barcode: barcode,
-            itemCode: itemCode,
-            supplier: supplier,
-            price: price,
-            container: container,
-            note: note,
-            date: new Date().toISOString().split('T')[0]
-        };
-
-        window.appData.quotes.push(newQuote);
+        const manualResult = upsertContainerQuote({barcode, itemCode, supplier, price, container, note, date:new Date().toISOString().split('T')[0]});
         saveFirebaseData();
 
         const status = document.getElementById('lastManualQuoteStatus');
@@ -2226,17 +2313,15 @@ WHH002	138	賞味期限 2027/03
       if (missing.length) msg += `\n\n⚠️ ${missing.length} 筆無法辨識，將略過。`;
       if (!confirm(msg + '\n\n確定繼續？')) return;
       const today = new Date().toISOString().split('T')[0];
-      parsed.forEach((r,i) => {
+      let added = 0, updated = 0, skipped = 0;
+      parsed.forEach((r) => {
         const p = window.appData.products[r.primaryB] || {};
-        window.appData.quotes.push({
-          id: 'q_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2,4),
-          barcode: r.primaryB,
-          itemCode: p.itemCode || '', supplier, price: r.price, container: containerNo, note: r.note, date: today
-        });
+        const result = upsertContainerQuote({barcode:r.primaryB, itemCode:p.itemCode || '', supplier, price:r.price, container:containerNo, note:r.note, date:today});
+        if (result.action === 'added') added++; else if (result.action === 'updated') updated++; else skipped++;
       });
       await saveFirebaseData();
       document.getElementById('quickBatchText').value = '';
-      document.getElementById('quickBatchHint').innerHTML = `<span class="text-success fw-bold">✓ 已錄入 ${parsed.length} 筆</span>` + (missing.length ? `；${missing.length} 筆略過` : '');
+      document.getElementById('quickBatchHint').innerHTML = `<span class="text-success fw-bold">✓ 新增 ${added} 筆｜更新價格 ${updated} 筆｜跳過重複 ${skipped} 筆</span>` + (missing.length ? `；另有 ${missing.length} 筆無法辨識` : '');
       renderCompareList();
     };
 
@@ -2252,10 +2337,7 @@ WHH002	138	賞味期限 2027/03
       const price = parseFloat(priceRaw) || 0;
       const primaryB = resolveToPrimaryBarcode(barcode);
       const p = window.appData.products?.[primaryB] || {};
-      window.appData.quotes.push({
-        id:'q_'+Date.now()+'_'+Math.random().toString(36).substr(2,4), barcode, itemCode:p.itemCode||'', supplier, price,
-        container:containerNo, note, date:new Date().toISOString().split('T')[0]
-      });
+      const quickResult = upsertContainerQuote({barcode, itemCode:p.itemCode||'', supplier, price, container:containerNo, note, date:new Date().toISOString().split('T')[0]});
       const keepScrollY = window.scrollY;
       const saveBtn = this;
       const oldBtnHtml = saveBtn.innerHTML;
@@ -2271,7 +2353,7 @@ WHH002	138	賞味期限 2027/03
       const modalEl = document.getElementById('quickQuoteModal');
       const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
       modal.hide();
-      showAppToast(`✓ 報價已成功儲存｜${p.itemCode || barcode}｜${supplier}｜¥${price}｜${containerNo}`, 'success');
+      showAppToast(`${quickResult.action === 'skipped' ? '↷ 同品項同貨櫃同價格，已跳過' : quickResult.action === 'updated' ? '✓ 價格已更新（已加註價錢更新）' : '✓ 報價已成功儲存'}｜${p.itemCode || barcode}｜${supplier}｜¥${price}｜${normalizeContainerNo(containerNo)}`, quickResult.action === 'skipped' ? 'warning' : 'success');
       renderCompareList();
       requestAnimationFrame(() => window.scrollTo({top: keepScrollY, behavior: 'auto'}));
       setTimeout(() => { saveBtn.disabled = false; saveBtn.innerHTML = oldBtnHtml; }, 300);
@@ -2373,7 +2455,7 @@ WHH002	138	賞味期限 2027/03
             const zeroPrice = previewRows.filter(c => (parseFloat(c[4]) || 0) === 0).length;
             const msg = `匯入預覽：\n總列數：${previewRows.length}\nBarcode 空白：${badBarcode}\n未登記廠商：${unknownSupplier}\n¥0 / Pending / 停產：${zeroPrice}\n\n確認要繼續匯入嗎？`;
             if (!confirm(msg)) return;
-            let importedCount = 0;
+            let addedCount = 0, updatedCount = 0, skippedCount = 0;
 
             lines.forEach((line, idx) => {
                 if (idx === 0 && (line.includes("JAN") || line.includes("Barcode") || line.includes("條碼"))) return;
@@ -2399,23 +2481,16 @@ WHH002	138	賞味期限 2027/03
 
                         if (ic) window.appData.itemToBarcode[ic] = primaryB;
 
-                        window.appData.quotes.push({
-                            id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                            barcode: bc,
-                            itemCode: ic,
-                            supplier: sup,
-                            price: pr,
-                            container: ctn,
-                            note: note,
-                            date: new Date().toISOString().split('T')[0]
-                        });
-                        importedCount++;
+                        const result = upsertContainerQuote({barcode:bc, itemCode:ic, supplier:sup, price:pr, container:ctn, note, date:new Date().toISOString().split('T')[0]});
+                        if (result.action === 'added') addedCount++;
+                        else if (result.action === 'updated') updatedCount++;
+                        else skippedCount++;
                     }
                 }
             });
 
             saveFirebaseData();
-            alert(`成功匯入 ${importedCount} 筆報價紀錄！`);
+            alert(`匯入完成！\n新增：${addedCount} 筆\n價格更新：${updatedCount} 筆（自動備註「價錢更新」）\n重複跳過：${skippedCount} 筆`);
             fileInput.value = '';
         };
 
@@ -2734,7 +2809,7 @@ WHH002	138	賞味期限 2027/03
       <div class="row g-2">
         <div class="col-6"><label class="form-label">廠商</label><select id="quickQuoteSupplier" class="form-select"></select></div>
         <div class="col-6"><label class="form-label">價格 ¥</label><input id="quickQuotePrice" type="number" step="0.01" class="form-control" autofocus></div>
-        <div class="col-12"><label class="form-label">貨櫃號碼</label><input id="quickQuoteContainer" class="form-control" placeholder="例如 JSR0903"></div>
+        <div class="col-12"><label class="form-label">貨櫃號碼</label><input id="quickQuoteContainer" class="form-control" placeholder="例如 JSR26B0901 / JSR26B1101F"></div>
         <div class="col-12"><label class="form-label">備註 / 狀態</label><input id="quickQuoteNote" class="form-control" placeholder="可空白；例如等待報價、停產、賞味期限"></div>
       </div>
     </div>
