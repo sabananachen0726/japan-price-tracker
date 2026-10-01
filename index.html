@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本廠商價格比對與管理系統 V2｜採購工作台</title>
+    <title>日本廠商價格比對與管理系統 V4｜LIVE / TEST</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -47,11 +47,12 @@
   </div>
 </div>
 <div id="protectedApp" class="d-none">
+<div id="testModeBanner" class="alert alert-warning rounded-0 mb-0 py-2 text-center fw-bold d-none"><i class="fa-solid fa-flask me-2"></i>TEST MODE｜所有修改只存在這台電腦，不會寫回正式 Firebase｜可用「從 LIVE 更新 TEST」重建測試資料</div>
 
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <div class="d-flex align-items-center gap-2"><span id="authUser" class="small text-muted d-none"></span><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -148,8 +149,28 @@
                 </div>
 
                 <div class="col-md-12">
+                    <div class="card p-4 border-success">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title m-0 text-success"><i class="fa-solid fa-list-check me-2"></i>快速補報價（適合廠商回覆十幾項等待報價）</h5>
+                            <span class="badge bg-success">不用做 CSV</span>
+                        </div>
+                        <p class="text-muted small mb-3">先選廠商與貨櫃，再從 Excel 直接貼上多行。每行格式：<b>Item Code / JAN</b>、<b>價格</b>、<b>備註（可空白）</b>。支援 Tab、逗號或空白分隔。</p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4"><select id="quickBatchSupplier" class="form-select"></select></div>
+                            <div class="col-md-4"><input id="quickBatchContainer" class="form-control" placeholder="貨櫃號碼，例如 JSR0903"></div>
+                            <div class="col-md-4"><button id="btnQuickBatchImport" class="btn btn-success w-100"><i class="fa-solid fa-bolt me-1"></i>一次錄入全部報價</button></div>
+                        </div>
+                        <textarea id="quickBatchText" class="form-control font-monospace" rows="7" placeholder="WHH001	125
+WHH002	138	賞味期限 2027/03
+4901330112813	0	停產"></textarea>
+                        <div id="quickBatchHint" class="small text-muted mt-2">貼上後會用 Item Code 或 JAN 自動找到商品；找不到的項目不會寫入。</div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
                     <div class="card p-4">
                         <h5 class="card-title mb-3 text-secondary"><i class="fa-solid fa-pen-to-square me-2"></i>單筆手動錄入報價</h5>
+                        <div id="lastManualQuoteStatus" class="alert alert-success py-2 px-3 mb-3 d-none"></div>
                         <form id="priceForm">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -481,7 +502,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -510,7 +531,31 @@
 
   window.searchMode = 'single';
 
-  const docRef = doc(db, "app_data", "main_config");
+  // ==================== LIVE / TEST MODE ====================
+  // LIVE is the default production mode and reads/writes Firestore main_config.
+  // TEST is an isolated local browser copy. TEST can be refreshed from LIVE, but TEST is never written back to LIVE.
+  const PROD_DOC_REF = doc(db, "app_data", "main_config");
+  const TEST_LOCAL_KEY = "japan_price_tracker_v4_test_data";
+  let currentDataMode = 'live';
+
+  function showAppToast(message, type = 'success') {
+    let wrap = document.getElementById('appToastContainer');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'appToastContainer';
+      wrap.className = 'toast-container position-fixed top-0 end-0 p-3';
+      wrap.style.zIndex = '2000';
+      document.body.appendChild(wrap);
+    }
+    const el = document.createElement('div');
+    el.className = `toast align-items-center text-bg-${type} border-0`;
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    wrap.appendChild(el);
+    const toast = new bootstrap.Toast(el, {delay: 2800});
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+    toast.show();
+  }
 
   function cleanBarcode(str) {
     if (!str) return "";
@@ -552,38 +597,155 @@
     return `${dateStr}_${timeStr}`;
   }
 
-  function startDataListener() {
-    if (unsubscribeData) unsubscribeData();
-    unsubscribeData = onSnapshot(docRef, (snapshot) => {
-    const statusBadge = document.getElementById("cloudStatus");
-    if (snapshot.exists()) {
-      window.appData = snapshot.data();
-      if (!window.appData.itemToBarcode) window.appData.itemToBarcode = {};
-      if (!window.appData.suppliers) window.appData.suppliers = ["SilkRoad", "Tencho"];
-      if (!window.appData.mappings) window.appData.mappings = {};
-      if (!window.appData.products) window.appData.products = {};
-      if (!window.appData.quotes) window.appData.quotes = [];
-      if (!window.appData.masterImportBatches) window.appData.masterImportBatches = [];
-      
-      if (statusBadge) {
-        statusBadge.className = "badge bg-success";
-        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>Firebase 雲端已連線';
-      }
-    } else {
-      saveFirebaseData();
-    }
-    refreshUI();
-  }, (error) => {
-    console.error("Firestore Listen Error: ", error);
-    const statusBadge = document.getElementById("cloudStatus");
-    if (statusBadge) {
-      statusBadge.className = "badge bg-danger";
-      statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>連線權限錯誤';
-    }
-  });
+  function normalizeAppData(data) {
+    const base = data && typeof data === 'object' ? data : {};
+    if (!base.itemToBarcode) base.itemToBarcode = {};
+    if (!base.suppliers) base.suppliers = ["SilkRoad", "Tencho"];
+    if (!base.mappings) base.mappings = {};
+    if (!base.products) base.products = {};
+    if (!base.quotes) base.quotes = [];
+    if (!base.masterImportBatches) base.masterImportBatches = [];
+    return base;
   }
 
+  function setModeUI() {
+    const isTest = currentDataMode === 'test';
+    document.getElementById('testModeBanner')?.classList.toggle('d-none', !isTest);
+    document.getElementById('btnRefreshTestData')?.classList.toggle('d-none', !isTest || !auth.currentUser);
+    const liveBtn = document.getElementById('btnModeLive');
+    const testBtn = document.getElementById('btnModeTest');
+    if (liveBtn) liveBtn.className = isTest ? 'btn btn-outline-success' : 'btn btn-success';
+    if (testBtn) testBtn.className = isTest ? 'btn btn-warning' : 'btn btn-outline-warning';
+    document.body.style.backgroundColor = isTest ? '#fffaf0' : '';
+  }
 
+  function updateTestDataInfo(sourceText = 'TEST 本機') {
+    const p = Object.keys(window.appData?.products || {}).length;
+    const q = (window.appData?.quotes || []).length;
+    const statusBadge = document.getElementById("cloudStatus");
+    if (statusBadge) {
+      statusBadge.className = "badge bg-warning text-dark";
+      statusBadge.innerHTML = `<i class="fa-solid fa-flask me-1"></i>${sourceText}｜${p} 商品 / ${q} 報價`;
+    }
+  }
+
+  function readLiveSnapshotOnce() {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const unsub = onSnapshot(PROD_DOC_REF, (snapshot) => {
+        if (settled) return;
+        settled = true;
+        try { unsub(); } catch (_) {}
+        if (!snapshot.exists()) return reject(new Error('找不到正式 main_config'));
+        resolve(snapshot.data());
+      }, (error) => {
+        if (settled) return;
+        settled = true;
+        try { unsub(); } catch (_) {}
+        reject(error);
+      });
+    });
+  }
+
+  async function copyLiveToTest({confirmOverwrite = false} = {}) {
+    if (confirmOverwrite && localStorage.getItem(TEST_LOCAL_KEY)) {
+      const ok = confirm('這會用目前 LIVE 正式資料重新建立 TEST，現有 TEST 修改會被覆蓋。\n\n只會 LIVE → TEST，不會修改正式資料。\n\n確定繼續？');
+      if (!ok) return false;
+    }
+    const statusBadge = document.getElementById("cloudStatus");
+    try {
+      if (statusBadge) {
+        statusBadge.className = "badge bg-warning text-dark";
+        statusBadge.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>正在從 LIVE 複製...';
+      }
+      const liveData = await readLiveSnapshotOnce();
+      window.appData = normalizeAppData(JSON.parse(JSON.stringify(liveData)));
+      localStorage.setItem(TEST_LOCAL_KEY, JSON.stringify(window.appData));
+      localStorage.setItem(TEST_LOCAL_KEY + '_copied_at', new Date().toISOString());
+      searchCache.valid = false;
+      refreshUI();
+      updateTestDataInfo('TEST 已從 LIVE 更新');
+      showAppToast(`🧪 TEST 建立成功：${Object.keys(window.appData.products || {}).length} 商品 / ${(window.appData.quotes || []).length} 報價`, 'success');
+      return true;
+    } catch (error) {
+      console.error('TEST copy from LIVE error', error);
+      if (statusBadge) {
+        statusBadge.className = "badge bg-danger";
+        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>無法讀取 LIVE';
+      }
+      showAppToast(`TEST 無法讀取 LIVE：${error?.code || error?.message || '未知錯誤'}`, 'danger');
+      return false;
+    }
+  }
+
+  function startLiveListener() {
+    if (unsubscribeData) { unsubscribeData(); unsubscribeData = null; }
+    const statusBadge = document.getElementById("cloudStatus");
+    if (statusBadge) {
+      statusBadge.className = 'badge bg-secondary';
+      statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 同步中...';
+    }
+    unsubscribeData = onSnapshot(PROD_DOC_REF, (snapshot) => {
+      if (currentDataMode !== 'live') return;
+      if (snapshot.exists()) window.appData = normalizeAppData(snapshot.data());
+      else window.appData = normalizeAppData({});
+      searchCache.valid = false;
+      refreshUI();
+      if (statusBadge) {
+        statusBadge.className = 'badge bg-success';
+        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>LIVE Firebase 已同步';
+      }
+    }, (error) => {
+      console.error('LIVE listener error', error);
+      if (statusBadge) {
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>LIVE 同步失敗';
+      }
+      showAppToast(`LIVE Firebase 同步失敗：${error?.code || error?.message || '未知錯誤'}`, 'danger');
+    });
+  }
+
+  async function startTestMode() {
+    if (unsubscribeData) { unsubscribeData(); unsubscribeData = null; }
+    const saved = localStorage.getItem(TEST_LOCAL_KEY);
+    if (saved) {
+      try {
+        window.appData = normalizeAppData(JSON.parse(saved));
+        searchCache.valid = false;
+        refreshUI();
+        updateTestDataInfo('TEST 本機');
+        return true;
+      } catch (_) {
+        localStorage.removeItem(TEST_LOCAL_KEY);
+      }
+    }
+    return await copyLiveToTest({confirmOverwrite:false});
+  }
+
+  async function switchDataMode(nextMode) {
+    if (nextMode === currentDataMode) return;
+    if (nextMode === 'test') {
+      const ok = confirm('切換到 TEST MODE？\n\nTEST 的新增、修改、刪除只存在這台電腦，不會寫回正式 Firebase。');
+      if (!ok) return;
+      currentDataMode = 'test';
+      setModeUI();
+      await startTestMode();
+      showAppToast('🧪 已切換到 TEST MODE', 'warning');
+    } else {
+      const ok = confirm('即將切回 LIVE MODE。\n\n接下來的新增、修改、刪除都會直接寫入正式 Firebase。\n\n確定切回 LIVE？');
+      if (!ok) return;
+      currentDataMode = 'live';
+      setModeUI();
+      startLiveListener();
+      showAppToast('✓ 已切回 LIVE MODE｜現在操作的是正式資料', 'success');
+    }
+  }
+
+  async function startDataListener() {
+    setModeUI();
+    if (currentDataMode === 'test') await startTestMode();
+    else startLiveListener();
+  }
 
   const authGate = document.getElementById('authGate');
   const protectedApp = document.getElementById('protectedApp');
@@ -591,6 +753,12 @@
   const loginError = document.getElementById('loginError');
   const btnLogout = document.getElementById('btnLogout');
   const authUser = document.getElementById('authUser');
+  const btnRefreshTestData = document.getElementById('btnRefreshTestData');
+  const btnModeLive = document.getElementById('btnModeLive');
+  const btnModeTest = document.getElementById('btnModeTest');
+  if (btnRefreshTestData) btnRefreshTestData.addEventListener('click', () => copyLiveToTest({confirmOverwrite:true}));
+  if (btnModeLive) btnModeLive.addEventListener('click', () => switchDataMode('live'));
+  if (btnModeTest) btnModeTest.addEventListener('click', () => switchDataMode('test'));
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -616,31 +784,42 @@
       if (unsubscribeData) { unsubscribeData(); unsubscribeData = null; }
       protectedApp.classList.add('d-none'); authGate.classList.remove('d-none');
       btnLogout.classList.add('d-none'); authUser.classList.add('d-none');
+      if (btnRefreshTestData) btnRefreshTestData.classList.add('d-none');
     }
   });
 
   async function saveFirebaseData() {
-    if (!auth.currentUser) { alert("登入已失效，請重新登入。"); return; }
-    // 資料有任何變動時，下一次搜尋自動重新建立索引。
+    if (!auth.currentUser) { alert("登入已失效，請重新登入。"); return false; }
     searchCache.valid = false;
     const statusBadge = document.getElementById("cloudStatus");
     try {
-      if (statusBadge) {
-        statusBadge.className = "badge bg-warning";
-        statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>同步中...';
+      if (currentDataMode === 'test') {
+        if (statusBadge) {
+          statusBadge.className = "badge bg-warning text-dark";
+          statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>TEST 儲存中...';
+        }
+        localStorage.setItem(TEST_LOCAL_KEY, JSON.stringify(window.appData));
+        updateTestDataInfo('TEST 已儲存在本機');
+        return true;
       }
-      await setDoc(docRef, window.appData);
+      if (statusBadge) {
+        statusBadge.className = "badge bg-secondary";
+        statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 儲存中...';
+      }
+      await setDoc(PROD_DOC_REF, window.appData);
       if (statusBadge) {
         statusBadge.className = "badge bg-success";
-        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>Firebase 雲端已同步';
+        statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>LIVE Firebase 已同步';
       }
+      return true;
     } catch (e) {
-      console.error("Firestore Save Error: ", e);
+      console.error(currentDataMode + ' save error: ', e);
       if (statusBadge) {
         statusBadge.className = "badge bg-danger";
-        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>儲存失敗';
+        statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i>${currentDataMode === 'test' ? 'TEST' : 'LIVE'} 儲存失敗`;
       }
-      alert("資料同步失敗！請確認 Firebase 控制台 Rules 權限。");
+      showAppToast(`${currentDataMode === 'test' ? 'TEST' : 'LIVE'} 資料儲存失敗：${e?.code || e?.message || '未知錯誤'}`, 'danger');
+      return false;
     }
   }
   window.saveFirebaseData = saveFirebaseData;
@@ -747,7 +926,8 @@
     renderCompareList();
     renderMappingTable();
     renderMasterTable();
-    renderMasterImportHistory();
+    // Import history renderer is initialized inside the DOM-ready workflow.
+    // Do not call it here because TEST can load LIVE data before that local function exists.
     renderContainerDeleteOptions();
   }
 
@@ -963,6 +1143,8 @@
   function renderSupplierOptions() {
     const filterSelect = document.getElementById("filterSupplier");
     const inputSelect = document.getElementById("inputSupplier");
+    const quickBatchSelect = document.getElementById("quickBatchSupplier");
+    const quickQuoteSelect = document.getElementById("quickQuoteSupplier");
     
     if (filterSelect) {
       const currentFilter = filterSelect.value;
@@ -981,6 +1163,14 @@
       });
       inputSelect.value = currentInput;
     }
+
+    [quickBatchSelect, quickQuoteSelect].forEach(sel => {
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = '';
+      (window.appData.suppliers || []).forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+      if (current && (window.appData.suppliers || []).includes(current)) sel.value = current;
+    });
 
     const listContainer = document.getElementById("supplierList");
     if (listContainer) {
@@ -1023,6 +1213,48 @@
     return quotes;
   }
 
+  function normalizeSmartText(value) {
+    return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function isOrderedSubsequence(needle, haystack) {
+    needle = normalizeSmartText(needle).replace(/\s+/g, '');
+    haystack = normalizeSmartText(haystack).replace(/\s+/g, '');
+    if (!needle) return true;
+    let i = 0;
+    for (let j = 0; j < haystack.length && i < needle.length; j++) {
+      if (haystack[j] === needle[i]) i++;
+    }
+    return i === needle.length;
+  }
+
+  // 智慧模糊搜尋：可跨 Item Code / JAN / 商品名稱匹配，例如 UL爽 -> UL089 + 魔芋爽。
+  function smartProductMatchScore(query, entry) {
+    const q = normalizeSmartText(query);
+    if (!q) return 0;
+    const barcode = normalizeSmartText(entry.barcode);
+    const itemCode = normalizeSmartText(entry.itemCode);
+    const name = normalizeSmartText(entry.name);
+    const aliases = (entry.aliases || []).map(normalizeSmartText);
+    const fields = [barcode, itemCode, ...aliases, name].filter(Boolean);
+    const combined = fields.join(' ');
+    const compactCombined = [itemCode, barcode, ...aliases, name].join('').replace(/\s+/g, '');
+
+    if (barcode === q) return 100;
+    if (itemCode === q) return 98;
+    if (aliases.includes(q)) return 96;
+    if (barcode.startsWith(q)) return 90;
+    if (itemCode.startsWith(q)) return 88;
+    if (aliases.some(a => a.startsWith(q))) return 86;
+    if (name.startsWith(q)) return 78;
+    if (fields.some(v => v.includes(q))) return itemCode.includes(q) || barcode.includes(q) ? 72 : 60;
+
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (tokens.length > 1 && tokens.every(t => fields.some(v => v.includes(t)) || isOrderedSubsequence(t, compactCombined))) return 56;
+    if (isOrderedSubsequence(q, compactCombined)) return 52;
+    return 0;
+  }
+
   function renderCompareList() {
     const resultsContainer = document.getElementById("compareResultsContainer");
     const summaryContainer = document.getElementById("batchSummaryContainer");
@@ -1051,20 +1283,9 @@
         if (score > current) scoreByPrimary.set(primary, score);
       };
 
-      // 搜尋優先順序：完全相符 > 開頭相符 > 內容包含；barcode / item code 優先於品名。
+      // 搜尋優先順序保留精確匹配，同時加入跨欄位智慧模糊匹配。
       for (const entry of cache.productEntries) {
-        let score = 0;
-        if (entry.barcode === normalizedSearch) score = 100;
-        else if (entry.itemCode === normalizedSearch) score = 98;
-        else if (entry.aliases.includes(normalizedSearch)) score = 96;
-        else if (entry.barcode.startsWith(normalizedSearch)) score = 90;
-        else if (entry.itemCode && entry.itemCode.startsWith(normalizedSearch)) score = 88;
-        else if (entry.aliases.some(a => a.startsWith(normalizedSearch))) score = 86;
-        else if (entry.name && entry.name.startsWith(normalizedSearch)) score = 78;
-        else if (entry.barcode.includes(normalizedSearch)) score = 72;
-        else if (entry.itemCode && entry.itemCode.includes(normalizedSearch)) score = 70;
-        else if (entry.aliases.some(a => a.includes(normalizedSearch))) score = 68;
-        else if (entry.name && entry.name.includes(normalizedSearch)) score = 60;
+        const score = smartProductMatchScore(rawSearch, entry);
         if (score) addScore(entry.primary, score);
       }
 
@@ -1494,7 +1715,7 @@
     const keys = allKeys.filter(bc => {
       if (!term) return true;
       const p = products[bc] || {};
-      return [bc, p.itemCode, p.name].some(v => String(v || '').toLowerCase().includes(term));
+      return smartProductMatchScore(term, {barcode:bc, itemCode:p.itemCode, name:p.name, aliases:(window.appData.mappings?.[bc] || [])}) > 0;
     });
     const pageSize = Math.max(1, parseInt(pageSizeSelect?.value || '50', 10));
     const totalPages = Math.max(1, Math.ceil(keys.length / pageSize));
@@ -1794,13 +2015,17 @@
 
         const quickAddBtn = e.target.closest(".btn-quick-add-quote");
         if (quickAddBtn) {
-          document.getElementById("inputBarcode").value = quickAddBtn.getAttribute("data-barcode") || '';
-          document.getElementById("inputItemCode").value = quickAddBtn.getAttribute("data-itemcode") || '';
-          document.getElementById("inputName").value = quickAddBtn.getAttribute("data-name") || '';
-          document.getElementById("inputImgUrl").value = quickAddBtn.getAttribute("data-img") || '';
-
-          const addTabBtn = document.getElementById("add-tab");
-          if (addTabBtn) new bootstrap.Tab(addTabBtn).show();
+          const bc = quickAddBtn.getAttribute("data-barcode") || '';
+          const item = quickAddBtn.getAttribute("data-itemcode") || '';
+          const name = quickAddBtn.getAttribute("data-name") || '';
+          document.getElementById("quickQuoteBarcode").value = bc;
+          document.getElementById("quickQuoteProductName").textContent = name || '未命名商品';
+          document.getElementById("quickQuoteProductCode").textContent = `Item Code: ${item || '-'} ｜ JAN: ${bc || '-'}`;
+          document.getElementById("quickQuotePrice").value = '';
+          document.getElementById("quickQuoteNote").value = '';
+          const modalEl = document.getElementById('quickQuoteModal');
+          bootstrap.Modal.getOrCreateInstance(modalEl).show();
+          setTimeout(() => document.getElementById('quickQuotePrice')?.focus(), 250);
         }
       });
     }
@@ -1869,6 +2094,32 @@
     document.getElementById("btnDownloadTemplate").onclick = downloadQuoteTemplate;
     document.getElementById("btnDownloadMasterTemplate").onclick = downloadMasterTemplate;
 
+    // 單筆手動錄入：輸入已存在的 JAN / Item Code 後，自動帶入商品資料。
+    function fillManualProduct(primaryB) {
+      const p = window.appData.products?.[primaryB];
+      if (!p) return false;
+      document.getElementById('inputBarcode').value = primaryB || '';
+      document.getElementById('inputItemCode').value = p.itemCode || '';
+      document.getElementById('inputName').value = p.name || '';
+      document.getElementById('inputImgUrl').value = p.imgUrl || '';
+      return true;
+    }
+    function autoFillManualFromBarcode() {
+      const raw = cleanBarcode(document.getElementById('inputBarcode').value);
+      if (!raw) return;
+      fillManualProduct(resolveToPrimaryBarcode(raw));
+    }
+    function autoFillManualFromItemCode() {
+      const raw = document.getElementById('inputItemCode').value.trim();
+      if (!raw) return;
+      const direct = window.appData.itemToBarcode?.[raw] || window.appData.itemToBarcode?.[raw.toUpperCase()] || '';
+      if (direct) fillManualProduct(resolveToPrimaryBarcode(direct));
+    }
+    document.getElementById('inputBarcode')?.addEventListener('change', autoFillManualFromBarcode);
+    document.getElementById('inputBarcode')?.addEventListener('blur', autoFillManualFromBarcode);
+    document.getElementById('inputItemCode')?.addEventListener('change', autoFillManualFromItemCode);
+    document.getElementById('inputItemCode')?.addEventListener('blur', autoFillManualFromItemCode);
+
     // 單筆新增報價表單
     document.getElementById("priceForm").onsubmit = function(e) {
         e.preventDefault();
@@ -1918,10 +2169,112 @@
         window.appData.quotes.push(newQuote);
         saveFirebaseData();
 
-        alert("報價新增成功！");
-        this.reset();
-        const compareTabBtn = document.getElementById("compare-tab");
-        if (compareTabBtn) new bootstrap.Tab(compareTabBtn).show();
+        const status = document.getElementById('lastManualQuoteStatus');
+        if (status) {
+          const shownItem = itemCode || window.appData.products?.[primaryB]?.itemCode || barcode;
+          status.innerHTML = `<i class="fa-solid fa-circle-check me-2"></i><strong>上一筆已錄入</strong>　${shownItem} ｜ ${supplier} ｜ ¥${price} ｜ 貨櫃 ${container}`;
+          status.classList.remove('d-none');
+        }
+
+        // 連續錄入模式：留在本頁，並保留廠商與貨櫃號碼
+        const keepSupplier = supplier;
+        const keepContainer = container;
+        document.getElementById("inputBarcode").value = '';
+        document.getElementById("inputItemCode").value = '';
+        document.getElementById("inputName").value = '';
+        document.getElementById("inputImgUrl").value = '';
+        document.getElementById("inputPrice").value = '';
+        document.getElementById("inputNote").value = '';
+        document.getElementById("inputSupplier").value = keepSupplier;
+        document.getElementById("inputContainer").value = keepContainer;
+        document.getElementById("inputBarcode").focus();
+        const btn = this.querySelector('button[type="submit"]');
+        const oldText = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-check me-1"></i>已新增，可繼續下一筆';
+        btn.classList.remove('btn-secondary'); btn.classList.add('btn-success');
+        setTimeout(() => { btn.innerHTML = oldText; btn.classList.remove('btn-success'); btn.classList.add('btn-secondary'); }, 1200);
+    };
+
+    // 快速補報價：多行貼上，不需建立 CSV
+    const btnQuickBatchImport = document.getElementById('btnQuickBatchImport');
+    if (btnQuickBatchImport) btnQuickBatchImport.onclick = async function() {
+      const supplier = document.getElementById('quickBatchSupplier').value;
+      const containerNo = document.getElementById('quickBatchContainer').value.trim();
+      const raw = document.getElementById('quickBatchText').value.trim();
+      if (!supplier || !containerNo || !raw) return alert('請先選廠商、填貨櫃號碼，再貼上報價資料。');
+      const lines = raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+      const parsed = [], missing = [];
+      for (const line of lines) {
+        let parts = line.includes('\t') ? line.split('\t') : (line.includes(',') ? line.split(',') : line.split(/\s+/));
+        parts = parts.map(x=>String(x||'').trim());
+        const key = parts[0] || '';
+        const priceText = parts[1] || '';
+        const note = parts.slice(2).join(' ').trim();
+        if (!key || priceText === '') { missing.push(line); continue; }
+        const cleanKey = cleanBarcode(key);
+        let primaryB = resolveToPrimaryBarcode(cleanKey);
+        if (!window.appData.products?.[primaryB]) {
+          const normalizedItem = key.trim().toUpperCase();
+          primaryB = window.appData.itemToBarcode?.[key] || window.appData.itemToBarcode?.[normalizedItem] || '';
+        }
+        if (!primaryB || !window.appData.products?.[primaryB]) { missing.push(line); continue; }
+        const price = parseFloat(String(priceText).replace(/[¥$,]/g,''));
+        if (Number.isNaN(price)) { missing.push(line); continue; }
+        parsed.push({primaryB, key, price, note});
+      }
+      if (!parsed.length) return alert('沒有找到可以匯入的有效資料。\n請確認第一欄是 Item Code 或 JAN、第二欄是價格。');
+      let msg = `準備錄入 ${parsed.length} 筆報價\n廠商：${supplier}\n貨櫃：${containerNo}`;
+      if (missing.length) msg += `\n\n⚠️ ${missing.length} 筆無法辨識，將略過。`;
+      if (!confirm(msg + '\n\n確定繼續？')) return;
+      const today = new Date().toISOString().split('T')[0];
+      parsed.forEach((r,i) => {
+        const p = window.appData.products[r.primaryB] || {};
+        window.appData.quotes.push({
+          id: 'q_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2,4),
+          barcode: r.primaryB,
+          itemCode: p.itemCode || '', supplier, price: r.price, container: containerNo, note: r.note, date: today
+        });
+      });
+      await saveFirebaseData();
+      document.getElementById('quickBatchText').value = '';
+      document.getElementById('quickBatchHint').innerHTML = `<span class="text-success fw-bold">✓ 已錄入 ${parsed.length} 筆</span>` + (missing.length ? `；${missing.length} 筆略過` : '');
+      renderCompareList();
+    };
+
+    // 商品價格比對頁：快速錄入 Modal，儲存後留在原頁
+    const btnSaveQuickQuote = document.getElementById('btnSaveQuickQuote');
+    if (btnSaveQuickQuote) btnSaveQuickQuote.onclick = async function() {
+      const barcode = document.getElementById('quickQuoteBarcode').value;
+      const supplier = document.getElementById('quickQuoteSupplier').value;
+      const priceRaw = document.getElementById('quickQuotePrice').value;
+      const containerNo = document.getElementById('quickQuoteContainer').value.trim();
+      const note = document.getElementById('quickQuoteNote').value.trim();
+      if (!barcode || !supplier || priceRaw === '' || !containerNo) return alert('請填寫廠商、價格與貨櫃號碼。');
+      const price = parseFloat(priceRaw) || 0;
+      const primaryB = resolveToPrimaryBarcode(barcode);
+      const p = window.appData.products?.[primaryB] || {};
+      window.appData.quotes.push({
+        id:'q_'+Date.now()+'_'+Math.random().toString(36).substr(2,4), barcode, itemCode:p.itemCode||'', supplier, price,
+        container:containerNo, note, date:new Date().toISOString().split('T')[0]
+      });
+      const keepScrollY = window.scrollY;
+      const saveBtn = this;
+      const oldBtnHtml = saveBtn.innerHTML;
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>儲存中...';
+      const ok = await saveFirebaseData();
+      if (!ok) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = oldBtnHtml;
+        showAppToast('✕ 報價儲存失敗，資料尚未成功寫入', 'danger');
+        return;
+      }
+      const modalEl = document.getElementById('quickQuoteModal');
+      const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.hide();
+      showAppToast(`✓ 報價已成功儲存｜${p.itemCode || barcode}｜${supplier}｜¥${price}｜${containerNo}`, 'success');
+      renderCompareList();
+      requestAnimationFrame(() => window.scrollTo({top: keepScrollY, behavior: 'auto'}));
+      setTimeout(() => { saveBtn.disabled = false; saveBtn.innerHTML = oldBtnHtml; }, 300);
     };
 
     // 新增條碼綁定
@@ -2371,5 +2724,22 @@
   });
 </script>
 
+
+<div class="modal fade" id="quickQuoteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-yen-sign me-2 text-primary"></i>快速錄入價格</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="fw-bold mb-1" id="quickQuoteProductName"></div><div class="small text-muted mb-3" id="quickQuoteProductCode"></div>
+      <input type="hidden" id="quickQuoteBarcode">
+      <div class="row g-2">
+        <div class="col-6"><label class="form-label">廠商</label><select id="quickQuoteSupplier" class="form-select"></select></div>
+        <div class="col-6"><label class="form-label">價格 ¥</label><input id="quickQuotePrice" type="number" step="0.01" class="form-control" autofocus></div>
+        <div class="col-12"><label class="form-label">貨櫃號碼</label><input id="quickQuoteContainer" class="form-control" placeholder="例如 JSR0903"></div>
+        <div class="col-12"><label class="form-label">備註 / 狀態</label><input id="quickQuoteNote" class="form-control" placeholder="可空白；例如等待報價、停產、賞味期限"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" id="btnSaveQuickQuote"><i class="fa-solid fa-floppy-disk me-1"></i>儲存並留在價格比對</button></div>
+  </div></div>
+</div>
 </body>
 </html>
