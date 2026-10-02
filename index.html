@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本廠商價格比對與管理系統 V4.1.2｜LIVE / TEST</title>
+    <title>日本廠商價格比對與管理系統 V4.1.3｜LIVE / TEST</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -54,7 +54,7 @@
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i>V4.1.2 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i>V4.1.3 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -82,7 +82,7 @@
                             <label class="form-label mb-0 fw-bold"><i class="fa-solid fa-magnifying-glass me-1"></i>搜尋方式</label>
                             <div>
                                 <button type="button" id="btnSingleMode" class="btn btn-sm btn-primary">單筆快速搜尋</button>
-                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode+數量 貼入查詢</button>
+                                <button type="button" id="btnBatchMode" class="btn btn-sm btn-outline-primary">多筆 Barcode+箱數 貼入查詢</button>
                             </div>
                         </div>
 
@@ -92,9 +92,9 @@
                         </div>
 
                         <div id="batchSearchBox" class="d-none">
-                            <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與採購數量（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填數量預設為1）"></textarea>
+                            <textarea id="batchSearchInput" class="form-control border-primary" rows="5" placeholder="在此一次貼入多個 Barcode 與採購箱數（支援從 Excel 直接複製兩欄貼上）&#10;例如：&#10;4901330112813, 50&#10;4901330119999 120&#10;4901330122222（未填數量預設為1）"></textarea>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <small class="text-muted">自動比對貼入的條碼與需求數量。</small>
+                                <small class="text-muted">自動比對貼入的條碼與需求箱數；報價為單包價。</small>
                                 <div>
                                     <button id="btnOpenWorkbench" class="btn btn-sm btn-primary me-2"><i class="fa-solid fa-cart-shopping me-1"></i>開啟採購工作台</button>
                                     <button id="btnExportPurchase" class="btn btn-sm btn-success me-2"><i class="fa-solid fa-file-csv me-1"></i>匯出採購決策建議單 (CSV)</button>
@@ -396,17 +396,17 @@ WHH002	138	賞味期限 2027/03
                 <div class="col-md-6">
                     <div class="card p-4 h-100">
                         <h4><i class="fa-solid fa-database me-2 text-primary"></i>全系統資料備份與復原</h4>
-                        <p class="text-muted small">包含所有商品主檔、圖片 URL、條碼綁定與報價歷史完整備份。</p>
+                        <p class="text-muted small">包含商品主檔、圖片 URL、條碼綁定、廠商、報價歷史、待補商品狀態與主檔匯入復原紀錄。</p>
                         
                         <div class="d-grid gap-2 mb-3">
-                            <button id="btnExportCSV" class="btn btn-success"><i class="fa-solid fa-file-csv me-2"></i>匯出完整系統備份 CSV 檔</button>
+                            <button id="btnExportCSV" class="btn btn-success"><i class="fa-solid fa-file-csv me-2"></i>匯出完整系統備份 JSON 檔</button>
                         </div>
 
                         <hr>
 
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">匯入備份檔恢復資料：</label>
-                            <input class="form-control" type="file" id="importCSVFile" accept=".csv, .txt">
+                            <label class="form-label font-weight-bold">匯入備份檔恢復資料（JSON；亦支援舊版 CSV）：</label>
+                            <input class="form-control" type="file" id="importCSVFile" accept=".json, .csv, .txt">
                         </div>
 
                         <hr>
@@ -1052,34 +1052,19 @@ WHH002	138	賞味期限 2027/03
   }
 
   function exportToCSV() {
-    let csv = "\uFEFF";
-    csv += "資料類型(TYPE),欄位1(主要條碼/報價ID/主條碼/廠商名),欄位2(料號/舊條碼),欄位3(商品名/條碼),欄位4(圖片URL/廠商名),欄位5(報價日圓),欄位6(貨櫃號),欄位7(備註),欄位8(日期)\n";
-
-    (window.appData.suppliers || []).forEach(s => {
-      csv += `SUPPLIER,"${(s || '').replace(/"/g, '""')}"\n`;
-    });
-
-    for (let mainB in (window.appData.mappings || {})) {
-      const aliases = window.appData.mappings[mainB] || [];
-      aliases.forEach(alias => {
-        csv += `MAPPING,"${mainB}","${alias}"\n`;
-      });
-    }
-
-    for (let mainB in (window.appData.products || {})) {
-      const p = window.appData.products[mainB] || {};
-      csv += `PRODUCT,"${mainB}","${(p.itemCode || '').replace(/"/g, '""')}","${(p.name || '').replace(/"/g, '""')}","${(p.imgUrl || '').replace(/"/g, '""')}"\n`;
-    }
-
-    (window.appData.quotes || []).forEach(q => {
-      csv += `QUOTE,"${q.id || ''}","${(q.itemCode || '').replace(/"/g, '""')}","${q.barcode || ''}","${(q.supplier || '').replace(/"/g, '""')}","${q.price || 0}","${(q.container || '').replace(/"/g, '""')}","${(q.note || '').replace(/"/g, '""')}","${q.date || ''}"\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
+    // V4.1.3: 完整系統備份改用 JSON，避免 CSV 無法完整保存巢狀資料與狀態欄位。
+    const backup = {
+      backupFormat: 'JapanPriceTracker-FullBackup',
+      backupVersion: '4.1.3',
+      exportedAt: new Date().toISOString(),
+      data: JSON.parse(JSON.stringify(normalizeAppData(window.appData)))
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `系統完整備份_${getTimestampString()}.csv`;
+    link.download = `系統完整備份_${getTimestampString()}.json`;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }
 
   function exportMasterProductsToCSV() {
@@ -1145,8 +1130,8 @@ WHH002	138	賞味期限 2027/03
     }
 
     const rows = [[
-      "需求條碼/商品", "需求數量", "主檔條碼", "Item Code", "商品名稱",
-      "狀態", "最低價廠商(建議採購)", "最低日圓單價", "次低價廠商/價格",
+      "需求條碼/商品", "需求箱數", "主檔條碼", "Item Code", "商品名稱",
+      "狀態", "最低價廠商(建議採購)", "最低單包價(日圓)", "次低價廠商/價格",
       "價差%", "最新報價日期", "最新貨櫃號碼", "採購備註"
     ]];
 
@@ -1728,26 +1713,23 @@ WHH002	138	賞味期限 2027/03
         ${quoteCells}
         <td style="min-width:145px"><select class="form-select form-select-sm wb-supplier">${opts}</select></td>
         <td class="text-end wb-price">${r.bestPrice?'¥'+r.bestPrice.toLocaleString():'Pending'}</td>
-        <td class="text-end fw-bold wb-subtotal">${r.bestPrice?'¥'+(r.bestPrice*r.qty).toLocaleString():'-'}</td>
-      </tr>`;
+        </tr>`;
     }).join('');
-    box.innerHTML=`<div class="card p-3 mb-4 border-primary"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h4 class="mb-1"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>採購工作台</h4><div class="small text-muted">預設避開超過 ${STALE_QUOTE_DAYS} 天的舊報價；你仍可人工改選廠商。</div></div><div><button id="btnCopySupplierOrders" class="btn btn-success btn-sm me-2"><i class="fa-regular fa-copy me-1"></i>依廠商整批複製</button><button id="btnCloseWorkbench" class="btn btn-outline-secondary btn-sm">收起</button></div></div><div class="table-responsive"><table class="table table-sm table-hover workbench-table"><thead><tr><th>商品</th><th>Qty</th>${supplierHeads}<th>實際採購</th><th class="text-end">單價</th><th class="text-end">小計</th></tr></thead><tbody>${body}</tbody><tfoot><tr class="table-light"><td colspan="${suppliers.length+4}" class="text-end">總計</td><td id="wbGrandTotal" class="text-end workbench-total">¥0</td></tr></tfoot></table></div><div id="wbSupplierTotals" class="d-flex flex-wrap gap-2 justify-content-end"></div></div>`;
+    box.innerHTML=`<div class="card p-3 mb-4 border-primary"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h4 class="mb-1"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>採購工作台</h4><div class="small text-muted">預設避開超過 ${STALE_QUOTE_DAYS} 天的舊報價；你仍可人工改選廠商。</div></div><div><button id="btnCopySupplierOrders" class="btn btn-success btn-sm me-2"><i class="fa-regular fa-copy me-1"></i>依廠商整批複製</button><button id="btnCloseWorkbench" class="btn btn-outline-secondary btn-sm">收起</button></div></div><div class="table-responsive"><table class="table table-sm table-hover workbench-table"><thead><tr><th>商品</th><th>箱數</th>${supplierHeads}<th>實際採購</th><th class="text-end">單包價</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
     updateWorkbenchTotals();
   }
 
   function updateWorkbenchTotals(){
+    // V4.1.3: 報價是「單包價」，採購數量是「箱數」，兩者不能直接相乘。
+    // 工作台只更新所選廠商的單包價，不再計算小計或總金額。
     const box=document.getElementById('purchaseWorkbenchContainer'); if(!box)return;
-    const totals={}; let grand=0;
     box.querySelectorAll('tbody tr').forEach(tr=>{
-      const primary=tr.dataset.primary, qty=Math.max(1,Number(tr.querySelector('.wb-qty').value)||1), supplier=tr.querySelector('.wb-supplier').value;
+      const primary=tr.dataset.primary, supplier=tr.querySelector('.wb-supplier').value;
       const bundle=ensureSearchCache().quoteBundlesByPrimary.get(primary)||{latestBySupplier:{}};
-      const q=bundle.latestBySupplier[supplier]; const price=q&&Number(q.price)>0?Number(q.price):0; const subtotal=price*qty;
+      const q=bundle.latestBySupplier[supplier];
+      const price=q&&Number(q.price)>0?Number(q.price):0;
       tr.querySelector('.wb-price').textContent=price?'¥'+price.toLocaleString():'Pending';
-      tr.querySelector('.wb-subtotal').textContent=price?'¥'+subtotal.toLocaleString():'-';
-      if(price&&supplier){totals[supplier]=(totals[supplier]||0)+subtotal;grand+=subtotal;}
     });
-    const g=document.getElementById('wbGrandTotal'); if(g)g.textContent='¥'+grand.toLocaleString();
-    const t=document.getElementById('wbSupplierTotals'); if(t)t.innerHTML=Object.entries(totals).map(([s,v])=>`<span class="badge bg-primary p-2">${s}: ¥${v.toLocaleString()}</span>`).join('');
   }
 
   function copySupplierOrders(){
@@ -1760,7 +1742,7 @@ WHH002	138	賞味期限 2027/03
       if(!q||Number(q.price)<=0)return;
       (groups[supplier] ||= []).push(`${itemCode}\t${primary}\t${qty}\t¥${Number(q.price)}`);
     });
-    const textOut=Object.entries(groups).map(([s,lines])=>`【${s}】\nItem Code\tJAN Code\t數量\t單價\n${lines.join('\n')}`).join('\n\n');
+    const textOut=Object.entries(groups).map(([s,lines])=>`【${s}】\nItem Code\tJAN Code\t箱數\t單包價\n${lines.join('\n')}`).join('\n\n');
     if(!textOut){alert('目前沒有可複製的採購項目。');return;}
     const fallback=()=>{const ta=document.createElement('textarea');ta.value=textOut;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();};
     if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(textOut).catch(fallback);else fallback();
@@ -2803,64 +2785,56 @@ WHH002	138	賞味期限 2027/03
         }
     };
 
-    // 恢復系統全資料備份 CSV
+    // 恢復系統全資料備份：V4.1.3 優先使用 JSON；仍相容舊版 CSV。
     document.getElementById("importCSVFile").onchange = function(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = function(evt) {
-            const text = evt.target.result;
-            const lines = text.split(/\r?\n/);
-
-            const newData = {
-                suppliers: [],
-                mappings: {},
-                products: {},
-                itemToBarcode: {},
-                quotes: [],
-                masterImportBatches: []
-            };
-
-            lines.forEach((line, idx) => {
-                if (idx === 0) return;
-                const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-                const type = cols[0];
-
-                if (type === 'SUPPLIER' && cols[1]) {
-                    if (!newData.suppliers.includes(cols[1])) newData.suppliers.push(cols[1]);
-                } else if (type === 'MAPPING' && cols[1] && cols[2]) {
-                    if (!newData.mappings[cols[1]]) newData.mappings[cols[1]] = [];
-                    if (!newData.mappings[cols[1]].includes(cols[2])) newData.mappings[cols[1]].push(cols[2]);
-                } else if (type === 'PRODUCT' && cols[1]) {
-                    newData.products[cols[1]] = {
-                        itemCode: cols[2] || '',
-                        name: cols[3] || '',
-                        imgUrl: cols[4] || ''
-                    };
-                    if (cols[2]) newData.itemToBarcode[cols[2]] = cols[1];
-                } else if (type === 'QUOTE' && cols[1]) {
-                    newData.quotes.push({
-                        id: cols[1],
-                        itemCode: cols[2] || '',
-                        barcode: cols[3] || '',
-                        supplier: cols[4] || '',
-                        price: parseFloat(cols[5]) || 0,
-                        container: cols[6] || '',
-                        note: cols[7] || '',
-                        date: cols[8] || ''
+        reader.onload = async function(evt) {
+            try {
+                const text = String(evt.target.result || '');
+                let newData;
+                const looksJson = file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('{');
+                if (looksJson) {
+                    const parsed = JSON.parse(text);
+                    if (parsed?.backupFormat !== 'JapanPriceTracker-FullBackup' || !parsed?.data || typeof parsed.data !== 'object') {
+                        throw new Error('這不是有效的 Japan Price Tracker 完整備份 JSON。');
+                    }
+                    newData = normalizeAppData(parsed.data);
+                } else {
+                    // 舊版 CSV 備份相容模式。舊 CSV 本身未保存 masterImportBatches / pendingProduct 等新欄位。
+                    const lines = text.split(/\r?\n/);
+                    newData = { suppliers: [], mappings: {}, products: {}, itemToBarcode: {}, quotes: [], masterImportBatches: [] };
+                    lines.forEach((line, idx) => {
+                        if (idx === 0 || !line.trim()) return;
+                        const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+                        const type = cols[0];
+                        if (type === 'SUPPLIER' && cols[1]) { if (!newData.suppliers.includes(cols[1])) newData.suppliers.push(cols[1]); }
+                        else if (type === 'MAPPING' && cols[1] && cols[2]) { (newData.mappings[cols[1]] ||= []); if (!newData.mappings[cols[1]].includes(cols[2])) newData.mappings[cols[1]].push(cols[2]); }
+                        else if (type === 'PRODUCT' && cols[1]) { newData.products[cols[1]] = { itemCode: cols[2] || '', name: cols[3] || '', imgUrl: cols[4] || '' }; if (cols[2]) newData.itemToBarcode[cols[2]] = cols[1]; }
+                        else if (type === 'QUOTE' && cols[1]) { newData.quotes.push({ id: cols[1], itemCode: cols[2] || '', barcode: cols[3] || '', supplier: cols[4] || '', price: parseFloat(cols[5]) || 0, container: cols[6] || '', note: cols[7] || '', date: cols[8] || '' }); }
                     });
+                    if (newData.suppliers.length === 0) newData.suppliers = ['SilkRoad', 'Tencho'];
+                    newData = normalizeAppData(newData);
                 }
-            });
-
-            if (newData.suppliers.length === 0) newData.suppliers = ["SilkRoad", "Tencho"];
-
-            window.appData = newData;
-            saveFirebaseData();
-            alert("系統資料備份已成功恢復！");
-            e.target.value = '';
+                const productCount = Object.keys(newData.products || {}).length;
+                const quoteCount = (newData.quotes || []).length;
+                const modeText = currentDataMode === 'live' ? 'LIVE 正式資料' : 'TEST 本機資料';
+                const warning = `即將用此備份完整覆蓋目前的 ${modeText}。\n\n商品：${productCount} 筆\n報價：${quoteCount} 筆\n廠商：${(newData.suppliers || []).length} 個\n\n目前資料會被取代，確定恢復嗎？`;
+                if (!confirm(warning)) { e.target.value=''; return; }
+                window.appData = newData;
+                rebuildItemToBarcode();
+                const ok = await saveFirebaseData();
+                if (!ok) throw new Error('備份資料解析成功，但儲存失敗。');
+                refreshUI();
+                alert(`系統資料備份已成功恢復！\n商品 ${productCount} 筆 / 報價 ${quoteCount} 筆`);
+            } catch (err) {
+                console.error('Restore backup error', err);
+                alert(`備份恢復失敗：${err?.message || '檔案格式錯誤'}`);
+            } finally {
+                e.target.value = '';
+            }
         };
-
         reader.readAsText(file, 'UTF-8');
     };
 
