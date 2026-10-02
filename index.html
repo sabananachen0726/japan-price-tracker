@@ -54,7 +54,7 @@
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i>V4.1.2 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -494,6 +494,49 @@ WHH002	138	賞味期限 2027/03
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="versionInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>版本資訊 / 更新紀錄</h5>
+          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong>V4.1.2</strong>｜Production</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-primary py-2"><strong>V4.1.2</strong> <span class="text-muted ms-2">2026-10-02</span></div>
+        <ul>
+          <li>快速補報價支援新商品：找不到 JAN / Item Code 時可建立「待補商品資料」，避免漏掉新產品報價。</li>
+          <li>後續匯入正式商品主檔時，可補齊待補商品資訊並保留既有貨櫃報價。</li>
+          <li>同商品＋同貨櫃＋同價格直接跳過；價格不同則更新原紀錄並標註「價錢更新」。</li>
+        </ul>
+        <hr>
+        <h6 class="fw-bold">V4.1.1</h6>
+        <ul>
+          <li>改善智慧搜尋精準度：完整 Item Code / JAN 精確命中時只顯示該商品。</li>
+          <li>保留跨欄位搜尋，例如 <code>UL爽</code> 可搜尋 Item Code 與商品名稱的組合。</li>
+        </ul>
+        <h6 class="fw-bold mt-3">V4.1</h6>
+        <ul>
+          <li>新增同商品＋同貨櫃防重複報價邏輯；價格變更直接更新原紀錄。</li>
+          <li>貨櫃依貨櫃號碼中的年份、月份、櫃次排序。</li>
+          <li>貨櫃號碼尾碼 <code>F</code> 自動辨識為 Frozen，顯示 ❄️ FROZEN 標示。</li>
+        </ul>
+        <h6 class="fw-bold mt-3">V4.0</h6>
+        <ul class="mb-0">
+          <li>加入 LIVE / TEST 雙模式；TEST 資料與正式 Firebase 隔離。</li>
+          <li>加入智慧搜尋與連續手動錄入流程。</li>
+          <li>Quick Quote 儲存後自動關閉並顯示成功 / 失敗通知，保留原價格比對畫面。</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">關閉</button>
       </div>
     </div>
   </div>
