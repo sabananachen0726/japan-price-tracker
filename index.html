@@ -505,12 +505,21 @@ WHH002	138	賞味期限 2027/03
       <div class="modal-header">
         <div>
           <h5 class="modal-title"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>版本資訊 / 更新紀錄</h5>
-          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong>V4.1.2</strong>｜Production</div>
+          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong>V4.1.3</strong>｜Production</div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="alert alert-primary py-2"><strong>V4.1.2</strong> <span class="text-muted ms-2">2026-10-02</span></div>
+        <div class="alert alert-primary py-2"><strong>V4.1.3</strong> <span class="text-muted ms-2">2026-10-02</span></div>
+        <ul>
+          <li>修正採購工作台單位邏輯：採購數量明確為「箱數」，廠商報價明確為「單包價」。</li>
+          <li>移除小計、總金額與廠商採購總額，避免將單包價錯誤乘以箱數。</li>
+          <li>採購工作台、複製採購資訊與採購決策 CSV 同步調整為「箱數＋單包價」邏輯。</li>
+          <li>全系統完整備份升級為 JSON，保存商品主檔、圖片 URL、條碼綁定、廠商、報價歷史、待補商品狀態與主檔匯入復原紀錄。</li>
+          <li>改善完整資料復原流程：匯入前驗證備份內容、顯示資料摘要並要求覆蓋確認；同時保留舊版 CSV 備份相容性。</li>
+        </ul>
+        <hr>
+        <h6 class="fw-bold">V4.1.2</h6>
         <ul>
           <li>快速補報價支援新商品：找不到 JAN / Item Code 時可建立「待補商品資料」，避免漏掉新產品報價。</li>
           <li>後續匯入正式商品主檔時，可補齊待補商品資訊並保留既有貨櫃報價。</li>
