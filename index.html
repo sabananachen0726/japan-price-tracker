@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日本廠商價格比對與管理系統 V4.1.3｜LIVE / TEST</title>
+    <title>日本廠商價格比對與管理系統 V4.2.3｜LIVE / TEST</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -54,7 +54,7 @@
 <div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
-        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i>V4.1.3 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i>V4.2.3 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
     </div>
 
     <ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist">
@@ -69,6 +69,9 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-panel" type="button"><i class="fa-solid fa-gear me-2"></i>4. 商品主檔與系統備份</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="finalpi-tab" data-bs-toggle="tab" data-bs-target="#finalpi-panel" type="button"><i class="fa-solid fa-boxes-stacked me-2"></i>5. Final PI / 貨櫃查詢</button>
         </li>
     </ul>
 
@@ -421,6 +424,67 @@ WHH002	138	賞味期限 2027/03
             </div>
         </div>
 
+        <div class="tab-pane fade" id="finalpi-panel" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card p-4 border-success">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div><h4 class="mb-1 text-success"><i class="fa-solid fa-magnifying-glass-location me-2"></i>商品 → 貨櫃快速查詢</h4><div class="small text-muted">優先顯示尚未到貨的未來貨櫃；已到倉紀錄保留並預設收合。</div></div>
+                        </div>
+                        <div class="input-group input-group-lg mb-3"><span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span><input id="finalPiSearch" class="form-control" placeholder="搜尋 Item Code / Barcode / 商品名稱，例如 ASA001、490...、爽"></div>
+                        <div id="finalPiSearchResults"><div class="text-muted text-center py-4">輸入商品資料即可查詢它在哪些貨櫃、各有幾箱。</div></div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card p-4 border-primary">
+                        <details>
+                            <summary class="d-flex flex-wrap justify-content-between align-items-center gap-2" style="cursor:pointer; list-style:none;">
+                                <div>
+                                    <h4 class="mb-1 text-primary"><i class="fa-solid fa-file-invoice me-2"></i>Final PI 匯入 <span class="fs-6 text-muted">（點擊展開）</span></h4>
+                                    <div class="small text-muted">一條貨櫃只保留最後一份 Final PI；同櫃再次匯入會完整覆蓋舊明細。</div>
+                                </div>
+                                <span class="badge bg-primary">價格＝單包價｜數量＝箱數</span>
+                            </summary>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-4"><label class="form-label fw-bold">貨櫃號碼</label><input id="finalPiContainer" class="form-control" placeholder="例如 JSR26B1201"></div>
+                            <div class="col-md-4"><label class="form-label fw-bold">廠商</label><select id="finalPiSupplier" class="form-select"></select></div>
+                            <div class="col-md-4"><label class="form-label fw-bold">到倉日（選填）</label><input id="finalPiReceivedDate" type="date" class="form-control"><div class="form-text">未填＝尚未到貨</div></div>
+                            <div class="col-12 mt-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                    <label class="form-label fw-bold mb-0">貼上 Final PI</label>
+                                    <div class="d-flex flex-wrap gap-1"><input id="finalPiFile" type="file" accept=".csv,.txt" class="d-none"><button id="btnDownloadFinalPiTemplate" class="btn btn-sm btn-outline-success" type="button"><i class="fa-solid fa-download me-1"></i>下載 CSV Template</button><button id="btnChooseFinalPiFile" class="btn btn-sm btn-outline-secondary" type="button"><i class="fa-solid fa-file-arrow-up me-1"></i>讀取 CSV / TXT 到框內</button></div>
+                                </div>
+                                <textarea id="finalPiPaste" class="form-control font-monospace" rows="9" placeholder="JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date
+4901234567890	20	ASA001	125	2027/06/30
+4901234567891	30
+4901234567892	15	ASA003"></textarea>
+                                <div class="form-text"><strong>固定欄位順序：</strong>JAN Code / Barcode <span class="text-danger">（必填）</span>｜箱數 Qty(CTN) <span class="text-danger">（必填）</span>｜Item Code（選填）｜單包價 Unit Price（選填）｜Expiry Date（選填）。後三欄可留空；從 Excel 貼上時會保留中間空白欄位。</div>
+                            </div>
+                            <div class="col-12"><button id="btnImportFinalPi" class="btn btn-primary w-100" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>匯入 / 覆蓋此貨櫃 Final PI</button></div>
+                        </div>
+                        <div id="finalPiImportHint" class="small mt-2 text-muted"></div>
+                        <hr class="my-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><div><h5 class="mb-1 text-primary"><i class="fa-solid fa-layer-group me-2"></i>多櫃一次匯入</h5><div class="small text-muted">一份 CSV / Excel 貼上可包含多條貨櫃；系統依 Container No. 自動分組。已存在的貨櫃會以本次資料完整覆蓋，舊 PI 明細不合併。</div></div></div>
+                        <textarea id="finalPiMultiPaste" class="form-control font-monospace" rows="8" placeholder="Container No.	Supplier	JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date	Warehouse Received Date
+JSR26B1201	SilkRoad	4901234567890	20	ASA001	125	2027/06/30
+JSR26B1202	Tencho	4901234567891	30"></textarea>
+                        <div class="form-text"><strong>多櫃固定順序：</strong>Container No.（必填）｜Supplier（必填）｜JAN Code（必填）｜Qty CTN（必填）｜Item Code（選填）｜Unit Price（選填）｜Expiry Date（選填）｜Warehouse Received Date（選填）。</div>
+                        <button id="btnImportFinalPiMulti" class="btn btn-primary w-100 mt-2" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>多櫃一次匯入 / 覆蓋</button>
+                        <div id="finalPiMultiHint" class="small mt-2 text-muted"></div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h4 class="mb-1"><i class="fa-solid fa-ship me-2 text-primary"></i>Final PI 貨櫃紀錄</h4><div class="small text-muted">可查看整櫃內容，或補填 / 修改到倉日。</div></div><span id="finalPiContainerCount" class="badge bg-secondary"></span></div>
+                        <div id="finalPiContainerList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -505,21 +569,44 @@ WHH002	138	賞味期限 2027/03
       <div class="modal-header">
         <div>
           <h5 class="modal-title"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>版本資訊 / 更新紀錄</h5>
-          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong>V4.1.3</strong>｜Production</div>
+          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong>V4.2.3</strong>｜Production</div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="alert alert-primary py-2"><strong>V4.1.3</strong> <span class="text-muted ms-2">2026-10-02</span></div>
+        <div class="alert alert-primary py-2"><strong>V4.2.3</strong> <span class="text-muted ms-2">2026-10-07</span></div>
         <ul>
-          <li>修正採購工作台單位邏輯：採購數量明確為「箱數」，廠商報價明確為「單包價」。</li>
-          <li>移除小計、總金額與廠商採購總額，避免將單包價錯誤乘以箱數。</li>
-          <li>採購工作台、複製採購資訊與採購決策 CSV 同步調整為「箱數＋單包價」邏輯。</li>
-          <li>全系統完整備份升級為 JSON，保存商品主檔、圖片 URL、條碼綁定、廠商、報價歷史、待補商品狀態與主檔匯入復原紀錄。</li>
-          <li>改善完整資料復原流程：匯入前驗證備份內容、顯示資料摘要並要求覆蓋確認；同時保留舊版 CSV 備份相容性。</li>
+          <li>Final PI 匯入錯誤會逐列顯示「第幾列、錯誤原因、原始資料」，方便回 Excel 定位。</li>
+          <li>單櫃貼入框 / CSV 讀取若偵測到 Container + Supplier 多櫃格式，會自動轉入多櫃匯入，不再誤判成單櫃。</li>
+          <li>商品 → 貨櫃快速查詢移到 Final PI 分頁最上方；Final PI 匯入區改為預設摺疊。</li>
         </ul>
         <hr>
-        <h6 class="fw-bold">V4.1.2</h6>
+        <div class="alert alert-light border py-2"><strong>V4.2.2</strong> <span class="text-muted ms-2">2026-10-07</span></div>
+        <ul>
+          <li>新增 Final PI CSV Template 下載，欄位與單櫃 / 多櫃匯入規則一致。</li>
+          <li>新增多櫃一次匯入：依 Container No. 自動分組；同櫃既有 Final PI 以最新匯入完整覆蓋。</li>
+          <li>修正到倉判斷：到倉日尚未到達時仍屬未來貨櫃；到倉日為今天或以前才列為已到倉。</li>
+          <li>Final PI 匯入欄位調整為 JAN Code、箱數必填；Item Code、單包價、Expiry Date 改為選填。</li>
+          <li>大框欄位順序改為必填在前、選填在後，並保留 Excel 貼上的中間空白欄位。</li>
+          <li>未填單包價顯示「—」，不再視為 ¥0。</li>
+        </ul>
+        <hr>
+        <div class="alert alert-light border py-2"><strong>V4.2.0</strong> <span class="text-muted ms-2">2026-10-07</span></div>
+        <ul>
+          <li>新增獨立「Final PI / 貨櫃查詢」分頁，可貼上或讀取 CSV / TXT 匯入每條貨櫃的 Item Code、箱數、單包價、Barcode 與 Expiry Date。</li>
+          <li>同一貨櫃重複匯入 Final PI 時完整覆蓋原商品內容；同商品不同 Expiry Date 會分開保留。</li>
+          <li>新增商品 → 貨櫃快速查詢：優先顯示未到貨貨櫃、各櫃箱數與未來總箱數；已到倉紀錄保留並預設收合。</li>
+          <li>新增貨櫃層級到倉日（選填）；未填視為尚未到貨，填寫後仍保留歷史查詢。</li>
+          <li>Final PI 與到倉資料納入全系統 JSON Backup / Restore，以及 LIVE → TEST 單向複製。</li>
+        </ul>
+        <hr>
+        <h6 class="fw-bold">V4.1.3 <span class="text-muted ms-2 fw-normal">2026-10-02</span></h6>
+        <ul>
+          <li>採購工作台明確區分「箱數」與「單包價」，移除單包價 × 箱數所產生的錯誤小計 / 總金額。</li>
+          <li>全系統完整備份改為 JSON，並改善 Restore 的格式驗證、資料摘要與覆蓋確認；保留舊版 CSV 備份相容。</li>
+        </ul>
+        <hr>
+        <h6 class="fw-bold">V4.1.2 <span class="text-muted ms-2 fw-normal">2026-10-02</span></h6>
         <ul>
           <li>快速補報價支援新商品：找不到 JAN / Item Code 時可建立「待補商品資料」，避免漏掉新產品報價。</li>
           <li>後續匯入正式商品主檔時，可補齊待補商品資訊並保留既有貨櫃報價。</li>
@@ -580,7 +667,8 @@ WHH002	138	賞味期限 2027/03
     products: {},
     itemToBarcode: {},
     quotes: [],
-    masterImportBatches: []
+    masterImportBatches: [],
+    finalPiContainers: {}
   };
 
   window.searchMode = 'single';
@@ -734,6 +822,7 @@ WHH002	138	賞味期限 2027/03
     if (!base.products) base.products = {};
     if (!base.quotes) base.quotes = [];
     if (!base.masterImportBatches) base.masterImportBatches = [];
+    if (!base.finalPiContainers) base.finalPiContainers = {};
     return base;
   }
 
@@ -1058,13 +1147,15 @@ WHH002	138	賞味期限 2027/03
     // Import history renderer is initialized inside the DOM-ready workflow.
     // Do not call it here because TEST can load LIVE data before that local function exists.
     renderContainerDeleteOptions();
+    renderFinalPiContainerList();
+    renderFinalPiSearch();
   }
 
   function exportToCSV() {
     // V4.1.3: 完整系統備份改用 JSON，避免 CSV 無法完整保存巢狀資料與狀態欄位。
     const backup = {
       backupFormat: 'JapanPriceTracker-FullBackup',
-      backupVersion: '4.1.3',
+      backupVersion: '4.2.0',
       exportedAt: new Date().toISOString(),
       data: JSON.parse(JSON.stringify(normalizeAppData(window.appData)))
     };
@@ -1259,6 +1350,7 @@ WHH002	138	賞味期限 2027/03
     const inputSelect = document.getElementById("inputSupplier");
     const quickBatchSelect = document.getElementById("quickBatchSupplier");
     const quickQuoteSelect = document.getElementById("quickQuoteSupplier");
+    const finalPiSupplier = document.getElementById("finalPiSupplier");
     
     if (filterSelect) {
       const currentFilter = filterSelect.value;
@@ -1278,7 +1370,7 @@ WHH002	138	賞味期限 2027/03
       inputSelect.value = currentInput;
     }
 
-    [quickBatchSelect, quickQuoteSelect].forEach(sel => {
+    [quickBatchSelect, quickQuoteSelect, finalPiSupplier].forEach(sel => {
       if (!sel) return;
       const current = sel.value;
       sel.innerHTML = '';
@@ -1990,9 +2082,272 @@ WHH002	138	賞味期限 2027/03
     updateContainerSelectionInfo();
   }
 
+  // ==================== FINAL PI / CONTAINER LOOKUP ====================
+  function escapeFinalPiText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function normalizeFinalPiDate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const m = raw.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+    if (m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+    const m2 = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (m2) return `${m2[3]}-${String(m2[2]).padStart(2,'0')}-${String(m2[1]).padStart(2,'0')}`;
+    return raw;
+  }
+
+  function parseFinalPiLine(line) {
+    if (line.includes('\t')) return line.split('\t').map(v => v.trim());
+    const out=[]; let cur=''; let quoted=false;
+    for (let i=0;i<line.length;i++) {
+      const ch=line[i];
+      if (ch==='"') { if (quoted && line[i+1]==='"') { cur+='"'; i++; } else quoted=!quoted; }
+      else if (ch===',' && !quoted) { out.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur.trim());
+    return out;
+  }
+
+  function parseFinalPiPaste(text) {
+    const rows=[]; const invalid=[];
+    String(text || '').split(/\r?\n/).forEach((line, idx) => {
+      if (!line.trim()) return;
+      const cols=parseFinalPiLine(line);
+      const first=String(cols[0]||'').toLowerCase();
+      if ((idx===0 || first.includes('jan') || first.includes('barcode') || first.includes('條碼')) && (first.includes('jan') || first.includes('barcode') || first.includes('條碼'))) return;
+      const fail=(reason)=>invalid.push({line:idx+1, reason, raw:line});
+      if (cols.length < 2) { fail('欄位不足：至少需要 JAN Code 與箱數'); return; }
+      const barcode=cleanBarcode(cols[0]);
+      const qtyRaw=String(cols[1]??'').trim();
+      const qty=Number(qtyRaw.replace(/,/g,''));
+      const itemCode=String(cols[2]||'').trim();
+      const rawPrice=String(cols[3]??'').trim();
+      const unitPrice=rawPrice === '' ? null : Number(rawPrice.replace(/[¥$,\s]/g,''));
+      const expiryDate=normalizeFinalPiDate(cols[4]);
+      if (!barcode) { fail('JAN Code / Barcode 為必填'); return; }
+      if (!qtyRaw) { fail(`JAN ${barcode}：箱數為空白`); return; }
+      if (!Number.isFinite(qty) || qty <= 0) { fail(`JAN ${barcode}：箱數「${qtyRaw}」不是有效的正數`); return; }
+      if (unitPrice !== null && (!Number.isFinite(unitPrice) || unitPrice < 0)) { fail(`JAN ${barcode}：單包價「${rawPrice}」格式無效`); return; }
+      rows.push({itemCode, qty, unitPrice, barcode, expiryDate});
+    });
+    return {rows, invalid};
+  }
+
+  function getFinalPiProduct(row) {
+    const products=window.appData.products || {};
+    const byBarcode=row.barcode ? products[resolveToPrimaryBarcode(row.barcode)] || products[row.barcode] : null;
+    if (byBarcode) return byBarcode;
+    const mapped=(window.appData.itemToBarcode || {})[String(row.itemCode||'').trim().toUpperCase()] || (window.appData.itemToBarcode || {})[String(row.itemCode||'').trim()];
+    return mapped ? products[mapped] || {} : {};
+  }
+
+  function getFinalPiToday() {
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function isFinalPiReceived(container) {
+    const d=normalizeFinalPiDate(container?.receivedDate || '');
+    return !!d && d <= getFinalPiToday();
+  }
+
+  function finalPiContainerSort(a,b) {
+    const af=!isFinalPiReceived(a), bf=!isFinalPiReceived(b);
+    if (af !== bf) return af ? -1 : 1;
+    if (af) return -compareContainerNo(a.container,b.container);
+    return String(b.receivedDate||'').localeCompare(String(a.receivedDate||'')) || -compareContainerNo(a.container,b.container);
+  }
+
+  function renderFinalPiContainerList() {
+    const host=document.getElementById('finalPiContainerList');
+    const count=document.getElementById('finalPiContainerCount');
+    if (!host) return;
+    const containers=Object.values(window.appData.finalPiContainers || {}).sort(finalPiContainerSort);
+    if (count) count.textContent=`${containers.length} 條貨櫃`;
+    if (!containers.length) { host.innerHTML='<div class="text-muted text-center py-4">尚未匯入 Final PI。</div>'; return; }
+    host.innerHTML=containers.map(c => {
+      const rows=c.rows || []; const total=rows.reduce((n,r)=>n+(Number(r.qty)||0),0);
+      const unique=new Set(rows.map(r=>`${r.itemCode}|${r.barcode}`)).size;
+      const arrived=isFinalPiReceived(c); const status=arrived ? `<span class="badge bg-success">已到倉 ${escapeFinalPiText(c.receivedDate)}</span>` : `<span class="badge bg-warning text-dark">${c.receivedDate ? '預計到倉 '+escapeFinalPiText(c.receivedDate) : '尚未到貨'}</span>`;
+      const detail=rows.map(r=>{ const p=getFinalPiProduct(r); return `<tr><td>${escapeFinalPiText(r.itemCode||p.itemCode||'-')}</td><td class="small">${escapeFinalPiText(r.barcode||'-')}</td><td>${escapeFinalPiText(p.name||'⚠️ 商品資料待補')}</td><td class="text-end fw-bold">${Number(r.qty).toLocaleString()} CTN</td><td class="text-end">${r.unitPrice === null || r.unitPrice === undefined || r.unitPrice === '' ? '—' : '¥'+Number(r.unitPrice).toLocaleString()}</td><td>${escapeFinalPiText(r.expiryDate||'-')}</td></tr>`; }).join('');
+      return `<div class="border rounded p-3 mb-3 ${arrived?'bg-light':''}">
+        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start"><div><div class="fw-bold fs-5">${escapeFinalPiText(c.container)} ${frozenBadgeHtml(c.container)}</div><div class="small text-muted">${escapeFinalPiText(c.supplier||'-')}｜${unique} 個商品｜<strong>${total.toLocaleString()} CTN</strong>｜匯入 ${escapeFinalPiText((c.importedAt||'').slice(0,10)||'-')}</div></div>${status}</div>
+        <div class="row g-2 align-items-end mt-2"><div class="col-md-4"><label class="form-label small mb-1">到倉日</label><input type="date" class="form-control form-control-sm final-pi-received-date" data-container="${escapeFinalPiText(c.container)}" value="${escapeFinalPiText(c.receivedDate||'')}"></div><div class="col-md-3"><button class="btn btn-sm btn-outline-primary w-100 final-pi-save-date" data-container="${escapeFinalPiText(c.container)}">儲存到倉日</button></div></div>
+        <details class="mt-3"><summary class="text-primary" style="cursor:pointer">查看整櫃內容（${rows.length} 列）</summary><div class="table-responsive mt-2"><table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th>Item Code</th><th>Barcode</th><th>商品名稱</th><th class="text-end">箱數</th><th class="text-end">單包價</th><th>Expiry</th></tr></thead><tbody>${detail}</tbody></table></div></details>
+      </div>`;
+    }).join('');
+    host.querySelectorAll('.final-pi-save-date').forEach(btn => btn.addEventListener('click', async () => {
+      const key=normalizeContainerNo(btn.dataset.container); const obj=(window.appData.finalPiContainers||{})[key]; if (!obj) return;
+      const input=host.querySelector(`.final-pi-received-date[data-container="${CSS.escape(btn.dataset.container)}"]`);
+      obj.receivedDate=input?.value || '';
+      const ok=await saveFirebaseData(); if (ok) { renderFinalPiContainerList(); renderFinalPiSearch(); showAppToast(obj.receivedDate?'到倉日已更新':'已改回尚未到貨','success'); }
+    }));
+  }
+
+  function renderFinalPiSearch() {
+    const host=document.getElementById('finalPiSearchResults'); const input=document.getElementById('finalPiSearch');
+    if (!host || !input) return;
+    const q=String(input.value||'').trim().toLowerCase();
+    if (!q) { host.innerHTML='<div class="text-muted text-center py-4">輸入商品資料即可查詢它在哪些貨櫃、各有幾箱。</div>'; return; }
+    const matches=[];
+    Object.values(window.appData.finalPiContainers || {}).forEach(c => (c.rows||[]).forEach(r => {
+      const p=getFinalPiProduct(r); const hay=[r.itemCode,r.barcode,p.itemCode,p.name].map(v=>String(v||'').toLowerCase()).join(' ');
+      if (hay.includes(q)) matches.push({c,r,p});
+    }));
+    if (!matches.length) { host.innerHTML='<div class="alert alert-light border text-center mb-0">找不到任何 Final PI 貨櫃紀錄。</div>'; return; }
+    const groups=new Map();
+    matches.forEach(x=>{ const key=normalizeContainerNo(x.c.container); if(!groups.has(key)) groups.set(key,{c:x.c,rows:[]}); groups.get(key).rows.push(x); });
+    const arr=[...groups.values()].sort((a,b)=>finalPiContainerSort(a.c,b.c));
+    const future=arr.filter(g=>!isFinalPiReceived(g.c)), received=arr.filter(g=>isFinalPiReceived(g.c));
+    const futureQty=future.reduce((sum,g)=>sum+g.rows.reduce((n,x)=>n+(Number(x.r.qty)||0),0),0);
+    const receivedQty=received.reduce((sum,g)=>sum+g.rows.reduce((n,x)=>n+(Number(x.r.qty)||0),0),0);
+    const names=[...new Set(matches.map(x=>x.p.name).filter(Boolean))];
+    const codes=[...new Set(matches.map(x=>x.r.itemCode).filter(Boolean))];
+    const renderGroup=g=>{ const qty=g.rows.reduce((n,x)=>n+(Number(x.r.qty)||0),0); const details=g.rows.map(x=>`<div class="small mt-1"><span class="badge bg-light text-dark border">EXP ${escapeFinalPiText(x.r.expiryDate||'未填')}</span> <strong>${Number(x.r.qty).toLocaleString()} CTN</strong> <span class="text-muted">｜單包價 ${x.r.unitPrice === null || x.r.unitPrice === undefined || x.r.unitPrice === '' ? '—' : '¥'+Number(x.r.unitPrice).toLocaleString()}</span></div>`).join(''); return `<div class="border rounded p-3 mb-2"><div class="d-flex justify-content-between gap-2"><div><div class="fw-bold fs-5">📦 ${escapeFinalPiText(g.c.container)} ${frozenBadgeHtml(g.c.container)}</div><div class="small text-muted">${escapeFinalPiText(g.c.supplier||'-')}｜${isFinalPiReceived(g.c)?'已到倉 '+escapeFinalPiText(g.c.receivedDate):(g.c.receivedDate?'預計到倉 '+escapeFinalPiText(g.c.receivedDate):'尚未到貨')}</div></div><div class="text-end"><div class="fw-bold fs-4 text-primary">${qty.toLocaleString()} CTN</div></div></div>${details}</div>`; };
+    host.innerHTML=`<div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">${escapeFinalPiText(codes.join(' / ') || q)} ${names.length?'｜'+escapeFinalPiText(names.join(' / ')):''}</div><div class="mt-2"><span class="badge bg-warning text-dark me-2">🚢 未來 ${futureQty.toLocaleString()} CTN / ${future.length} Containers</span><span class="badge bg-secondary">🏭 已到倉 ${receivedQty.toLocaleString()} CTN / ${received.length} Containers</span></div></div><h5 class="text-warning-emphasis">🚢 未到貨 / 未來貨櫃</h5>${future.length?future.map(renderGroup).join(''):'<div class="text-muted mb-3">目前沒有未到貨貨櫃。</div>'}<details class="mt-3" ${future.length?'':'open'}><summary class="fw-bold text-secondary" style="cursor:pointer">🏭 查看已到倉紀錄（${received.length} 條貨櫃 / ${receivedQty.toLocaleString()} CTN）</summary><div class="mt-2">${received.length?received.map(renderGroup).join(''):'<div class="text-muted">沒有已到倉紀錄。</div>'}</div></details>`;
+  }
+
+  function downloadFinalPiTemplate() {
+    const rows=[
+      ['Container No.','Supplier','JAN Code','Qty(CTN)','Item Code','Unit Price','Expiry Date','Warehouse Received Date'],
+      ['JSR26B1201','SilkRoad','4901234567890','20','ASA001','125','2027/06/30',''],
+      ['JSR26B1201','SilkRoad','4901234567891','30','','','',''],
+      ['JTC26B1202','Tencho','4901234567892','15','ASA003','118','2027/08/31','']
+    ];
+    const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='Final_PI_Multi_Container_Template.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+
+  function parseFinalPiMultiPaste(text) {
+    const groups=new Map(), invalid=[];
+    String(text||'').split(/\r?\n/).forEach((line,idx)=>{
+      if (!line.trim()) return;
+      const cols=parseFinalPiLine(line); const first=String(cols[0]||'').toLowerCase();
+      if (first.includes('container') || first.includes('貨櫃')) return;
+      const fail=(reason)=>invalid.push({line:idx+1, reason, raw:line});
+      if (cols.length < 4) { fail('欄位不足：多櫃格式至少需要 Container、Supplier、JAN Code、Qty(CTN)'); return; }
+      const container=normalizeContainerNo(cols[0]); const supplier=String(cols[1]||'').trim(); const barcode=cleanBarcode(cols[2]);
+      const qtyRaw=String(cols[3]??'').trim(); const qty=Number(qtyRaw.replace(/,/g,'')); const itemCode=String(cols[4]||'').trim();
+      const rawPrice=String(cols[5]??'').trim(); const unitPrice=rawPrice===''?null:Number(rawPrice.replace(/[¥$,\s]/g,''));
+      const expiryDate=normalizeFinalPiDate(cols[6]); const receivedDate=normalizeFinalPiDate(cols[7]);
+      if (!container) { fail('Container No. 為必填'); return; }
+      if (!supplier) { fail(`${container}：Supplier 為必填`); return; }
+      if (!barcode) { fail(`${container}：JAN Code / Barcode 為必填`); return; }
+      if (!qtyRaw) { fail(`${container} / JAN ${barcode}：箱數為空白`); return; }
+      if (!Number.isFinite(qty) || qty<=0) { fail(`${container} / JAN ${barcode}：箱數「${qtyRaw}」不是有效的正數`); return; }
+      if (unitPrice!==null && (!Number.isFinite(unitPrice)||unitPrice<0)) { fail(`${container} / JAN ${barcode}：單包價「${rawPrice}」格式無效`); return; }
+      if (!groups.has(container)) groups.set(container,{container,supplier,receivedDate,rows:[]});
+      const g=groups.get(container); if (!g.receivedDate && receivedDate) g.receivedDate=receivedDate; if (!g.supplier) g.supplier=supplier;
+      g.rows.push({itemCode,qty,unitPrice,barcode,expiryDate});
+    });
+    return {groups:[...groups.values()],invalid};
+  }
+
+  function looksLikeFinalPiMulti(text) {
+    const lines=String(text||'').split(/\r?\n/).filter(x=>x.trim());
+    if (!lines.length) return false;
+    const firstCols=parseFinalPiLine(lines[0]);
+    const first=String(firstCols[0]||'').trim().toLowerCase();
+    if (first.includes('container') || first.includes('貨櫃')) return true;
+    if (firstCols.length >= 4) {
+      const c=normalizeContainerNo(firstCols[0]);
+      const supplier=String(firstCols[1]||'').trim();
+      const barcode=cleanBarcode(firstCols[2]);
+      const qty=Number(String(firstCols[3]||'').replace(/,/g,''));
+      return !!c && !!supplier && !!barcode && Number.isFinite(qty) && qty>0 && !/^\d{8,14}$/.test(c);
+    }
+    return false;
+  }
+
+  function invalidFinalPiHtml(invalid) {
+    if (!invalid?.length) return '';
+    return `<div class="alert alert-warning mt-2 mb-0"><div class="fw-bold mb-1">⚠️ 跳過 ${invalid.length} 列：</div>${invalid.map(x=>`<div class="small mb-2"><strong>第 ${x.line} 列：</strong>${escapeFinalPiText(x.reason)}<br><code class="text-wrap">${escapeFinalPiText(x.raw||'')}</code></div>`).join('')}</div>`;
+  }
+
+  function invalidFinalPiText(invalid) {
+    if (!invalid?.length) return '';
+    return '\n\n⚠️ 格式錯誤 / 跳過明細：\n'+invalid.map(x=>`第 ${x.line} 列：${x.reason}\n  ${x.raw||''}`).join('\n');
+  }
+
+  async function importFinalPiMulti() {
+    const parsed=parseFinalPiMultiPaste(document.getElementById('finalPiMultiPaste')?.value||'');
+    if (!parsed.groups.length) { alert('沒有可匯入的多櫃 Final PI 資料。'); return; }
+    const existing=parsed.groups.filter(g=>(window.appData.finalPiContainers||{})[g.container]);
+    const totalRows=parsed.groups.reduce((n,g)=>n+g.rows.length,0), totalQty=parsed.groups.reduce((n,g)=>n+g.rows.reduce((a,r)=>a+(Number(r.qty)||0),0),0);
+    let msg=`本次辨識：${parsed.groups.length} 條貨櫃\n商品明細：${totalRows} 列\n總箱數：${totalQty} CTN`;
+    if (existing.length) msg+=`\n\n⚠️ ${existing.length} 條貨櫃已存在，將以本次 Final PI 完整覆蓋：\n${existing.map(g=>g.container).join(', ')}`;
+    if (parsed.invalid.length) msg+=invalidFinalPiText(parsed.invalid);
+    if (!confirm(msg+'\n\n確定繼續？')) return;
+    window.appData.finalPiContainers ||= {};
+    parsed.groups.forEach(g=>{ const old=window.appData.finalPiContainers[g.container]; window.appData.finalPiContainers[g.container]={container:g.container,supplier:g.supplier,receivedDate:g.receivedDate || old?.receivedDate || '',importedAt:new Date().toISOString(),rows:g.rows}; });
+    const ok=await saveFirebaseData(); if (!ok) return;
+    renderFinalPiContainerList(); renderFinalPiSearch();
+    const hint=document.getElementById('finalPiMultiHint'); if(hint) hint.innerHTML=`<span class="text-success fw-bold">✓ 已匯入 ${parsed.groups.length} 條貨櫃 / ${totalRows} 列 / ${totalQty.toLocaleString()} CTN</span>${invalidFinalPiHtml(parsed.invalid)}`;
+    showAppToast(`多櫃 Final PI 已儲存：${parsed.groups.length} 條貨櫃`,'success');
+  }
+
+  async function importFinalPi() {
+    const pastedText=document.getElementById('finalPiPaste')?.value || '';
+    if (looksLikeFinalPiMulti(pastedText)) {
+      document.getElementById('finalPiMultiPaste').value=pastedText;
+      document.getElementById('finalPiPaste').value='';
+      document.getElementById('finalPiImportHint').innerHTML='<span class="text-primary fw-bold">✓ 已自動辨識為多櫃格式，改用多櫃匯入。</span>';
+      return importFinalPiMulti();
+    }
+    const container=normalizeContainerNo(document.getElementById('finalPiContainer')?.value);
+    const supplier=document.getElementById('finalPiSupplier')?.value || '';
+    const receivedDate=document.getElementById('finalPiReceivedDate')?.value || '';
+    const parsed=parseFinalPiPaste(pastedText);
+    if (!container) { alert('請先填寫貨櫃號碼。'); return; }
+    if (!supplier) { alert('請選擇廠商。'); return; }
+    if (!parsed.rows.length) { alert('沒有可匯入的 Final PI 資料。請確認五欄格式。'); return; }
+    const existing=(window.appData.finalPiContainers||{})[container];
+    const total=parsed.rows.reduce((n,r)=>n+(Number(r.qty)||0),0);
+    let msg=`準備匯入貨櫃 ${container}\n\n有效資料：${parsed.rows.length} 列\n總箱數：${total} CTN\n廠商：${supplier}`;
+    if (parsed.invalid.length) msg+=invalidFinalPiText(parsed.invalid);
+    if (existing) msg+=`\n\n⚠️ 此貨櫃已有 Final PI（${(existing.rows||[]).length} 列）。確認後會完整覆蓋原 Final PI 商品內容。`;
+    if (!confirm(msg+'\n\n確定繼續？')) return;
+    window.appData.finalPiContainers ||= {};
+    window.appData.finalPiContainers[container]={container,supplier,receivedDate:receivedDate || existing?.receivedDate || '',importedAt:new Date().toISOString(),rows:parsed.rows};
+    const ok=await saveFirebaseData();
+    if (!ok) return;
+    renderFinalPiContainerList(); renderFinalPiSearch();
+    document.getElementById('finalPiImportHint').innerHTML=`<span class="text-success fw-bold">✓ ${escapeFinalPiText(container)} 已匯入 ${parsed.rows.length} 列 / ${total.toLocaleString()} CTN</span>${invalidFinalPiHtml(parsed.invalid)}`;
+    showAppToast(`${container} Final PI 已儲存`,'success');
+  }
+
   // 事件監聽綁定
   document.addEventListener("DOMContentLoaded", () => {
-    
+    // Final PI / 貨櫃查詢
+    const finalPiSearch = document.getElementById('finalPiSearch');
+    if (finalPiSearch) finalPiSearch.addEventListener('input', renderFinalPiSearch);
+    document.getElementById('btnImportFinalPi')?.addEventListener('click', importFinalPi);
+    document.getElementById('btnImportFinalPiMulti')?.addEventListener('click', importFinalPiMulti);
+    document.getElementById('btnDownloadFinalPiTemplate')?.addEventListener('click', downloadFinalPiTemplate);
+    document.getElementById('btnChooseFinalPiFile')?.addEventListener('click', () => document.getElementById('finalPiFile')?.click());
+
+    document.getElementById('finalPiPaste')?.addEventListener('paste', () => {
+      setTimeout(() => {
+        const box=document.getElementById('finalPiPaste'); const txt=box?.value||'';
+        if (looksLikeFinalPiMulti(txt)) {
+          document.getElementById('finalPiMultiPaste').value=txt; box.value='';
+          document.getElementById('finalPiImportHint').innerHTML='<span class="text-primary fw-bold">✓ 偵測到 Container + Supplier 欄位，已自動移到「多櫃一次匯入」。</span>';
+          document.getElementById('finalPiMultiHint').innerHTML='<span class="text-primary fw-bold">✓ 已自動辨識為多櫃 Final PI，請確認後按「多櫃一次匯入 / 覆蓋」。</span>';
+        }
+      },0);
+    });
+
+    document.getElementById('finalPiFile')?.addEventListener('change', function() {
+      const file=this.files?.[0]; if (!file) return;
+      const reader=new FileReader();
+      reader.onload=()=>{ const txt=String(reader.result||''); if (looksLikeFinalPiMulti(txt)) { document.getElementById('finalPiMultiPaste').value=txt; document.getElementById('finalPiPaste').value=''; document.getElementById('finalPiMultiHint').innerHTML=`<span class="text-primary fw-bold">✓ 已讀取 ${escapeFinalPiText(file.name)}，自動辨識為多櫃格式。</span>`; } else { document.getElementById('finalPiPaste').value=txt; document.getElementById('finalPiImportHint').textContent=`已讀取 ${file.name}，辨識為單櫃格式。`; } };
+      reader.readAsText(file,'UTF-8');
+      this.value='';
+    });
+
     // 搜尋模式切換
     document.getElementById("btnSingleMode").onclick = function() {
         window.searchMode = 'single';
@@ -2760,7 +3115,8 @@ WHH002	138	賞味期限 2027/03
                 products: {},
                 itemToBarcode: {},
                 quotes: [],
-                masterImportBatches: []
+                masterImportBatches: [],
+                finalPiContainers: {}
             };
             saveFirebaseData();
             alert("資料已清空！");
@@ -2787,7 +3143,9 @@ WHH002	138	賞味期限 2027/03
                     { id: "q1", barcode: "4901330112813", itemCode: "WHH005", supplier: "SilkRoad", price: 128.5, container: "CTN-2024-001", note: "特價箱規", date: "2024-05-10" },
                     { id: "q2", barcode: "4901330119999", itemCode: "WHH005", supplier: "Tencho", price: 125.0, container: "CTN-2024-002", note: "新條碼樣品", date: "2024-05-12" },
                     { id: "q3", barcode: "4901330122222", itemCode: "WHH006", supplier: "SilkRoad", price: 0, container: "CTN-2024-002", note: "等待報價", date: "2024-05-12" }
-                ]
+                ],
+                masterImportBatches: [],
+                finalPiContainers: {}
             };
             saveFirebaseData();
             alert("範例資料載入成功！");
@@ -2813,7 +3171,7 @@ WHH002	138	賞味期限 2027/03
                 } else {
                     // 舊版 CSV 備份相容模式。舊 CSV 本身未保存 masterImportBatches / pendingProduct 等新欄位。
                     const lines = text.split(/\r?\n/);
-                    newData = { suppliers: [], mappings: {}, products: {}, itemToBarcode: {}, quotes: [], masterImportBatches: [] };
+                    newData = { suppliers: [], mappings: {}, products: {}, itemToBarcode: {}, quotes: [], masterImportBatches: [], finalPiContainers: {} };
                     lines.forEach((line, idx) => {
                         if (idx === 0 || !line.trim()) return;
                         const cols = line.split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
@@ -2828,8 +3186,9 @@ WHH002	138	賞味期限 2027/03
                 }
                 const productCount = Object.keys(newData.products || {}).length;
                 const quoteCount = (newData.quotes || []).length;
+                const finalPiCount = Object.keys(newData.finalPiContainers || {}).length;
                 const modeText = currentDataMode === 'live' ? 'LIVE 正式資料' : 'TEST 本機資料';
-                const warning = `即將用此備份完整覆蓋目前的 ${modeText}。\n\n商品：${productCount} 筆\n報價：${quoteCount} 筆\n廠商：${(newData.suppliers || []).length} 個\n\n目前資料會被取代，確定恢復嗎？`;
+                const warning = `即將用此備份完整覆蓋目前的 ${modeText}。\n\n商品：${productCount} 筆\n報價：${quoteCount} 筆\nFinal PI 貨櫃：${finalPiCount} 條\n廠商：${(newData.suppliers || []).length} 個\n\n目前資料會被取代，確定恢復嗎？`;
                 if (!confirm(warning)) { e.target.value=''; return; }
                 window.appData = newData;
                 rebuildItemToBarcode();
