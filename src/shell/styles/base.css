@@ -1,0 +1,96 @@
+
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; font-weight: bold; }
+        .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .img-wrapper { width: 65px; height: 65px; flex-shrink: 0; }
+        .product-img-thumb { width: 65px; height: 65px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid #dee2e6; }
+        .no-img-placeholder { width: 65px; height: 65px; border-radius: 6px; border: 1px dashed #ced4da; background-color: #e9ecef; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #6c757d; font-size: 0.65rem; }
+        .no-img-placeholder i { font-size: 1.2rem; margin-bottom: 2px; }
+        .lowest-price { color: #198754; font-weight: bold; background-color: #e8f5e9; padding: 2px 6px; border-radius: 4px; }
+        .price-tag { font-size: 1.1rem; }
+        .badge-alias { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; margin-right: 4px; font-weight: normal; }
+        .btn-copy { padding: 0.1rem 0.4rem; font-size: 0.75rem; }
+        .modal-img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+        .item-code-badge { background-color: #0d6efd; color: white; font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; }
+        .trend-up { color: #dc3545; font-size: 0.75rem; font-weight: bold; }
+        .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
+        .trend-same { color: #6c757d; font-size: 0.75rem; }
+        .qty-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .stale-quote { border-color:#ffc107 !important; background:#fffdf2 !important; }
+        .workbench-table th { white-space: nowrap; }
+        .workbench-table td { vertical-align: middle; }
+        .workbench-total { font-size: 1.05rem; font-weight: 700; }
+        .status-pill { font-size:.75rem; }
+        .frozen-badge { display:inline-flex; align-items:center; gap:.25rem; background:#e7f5ff; color:#0b5ed7; border:1px solid #74c0fc; border-radius:999px; padding:1px 7px; font-size:.72rem; font-weight:700; white-space:nowrap; }
+        .frozen-container-row { background:#f1f9ff !important; }
+        .supplier-copy-box { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.8rem; }
+    
+body[data-role="viewer"] #planner-panel iframe {pointer-events:none}
+body[data-role="viewer"] #planner-panel::before {content:"唯讀模式：不可儲存訂貨規劃";display:block;padding:8px;background:#fff3cd}
+body[data-role="editor"] #planner-panel::before {content:"Editor：僅訂貨規劃可編輯";display:block;padding:8px;background:#e8f5e9}
+body[data-role="viewer"] #add-panel {display:none!important}
+body:not([data-role="admin"]) #settings-panel {display:none!important}
+body:not([data-role="admin"]) #settings-tab,body[data-role="viewer"] #add-tab {display:none!important}
+body:not([data-role="admin"]) #finalpi-panel #btnImportFinalPi,body:not([data-role="admin"]) #finalpi-panel #btnImportFinalPiMulti {display:none!important}
+body:not([data-role="admin"]) #finalpi-panel .border-primary:has(#finalPiPaste) {display:none!important}
+
+/* V4.8.4 centralized import hub */
+.import-hub-hero{padding:22px 22px 16px;background:#f5f9ff;border:1px solid #d4e5fb;border-radius:14px;margin-bottom:16px}
+.import-hub-hero h3{font-weight:750;margin:0 0 8px;color:#1d416a}
+.import-hub-hero p{margin:0 0 10px;line-height:1.7}
+.import-hub-warning{padding:10px 13px;background:#fff8eb;border-radius:8px;border:1px solid #f4dda5;font-size:.9rem}
+.import-switcher{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.import-switcher button{flex:1;min-width:135px;white-space:normal;font-weight:600}
+.import-hub-section{display:none}
+body[data-import-view="master"] #hub-master,
+body[data-import-view="quotes"] #hub-quotes,
+body[data-import-view="pi"] #hub-pi,
+body[data-import-view="planner"] #hub-planner,
+body[data-import-view="backup"] #hub-backup{display:block}
+.import-section-head{padding:14px 17px;background:#fff;border:1px solid #e0e7f2;border-radius:11px;margin-bottom:15px}
+.import-section-head h4{font-size:1.13rem;font-weight:700;margin:0 0 6px}
+.import-section-head p{margin:0;color:#52677d;line-height:1.65;font-size:.9rem}
+#hub-quotes >.row{max-width:none!important}
+#hub-master> .bg-light,#hub-master>.border,#hub-pi>.card,#hub-backup>.card{margin-bottom:16px!important}
+body:not([data-role="admin"]) #add-panel .import-admin,body:not([data-role="admin"]) #add-panel #hub-backup{display:none!important}
+body:not([data-role="admin"]) #add-panel .import-switcher [data-import-view="master"],
+body:not([data-role="admin"]) #add-panel .import-switcher [data-import-view="quotes"],
+body:not([data-role="admin"]) #add-panel .import-switcher [data-import-view="pi"],
+body:not([data-role="admin"]) #add-panel .import-switcher [data-import-view="backup"]{display:none!important}
+/* Reuse the existing planner iframe, without moving/reloading it, when the hub's planner group is active. */
+body[data-import-view="planner"] #add-panel.active ~ #planner-panel{display:block!important;opacity:1!important}
+body[data-import-view="planner"] #add-panel.active ~ #planner-panel #customerSourcePanel{display:none!important}
+@media(max-width:800px){.import-switcher button{flex:1 1 40%}}
+
+/* V4.8.5: genuinely frozen row at the top of the outer browser viewport. */
+#kaisiFrozenPlannerHead{display:none;position:fixed;top:0;left:0;z-index:990;box-sizing:border-box;background:#e7effa;border-bottom:1px solid #cddbec;box-shadow:0 1px 3px rgba(21,45,79,.08);overflow:hidden;height:auto;}
+#kaisiFrozenPlannerHead.visible{display:flex;}
+#kaisiFrozenPlannerHead .frozen-column{display:flex;align-items:center;box-sizing:border-box;padding:5px 4px;min-width:0;border-right:1px solid #d7e1ef;}
+#kaisiFrozenPlannerHead .frozen-column button{font-family:inherit;font-size:12px;line-height:1.25;border:0;background:transparent;color:#173860;padding:4px 0;min-width:0;cursor:pointer;}
+#kaisiFrozenPlannerHead .frozen-column button[data-frozen-sort]{flex:1;text-align:left;font-weight:700;overflow-wrap:anywhere;}
+#kaisiFrozenPlannerHead .frozen-column button[data-frozen-filter]{flex:0 0 auto;padding:3px 4px;color:#4d6a94;}
+#kaisiFrozenPlannerHead .frozen-column button:hover{color:#0759b0;}
+@media(max-width:1050px){#kaisiFrozenPlannerHead{display:none!important}}
+
+/* One fixed normal workspace on desktop, independent of monitor width. */
+#protectedApp>.container{width:calc(100% - 32px);max-width:1320px!important;margin-left:auto;margin-right:auto}
+body.planner-wide:has(#planner-panel.active) #protectedApp>.container{max-width:none!important;width:calc(100% - 32px)}
+body[data-product-view="settings"] #settings-panel.active ~ #planner-panel,
+body[data-product-view="pending"] #settings-panel.active ~ #planner-panel{display:block!important;opacity:1!important}
+body[data-product-view="settings"]:has(#settings-panel.active) #customerSourcePanel,
+body[data-product-view="pending"]:has(#settings-panel.active) #customerSourcePanel{display:none!important}
+body[data-product-view="settings"] #productMasterView,
+body[data-product-view="pending"] #productMasterView{display:none}
+.workspace-subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+.workspace-subnav button.active{background:#264f86;color:white}
+#systemTools412{border:0;border-radius:16px;width:min(1180px,94vw);max-height:90vh;overflow:auto;padding:24px;box-shadow:0 12px 70px #172d4755}
+#systemTools412::backdrop{background:#182d4666}
+#container-panel[data-container-view="pi"] #containerOverview412,#container-panel[data-container-view="overview"] #finalpi-panel{display:none}
+#container-panel #finalpi-panel{opacity:1}
+#themeSwitcher{display:none!important}
+@media(max-width:700px){#protectedApp>.container{width:100%;padding:8px}}
+body:not([data-role="admin"]) #systemBackup412,body:not([data-role="admin"]) #systemAdvanced412{display:none}
+
+#mainTabsContent>.tab-pane.fade{transition:none}
+
+#hub-master .col-md-3:has(#masterEncodingSelect){display:none}

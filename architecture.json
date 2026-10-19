@@ -1,0 +1,2776 @@
+{
+  "shell": {
+    "scope": "shell",
+    "features": [
+      {
+        "id": "auth",
+        "file": "modules/auth.js",
+        "owns": [
+          "escapeHtml",
+          "firebaseConfig",
+          "app",
+          "db",
+          "auth",
+          "BOOTSTRAP_ADMIN_EMAIL",
+          "currentRole",
+          "roleDoc",
+          "isAdmin",
+          "canPlan",
+          "applyRoleUI",
+          "loadRole",
+          "refreshUsers"
+        ],
+        "imports": [
+          "collection",
+          "doc",
+          "getAuth",
+          "getDoc",
+          "getDocsFromServer",
+          "getFirestore",
+          "initializeApp",
+          "setDoc"
+        ],
+        "writes": [
+          "BOOTSTRAP_ADMIN_EMAIL",
+          "app",
+          "applyRoleUI",
+          "auth",
+          "canPlan",
+          "currentRole",
+          "db",
+          "escapeHtml",
+          "firebaseConfig",
+          "isAdmin",
+          "loadRole",
+          "refreshUsers",
+          "roleDoc"
+        ]
+      },
+      {
+        "id": "app-state",
+        "file": "modules/app-state.js",
+        "owns": [
+          "unsubscribeData",
+          "PROD_DOC_REF",
+          "CONTAINER_TRACKER_REF",
+          "ORDER_PLANNER_REF",
+          "sharedOrderDrafts",
+          "unsubscribeOrderPlanner",
+          "proposalListenerInitialized",
+          "containerTrackerData",
+          "unsubscribeContainerTracker",
+          "TEST_LOCAL_KEY",
+          "currentDataMode"
+        ],
+        "imports": [
+          "db",
+          "doc"
+        ],
+        "writes": [
+          "CONTAINER_TRACKER_REF",
+          "ORDER_PLANNER_REF",
+          "PROD_DOC_REF",
+          "TEST_LOCAL_KEY",
+          "containerTrackerData",
+          "currentDataMode",
+          "proposalListenerInitialized",
+          "sharedOrderDrafts",
+          "unsubscribeContainerTracker",
+          "unsubscribeData",
+          "unsubscribeOrderPlanner"
+        ]
+      },
+      {
+        "id": "utilities",
+        "file": "modules/utilities.js",
+        "owns": [
+          "showAppToast",
+          "cleanBarcode",
+          "normalizeContainerNo"
+        ],
+        "imports": [],
+        "writes": [
+          "cleanBarcode",
+          "normalizeContainerNo",
+          "showAppToast"
+        ]
+      },
+      {
+        "id": "logistics-dates",
+        "file": "modules/logistics-dates.js",
+        "owns": [
+          "legacySafeDate",
+          "expectedMonth15",
+          "getContainerDates"
+        ],
+        "imports": [],
+        "writes": [
+          "expectedMonth15",
+          "getContainerDates",
+          "legacySafeDate"
+        ]
+      },
+      {
+        "id": "container-bridge",
+        "file": "modules/container-bridge.js",
+        "owns": [
+          "EMBEDDED_CONTAINER_TRACKER_B64",
+          "containerTrackerFrameLoaded",
+          "loadEmbeddedContainerTracker",
+          "renderContainerIntegrationCheck"
+        ],
+        "imports": [
+          "auth",
+          "containerTrackerData",
+          "normalizeContainerNo",
+          "sendContainerSnapshot"
+        ],
+        "writes": [
+          "EMBEDDED_CONTAINER_TRACKER_B64",
+          "containerTrackerFrameLoaded",
+          "loadEmbeddedContainerTracker",
+          "renderContainerIntegrationCheck"
+        ]
+      },
+      {
+        "id": "planner-bridge",
+        "file": "modules/planner-bridge.js",
+        "owns": [
+          "EMBEDDED_ORDER_PLANNER_B64",
+          "plannerLoaded",
+          "sendPlannerSnapshot",
+          "chooseImportView",
+          "loadEmbeddedOrderPlanner"
+        ],
+        "imports": [
+          "auth",
+          "containerTrackerData",
+          "currentDataMode",
+          "currentRole",
+          "getContainerDates",
+          "legacySafeDate",
+          "normalizeContainerNo",
+          "sendCatalogSources",
+          "sendCustomerSource"
+        ],
+        "writes": [
+          "EMBEDDED_ORDER_PLANNER_B64",
+          "chooseImportView",
+          "loadEmbeddedOrderPlanner",
+          "plannerLoaded",
+          "sendPlannerSnapshot"
+        ]
+      },
+      {
+        "id": "frozen-header",
+        "file": "modules/frozen-header.js",
+        "owns": [
+          "frozenHeader",
+          "frozenScheduled",
+          "frozenSignature",
+          "updateFrozenHeader"
+        ],
+        "imports": [
+          "auth",
+          "plannerLoaded"
+        ],
+        "writes": [
+          "frozenHeader",
+          "frozenScheduled",
+          "frozenSignature",
+          "updateFrozenHeader"
+        ]
+      },
+      {
+        "id": "frame-commands",
+        "file": "modules/frame-commands.js",
+        "owns": [],
+        "imports": [
+          "CONTAINER_TRACKER_REF",
+          "FieldPath",
+          "ORDER_PLANNER_REF",
+          "arrayRemove",
+          "arrayUnion",
+          "auth",
+          "canPlan",
+          "currentDataMode",
+          "currentRole",
+          "deleteProposal",
+          "events",
+          "frozenSignature",
+          "isAdmin",
+          "loadEmbeddedOrderPlanner",
+          "normalizeContainerNo",
+          "refreshCustomerSource",
+          "routePlannerWorkspace",
+          "safeCatalogKey",
+          "sendContainerSnapshot",
+          "sendPlannerSnapshot",
+          "sendSharedOrderDrafts",
+          "setDoc",
+          "sharedOrderDrafts",
+          "updateDoc",
+          "updateFrozenHeader"
+        ],
+        "writes": [
+          "frozenSignature"
+        ]
+      },
+      {
+        "id": "work-orders",
+        "file": "modules/work-orders.js",
+        "owns": [
+          "renderSharedOrderDrafts",
+          "exportProposalExcel",
+          "deleteProposal",
+          "sendSharedOrderDrafts",
+          "startSharedOrderListener",
+          "sendContainerSnapshot"
+        ],
+        "imports": [
+          "ORDER_PLANNER_REF",
+          "auth",
+          "containerTrackerData",
+          "containerTrackerFrameLoaded",
+          "currentDataMode",
+          "deleteField",
+          "escapeFinalPiText",
+          "isAdmin",
+          "normalizeContainerNo",
+          "onSnapshot",
+          "plannerLoaded",
+          "proposalListenerInitialized",
+          "setDoc",
+          "sharedOrderDrafts",
+          "showAppToast",
+          "unsubscribeOrderPlanner"
+        ],
+        "writes": [
+          "deleteProposal",
+          "exportProposalExcel",
+          "proposalListenerInitialized",
+          "renderSharedOrderDrafts",
+          "sendContainerSnapshot",
+          "sendSharedOrderDrafts",
+          "sharedOrderDrafts",
+          "startSharedOrderListener",
+          "unsubscribeOrderPlanner"
+        ]
+      },
+      {
+        "id": "catalog-sync",
+        "file": "modules/catalog-sync.js",
+        "owns": [
+          "CATALOG_REF",
+          "INVENTORY_REF",
+          "PLANNER_SOURCES_REF",
+          "catalogData",
+          "inventoryData",
+          "plannerSourcesData",
+          "catalogUnsubscribers",
+          "sendCatalogSources",
+          "stopCatalogListeners",
+          "startCatalogListeners",
+          "safeCatalogKey",
+          "cleanCatalogPatch"
+        ],
+        "imports": [
+          "auth",
+          "canPlan",
+          "currentDataMode",
+          "db",
+          "doc",
+          "events",
+          "isAdmin",
+          "onSnapshot",
+          "plannerLoaded",
+          "sendSharedOrderDrafts",
+          "setDoc"
+        ],
+        "writes": [
+          "CATALOG_REF",
+          "INVENTORY_REF",
+          "PLANNER_SOURCES_REF",
+          "catalogData",
+          "catalogUnsubscribers",
+          "cleanCatalogPatch",
+          "inventoryData",
+          "plannerSourcesData",
+          "safeCatalogKey",
+          "sendCatalogSources",
+          "startCatalogListeners",
+          "stopCatalogListeners"
+        ]
+      },
+      {
+        "id": "customer-source",
+        "file": "modules/customer-source.js",
+        "owns": [
+          "customerApp",
+          "customerAuth",
+          "customerDB",
+          "CUSTOMER_STAFF",
+          "customerRows",
+          "customerFetchedAt",
+          "customerStatus",
+          "customerBusy",
+          "customerGeneration",
+          "customerIdentity",
+          "customerRetryAt",
+          "CUSTOMER_CACHE_MS",
+          "customerVisible",
+          "customerKey",
+          "customerAllowed",
+          "sendCustomerSource",
+          "resetCustomerSource",
+          "prepareCustomerIdentity",
+          "mapCustomerDocs",
+          "refreshCustomerSource",
+          "tryCustomerLogin"
+        ],
+        "imports": [
+          "auth",
+          "browserLocalPersistence",
+          "browserSessionPersistence",
+          "collection",
+          "currentDataMode",
+          "events",
+          "getAuth",
+          "getDocsFromServer",
+          "getFirestore",
+          "initializeApp",
+          "onAuthStateChanged",
+          "plannerLoaded",
+          "setPersistence",
+          "signInWithEmailAndPassword",
+          "signOut"
+        ],
+        "writes": [
+          "CUSTOMER_CACHE_MS",
+          "CUSTOMER_STAFF",
+          "customerAllowed",
+          "customerApp",
+          "customerAuth",
+          "customerBusy",
+          "customerDB",
+          "customerFetchedAt",
+          "customerGeneration",
+          "customerIdentity",
+          "customerKey",
+          "customerRetryAt",
+          "customerRows",
+          "customerStatus",
+          "customerVisible",
+          "mapCustomerDocs",
+          "prepareCustomerIdentity",
+          "refreshCustomerSource",
+          "resetCustomerSource",
+          "sendCustomerSource",
+          "tryCustomerLogin"
+        ]
+      },
+      {
+        "id": "quote-data",
+        "file": "modules/quote-data.js",
+        "owns": [
+          "parseContainerNo",
+          "isFrozenContainer",
+          "frozenBadgeHtml",
+          "compareContainerNo",
+          "compareQuotesByContainerNewest",
+          "mergePriceUpdateNote",
+          "upsertContainerQuote",
+          "parseBatchInputLines",
+          "getTimestampString"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "normalizeContainerNo",
+          "resolveToPrimaryBarcode"
+        ],
+        "writes": [
+          "compareContainerNo",
+          "compareQuotesByContainerNewest",
+          "frozenBadgeHtml",
+          "getTimestampString",
+          "isFrozenContainer",
+          "mergePriceUpdateNote",
+          "parseBatchInputLines",
+          "parseContainerNo",
+          "upsertContainerQuote"
+        ]
+      },
+      {
+        "id": "data-modes",
+        "file": "modules/data-modes.js",
+        "owns": [
+          "normalizeAppData",
+          "setModeUI",
+          "updateTestDataInfo",
+          "readLiveSnapshotOnce",
+          "copyLiveToTest",
+          "startLiveListener",
+          "startContainerTrackerLink",
+          "linkedTrackerContainer",
+          "startTestMode",
+          "switchDataMode",
+          "startDataListener"
+        ],
+        "imports": [
+          "CONTAINER_TRACKER_REF",
+          "PROD_DOC_REF",
+          "TEST_LOCAL_KEY",
+          "auth",
+          "containerTrackerData",
+          "currentDataMode",
+          "customerGeneration",
+          "normalizeContainerNo",
+          "onSnapshot",
+          "refreshCustomerSource",
+          "refreshUI",
+          "renderContainerIntegrationCheck",
+          "renderFinalPiBatchSearch",
+          "renderFinalPiContainerList",
+          "renderFinalPiSearch",
+          "renderSharedOrderDrafts",
+          "searchCache",
+          "sendContainerSnapshot",
+          "sendCustomerSource",
+          "sendPlannerSnapshot",
+          "showAppToast",
+          "unsubscribeContainerTracker",
+          "unsubscribeData"
+        ],
+        "writes": [
+          "containerTrackerData",
+          "copyLiveToTest",
+          "currentDataMode",
+          "customerGeneration",
+          "linkedTrackerContainer",
+          "normalizeAppData",
+          "readLiveSnapshotOnce",
+          "setModeUI",
+          "startContainerTrackerLink",
+          "startDataListener",
+          "startLiveListener",
+          "startTestMode",
+          "switchDataMode",
+          "unsubscribeContainerTracker",
+          "unsubscribeData",
+          "updateTestDataInfo"
+        ]
+      },
+      {
+        "id": "session",
+        "file": "modules/session.js",
+        "owns": [
+          "authGate",
+          "protectedApp",
+          "loginForm",
+          "loginError",
+          "btnLogout",
+          "authUser",
+          "btnRefreshTestData",
+          "btnModeLive",
+          "btnModeTest",
+          "saveFirebaseData"
+        ],
+        "imports": [
+          "PROD_DOC_REF",
+          "TEST_LOCAL_KEY",
+          "applyRoleUI",
+          "auth",
+          "copyLiveToTest",
+          "currentDataMode",
+          "currentRole",
+          "isAdmin",
+          "loadEmbeddedContainerTracker",
+          "loadEmbeddedOrderPlanner",
+          "loadRole",
+          "onAuthStateChanged",
+          "refreshCustomerSource",
+          "renderSharedOrderDrafts",
+          "resetCustomerSource",
+          "searchCache",
+          "setDoc",
+          "sharedOrderDrafts",
+          "showAppToast",
+          "signInWithEmailAndPassword",
+          "signOut",
+          "startCatalogListeners",
+          "startContainerTrackerLink",
+          "startDataListener",
+          "startSharedOrderListener",
+          "stopCatalogListeners",
+          "switchDataMode",
+          "tryCustomerLogin",
+          "unsubscribeContainerTracker",
+          "unsubscribeData",
+          "unsubscribeOrderPlanner",
+          "updateTestDataInfo"
+        ],
+        "writes": [
+          "authGate",
+          "authUser",
+          "btnLogout",
+          "btnModeLive",
+          "btnModeTest",
+          "btnRefreshTestData",
+          "currentRole",
+          "loginError",
+          "loginForm",
+          "protectedApp",
+          "saveFirebaseData",
+          "sharedOrderDrafts",
+          "unsubscribeContainerTracker",
+          "unsubscribeData",
+          "unsubscribeOrderPlanner"
+        ]
+      },
+      {
+        "id": "search-index",
+        "file": "modules/search-index.js",
+        "owns": [
+          "searchCache",
+          "PRICE_ANOMALY_THRESHOLD",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "masterSelectedProducts",
+          "rebuildSearchCache",
+          "resolveToPrimaryBarcodeFromCache",
+          "ensureSearchCache",
+          "refreshUI"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "compareQuotesByContainerNewest",
+          "renderCompareList",
+          "renderContainerDeleteOptions",
+          "renderFinalPiBatchSearch",
+          "renderFinalPiContainerList",
+          "renderFinalPiSearch",
+          "renderMappingTable",
+          "renderMasterTable",
+          "renderSharedOrderDrafts",
+          "renderSupplierOptions",
+          "sendContainerSnapshot",
+          "sendPlannerSnapshot"
+        ],
+        "writes": [
+          "PRICE_ANOMALY_THRESHOLD",
+          "ensureSearchCache",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "masterSelectedProducts",
+          "rebuildSearchCache",
+          "refreshUI",
+          "resolveToPrimaryBarcodeFromCache",
+          "searchCache"
+        ]
+      },
+      {
+        "id": "backups",
+        "file": "modules/backups.js",
+        "owns": [
+          "backupRequests412",
+          "requestPlannerBackup412",
+          "storeTestPlanner412",
+          "exportToCSV",
+          "validateCompleteBackup412",
+          "restoreCompleteBackup412"
+        ],
+        "imports": [
+          "CATALOG_REF",
+          "CONTAINER_TRACKER_REF",
+          "INVENTORY_REF",
+          "ORDER_PLANNER_REF",
+          "PLANNER_SOURCES_REF",
+          "PROD_DOC_REF",
+          "TEST_LOCAL_KEY",
+          "auth",
+          "catalogData",
+          "containerTrackerData",
+          "currentDataMode",
+          "db",
+          "events",
+          "getDoc",
+          "getTimestampString",
+          "inventoryData",
+          "isAdmin",
+          "loadEmbeddedOrderPlanner",
+          "normalizeAppData",
+          "plannerSourcesData",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "sendCatalogSources",
+          "sendContainerSnapshot",
+          "sharedOrderDrafts",
+          "showAppToast",
+          "writeBatch"
+        ],
+        "writes": [
+          "backupRequests412",
+          "catalogData",
+          "containerTrackerData",
+          "exportToCSV",
+          "inventoryData",
+          "plannerSourcesData",
+          "requestPlannerBackup412",
+          "restoreCompleteBackup412",
+          "sharedOrderDrafts",
+          "storeTestPlanner412",
+          "validateCompleteBackup412"
+        ]
+      },
+      {
+        "id": "exports",
+        "file": "modules/exports.js",
+        "owns": [
+          "exportMasterProductsToCSV",
+          "downloadQuoteTemplate",
+          "downloadMasterTemplate",
+          "csvEscape",
+          "downloadCSV",
+          "exportPurchaseDecisionCSV"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "getRelatedQuotes",
+          "getTimestampString",
+          "parseBatchInputLines",
+          "resolveToPrimaryBarcode"
+        ],
+        "writes": [
+          "csvEscape",
+          "downloadCSV",
+          "downloadMasterTemplate",
+          "downloadQuoteTemplate",
+          "exportMasterProductsToCSV",
+          "exportPurchaseDecisionCSV"
+        ]
+      },
+      {
+        "id": "price-comparison",
+        "file": "modules/price-comparison.js",
+        "owns": [
+          "resolveToPrimaryBarcode",
+          "renderSupplierOptions",
+          "getRelatedQuotes",
+          "normalizeSmartText",
+          "isOrderedSubsequence",
+          "smartProductMatchScore",
+          "renderCompareList",
+          "STALE_QUOTE_DAYS",
+          "quoteStatus",
+          "quoteStatusLabel",
+          "quoteAgeDays",
+          "isQuoteStale",
+          "renderProductCard"
+        ],
+        "imports": [
+          "PRICE_ANOMALY_THRESHOLD",
+          "cleanBarcode",
+          "ensureSearchCache",
+          "frozenBadgeHtml",
+          "isFrozenContainer",
+          "parseBatchInputLines",
+          "resolveToPrimaryBarcodeFromCache",
+          "saveFirebaseData"
+        ],
+        "writes": [
+          "STALE_QUOTE_DAYS",
+          "getRelatedQuotes",
+          "isOrderedSubsequence",
+          "isQuoteStale",
+          "normalizeSmartText",
+          "quoteAgeDays",
+          "quoteStatus",
+          "quoteStatusLabel",
+          "renderCompareList",
+          "renderProductCard",
+          "renderSupplierOptions",
+          "resolveToPrimaryBarcode",
+          "smartProductMatchScore"
+        ]
+      },
+      {
+        "id": "purchase-workbench",
+        "file": "modules/purchase-workbench.js",
+        "owns": [
+          "buildPurchaseWorkbenchRows",
+          "renderPurchaseWorkbench",
+          "updateWorkbenchTotals",
+          "copySupplierOrders"
+        ],
+        "imports": [
+          "STALE_QUOTE_DAYS",
+          "cleanBarcode",
+          "ensureSearchCache",
+          "isQuoteStale",
+          "parseBatchInputLines",
+          "quoteStatusLabel",
+          "resolveToPrimaryBarcode"
+        ],
+        "writes": [
+          "buildPurchaseWorkbenchRows",
+          "copySupplierOrders",
+          "renderPurchaseWorkbench",
+          "updateWorkbenchTotals"
+        ]
+      },
+      {
+        "id": "product-management",
+        "file": "modules/product-management.js",
+        "owns": [
+          "renderMappingTable",
+          "normalizeItemCode",
+          "migrateBarcodeReferences",
+          "rebuildItemToBarcode",
+          "updateMasterSelectionUI",
+          "renderMasterTable"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "escapeHtml",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "masterSelectedProducts",
+          "saveFirebaseData",
+          "smartProductMatchScore"
+        ],
+        "writes": [
+          "masterCurrentPage",
+          "migrateBarcodeReferences",
+          "normalizeItemCode",
+          "rebuildItemToBarcode",
+          "renderMappingTable",
+          "renderMasterTable",
+          "updateMasterSelectionUI"
+        ]
+      },
+      {
+        "id": "quote-container-management",
+        "file": "modules/quote-container-management.js",
+        "owns": [
+          "renderContainerDeleteOptions",
+          "activeManagedContainer",
+          "escapeContainerText",
+          "getManagedContainerQuotes",
+          "updateContainerSelectionInfo",
+          "renderContainerManager"
+        ],
+        "imports": [
+          "compareContainerNo",
+          "frozenBadgeHtml",
+          "isFrozenContainer",
+          "normalizeContainerNo",
+          "quoteStatusLabel"
+        ],
+        "writes": [
+          "activeManagedContainer",
+          "escapeContainerText",
+          "getManagedContainerQuotes",
+          "renderContainerDeleteOptions",
+          "renderContainerManager",
+          "updateContainerSelectionInfo"
+        ]
+      },
+      {
+        "id": "pi-query",
+        "file": "modules/pi-query.js",
+        "owns": [
+          "escapeFinalPiText",
+          "normalizeFinalPiDate",
+          "parseFinalPiLine",
+          "parseFinalPiPaste",
+          "getFinalPiProduct",
+          "getFinalPiToday",
+          "finalPiLogistics",
+          "isFinalPiReceived",
+          "finalPiContainerSort",
+          "isFinalPiConfirmed",
+          "finalPiWorkflowStatus",
+          "updateFinalPiPendingBadge",
+          "renderFinalPiContainerList",
+          "renderFinalPiSearch"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "compareContainerNo",
+          "findPiShelfColumn",
+          "frozenBadgeHtml",
+          "getContainerDates",
+          "legacySafeDate",
+          "linkedTrackerContainer",
+          "normalizeContainerNo",
+          "readPiShelfCell",
+          "resolveToPrimaryBarcode",
+          "saveFirebaseData",
+          "showAppToast"
+        ],
+        "writes": [
+          "escapeFinalPiText",
+          "finalPiContainerSort",
+          "finalPiLogistics",
+          "finalPiWorkflowStatus",
+          "getFinalPiProduct",
+          "getFinalPiToday",
+          "isFinalPiConfirmed",
+          "isFinalPiReceived",
+          "normalizeFinalPiDate",
+          "parseFinalPiLine",
+          "parseFinalPiPaste",
+          "renderFinalPiContainerList",
+          "renderFinalPiSearch",
+          "updateFinalPiPendingBadge"
+        ]
+      },
+      {
+        "id": "pi-batch-query",
+        "file": "modules/pi-batch-query.js",
+        "owns": [
+          "FINAL_PI_BATCH_MAX_TERMS",
+          "finalPiBatchSnapshot",
+          "finalPiBatchTokens",
+          "batchPiContainerSort",
+          "buildFinalPiBatchResult",
+          "renderFinalPiBatchSearch",
+          "exportFinalPiBatch",
+          "readFinalPiBatchFile"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "escapeFinalPiText",
+          "finalPiLogistics",
+          "getFinalPiProduct",
+          "getTimestampString",
+          "isFinalPiConfirmed",
+          "isFinalPiReceived",
+          "normalizeContainerNo",
+          "resolveToPrimaryBarcode",
+          "showAppToast"
+        ],
+        "writes": [
+          "FINAL_PI_BATCH_MAX_TERMS",
+          "batchPiContainerSort",
+          "buildFinalPiBatchResult",
+          "exportFinalPiBatch",
+          "finalPiBatchSnapshot",
+          "finalPiBatchTokens",
+          "readFinalPiBatchFile",
+          "renderFinalPiBatchSearch"
+        ]
+      },
+      {
+        "id": "pi-import",
+        "file": "modules/pi-import.js",
+        "owns": [
+          "downloadFinalPiTemplate",
+          "parseFinalPiMultiPaste",
+          "looksLikeFinalPiMulti",
+          "invalidFinalPiHtml",
+          "invalidFinalPiText",
+          "importFinalPiMulti",
+          "importFinalPi"
+        ],
+        "imports": [
+          "catalogData",
+          "cleanBarcode",
+          "currentDataMode",
+          "escapeFinalPiText",
+          "findPiShelfColumn",
+          "normalizeContainerNo",
+          "normalizeFinalPiDate",
+          "parseFinalPiLine",
+          "parseFinalPiPaste",
+          "piShelfPreviewText",
+          "planPiShelf",
+          "readPiShelfCell",
+          "renderFinalPiContainerList",
+          "renderFinalPiSearch",
+          "requestPlannerBackup412",
+          "savePiAndShelf",
+          "showAppToast"
+        ],
+        "writes": [
+          "downloadFinalPiTemplate",
+          "importFinalPi",
+          "importFinalPiMulti",
+          "invalidFinalPiHtml",
+          "invalidFinalPiText",
+          "looksLikeFinalPiMulti",
+          "parseFinalPiMultiPaste"
+        ]
+      },
+      {
+        "id": "pi-shelf-life",
+        "file": "modules/pi-shelf-life.js",
+        "owns": [
+          "findPiShelfColumn",
+          "readPiShelfCell",
+          "planPiShelf",
+          "piShelfPreviewText",
+          "savePiAndShelf"
+        ],
+        "imports": [
+          "CATALOG_REF",
+          "PROD_DOC_REF",
+          "TEST_LOCAL_KEY",
+          "catalogData",
+          "currentDataMode",
+          "db",
+          "isAdmin",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "requestPlannerBackup412",
+          "safeCatalogKey",
+          "searchCache",
+          "sendCatalogSources",
+          "writeBatch"
+        ],
+        "writes": [
+          "catalogData",
+          "findPiShelfColumn",
+          "piShelfPreviewText",
+          "planPiShelf",
+          "readPiShelfCell",
+          "savePiAndShelf"
+        ]
+      },
+      {
+        "id": "workspace",
+        "file": "modules/workspace.js",
+        "owns": [
+          "routePlannerWorkspace",
+          "chooseProductView412",
+          "chooseContainerView412",
+          "openSystemTools412",
+          "containerSettingsPending412",
+          "containerSettingsReady412"
+        ],
+        "imports": [
+          "chooseImportView",
+          "events",
+          "loadEmbeddedContainerTracker",
+          "loadEmbeddedOrderPlanner",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "renderMasterTable"
+        ],
+        "writes": [
+          "chooseContainerView412",
+          "chooseProductView412",
+          "containerSettingsPending412",
+          "containerSettingsReady412",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "openSystemTools412",
+          "routePlannerWorkspace"
+        ]
+      },
+      {
+        "id": "dom-bindings",
+        "file": "modules/dom-bindings.js",
+        "owns": [],
+        "imports": [
+          "CONTAINER_TRACKER_REF",
+          "activeManagedContainer",
+          "auth",
+          "cleanBarcode",
+          "containerTrackerData",
+          "copySupplierOrders",
+          "currentDataMode",
+          "downloadFinalPiTemplate",
+          "downloadMasterTemplate",
+          "downloadQuoteTemplate",
+          "escapeFinalPiText",
+          "escapeHtml",
+          "events",
+          "exportFinalPiBatch",
+          "exportMasterProductsToCSV",
+          "exportPurchaseDecisionCSV",
+          "exportToCSV",
+          "finalPiBatchSnapshot",
+          "getTimestampString",
+          "importFinalPi",
+          "importFinalPiMulti",
+          "isAdmin",
+          "looksLikeFinalPiMulti",
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "masterSelectedProducts",
+          "migrateBarcodeReferences",
+          "normalizeAppData",
+          "normalizeContainerNo",
+          "normalizeItemCode",
+          "readFinalPiBatchFile",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "renderCompareList",
+          "renderContainerIntegrationCheck",
+          "renderContainerManager",
+          "renderFinalPiBatchSearch",
+          "renderFinalPiSearch",
+          "renderMasterTable",
+          "renderPurchaseWorkbench",
+          "resolveToPrimaryBarcode",
+          "restoreCompleteBackup412",
+          "saveFirebaseData",
+          "sendContainerSnapshot",
+          "sendPlannerSnapshot",
+          "setDoc",
+          "showAppToast",
+          "updateContainerSelectionInfo",
+          "updateMasterSelectionUI",
+          "updateWorkbenchTotals",
+          "upsertContainerQuote"
+        ],
+        "writes": [
+          "activeManagedContainer",
+          "containerTrackerData",
+          "finalPiBatchSnapshot",
+          "masterCurrentPage",
+          "masterSearchTerm"
+        ]
+      }
+    ]
+  },
+  "shell/dom": {
+    "scope": "shell/dom",
+    "features": [
+      {
+        "id": "startup",
+        "file": "modules/startup.js",
+        "owns": [
+          "finalPiSearch"
+        ],
+        "imports": [
+          "downloadFinalPiTemplate",
+          "escapeFinalPiText",
+          "exportFinalPiBatch",
+          "finalPiBatchSnapshot",
+          "importFinalPi",
+          "importFinalPiMulti",
+          "looksLikeFinalPiMulti",
+          "readFinalPiBatchFile",
+          "renderFinalPiBatchSearch",
+          "renderFinalPiSearch"
+        ],
+        "writes": [
+          "finalPiBatchSnapshot",
+          "finalPiSearch"
+        ]
+      },
+      {
+        "id": "search-events",
+        "file": "modules/search-events.js",
+        "owns": [
+          "searchDebounceTimer",
+          "searchComposing",
+          "searchInput",
+          "batchSearchInput",
+          "compareResultsContainer"
+        ],
+        "imports": [
+          "renderCompareList",
+          "saveFirebaseData"
+        ],
+        "writes": [
+          "batchSearchInput",
+          "compareResultsContainer",
+          "searchComposing",
+          "searchDebounceTimer",
+          "searchInput"
+        ]
+      },
+      {
+        "id": "product-events",
+        "file": "modules/product-events.js",
+        "owns": [
+          "masterSearchInput",
+          "btnSelectAllMasterFiltered",
+          "btnClearMasterSelection",
+          "btnDeleteSelectedMaster",
+          "masterPageSize",
+          "btnMasterPrev",
+          "btnMasterNext"
+        ],
+        "imports": [
+          "masterCurrentPage",
+          "masterSearchTerm",
+          "masterSelectedProducts",
+          "rebuildItemToBarcode",
+          "renderMasterTable",
+          "saveFirebaseData",
+          "updateMasterSelectionUI"
+        ],
+        "writes": [
+          "btnClearMasterSelection",
+          "btnDeleteSelectedMaster",
+          "btnMasterNext",
+          "btnMasterPrev",
+          "btnSelectAllMasterFiltered",
+          "masterCurrentPage",
+          "masterPageSize",
+          "masterSearchInput",
+          "masterSearchTerm"
+        ]
+      },
+      {
+        "id": "workbench-events",
+        "file": "modules/workbench-events.js",
+        "owns": [],
+        "imports": [
+          "copySupplierOrders",
+          "downloadMasterTemplate",
+          "downloadQuoteTemplate",
+          "exportPurchaseDecisionCSV",
+          "renderCompareList",
+          "renderPurchaseWorkbench",
+          "updateWorkbenchTotals"
+        ],
+        "writes": []
+      },
+      {
+        "id": "quote-entry",
+        "file": "modules/quote-entry.js",
+        "owns": [
+          "fillManualProduct",
+          "autoFillManualFromBarcode",
+          "autoFillManualFromItemCode"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "resolveToPrimaryBarcode",
+          "saveFirebaseData",
+          "upsertContainerQuote"
+        ],
+        "writes": [
+          "autoFillManualFromBarcode",
+          "autoFillManualFromItemCode",
+          "fillManualProduct"
+        ]
+      },
+      {
+        "id": "quick-quotes",
+        "file": "modules/quick-quotes.js",
+        "owns": [
+          "btnQuickBatchImport",
+          "btnSaveQuickQuote"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "normalizeContainerNo",
+          "renderCompareList",
+          "resolveToPrimaryBarcode",
+          "saveFirebaseData",
+          "showAppToast",
+          "upsertContainerQuote"
+        ],
+        "writes": [
+          "btnQuickBatchImport",
+          "btnSaveQuickQuote"
+        ]
+      },
+      {
+        "id": "system-settings-events",
+        "file": "modules/system-settings-events.js",
+        "owns": [],
+        "imports": [
+          "cleanBarcode",
+          "saveFirebaseData"
+        ],
+        "writes": []
+      },
+      {
+        "id": "exports-events",
+        "file": "modules/exports-events.js",
+        "owns": [],
+        "imports": [
+          "exportMasterProductsToCSV",
+          "exportToCSV"
+        ],
+        "writes": []
+      },
+      {
+        "id": "quote-import",
+        "file": "modules/quote-import.js",
+        "owns": [
+          "renderMasterImportHistory"
+        ],
+        "imports": [
+          "cleanBarcode",
+          "escapeHtml",
+          "getTimestampString",
+          "resolveToPrimaryBarcode",
+          "saveFirebaseData",
+          "upsertContainerQuote"
+        ],
+        "writes": [
+          "renderMasterImportHistory"
+        ]
+      },
+      {
+        "id": "master-rollback",
+        "file": "modules/master-rollback.js",
+        "owns": [],
+        "imports": [
+          "currentDataMode",
+          "decompressMasterUndo",
+          "isAdmin",
+          "masterCurrentPage",
+          "masterSelectedProducts",
+          "migrateBarcodeReferences",
+          "normalizeItemCode",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "renderMasterImportHistory",
+          "saveFirebaseData",
+          "sendPlannerSnapshot"
+        ],
+        "writes": [
+          "masterCurrentPage"
+        ]
+      },
+      {
+        "id": "master-import",
+        "file": "modules/master-import.js",
+        "owns": [
+          "JapanMasterImport",
+          "japanMasterPending",
+          "compressMasterUndo",
+          "decompressMasterUndo",
+          "previewJapanMaster"
+        ],
+        "imports": [
+          "auth",
+          "currentDataMode",
+          "escapeHtml",
+          "isAdmin",
+          "masterCurrentPage",
+          "masterSelectedProducts",
+          "migrateBarcodeReferences",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "renderMasterImportHistory",
+          "saveFirebaseData",
+          "sendPlannerSnapshot"
+        ],
+        "writes": [
+          "JapanMasterImport",
+          "compressMasterUndo",
+          "decompressMasterUndo",
+          "japanMasterPending",
+          "masterCurrentPage",
+          "previewJapanMaster"
+        ]
+      },
+      {
+        "id": "container-quote-events",
+        "file": "modules/container-quote-events.js",
+        "owns": [],
+        "imports": [
+          "activeManagedContainer",
+          "renderContainerManager",
+          "saveFirebaseData",
+          "updateContainerSelectionInfo"
+        ],
+        "writes": [
+          "activeManagedContainer"
+        ]
+      },
+      {
+        "id": "advanced-data-actions",
+        "file": "modules/advanced-data-actions.js",
+        "owns": [],
+        "imports": [
+          "saveFirebaseData"
+        ],
+        "writes": []
+      },
+      {
+        "id": "backup-restore",
+        "file": "modules/backup-restore.js",
+        "owns": [],
+        "imports": [
+          "CONTAINER_TRACKER_REF",
+          "containerTrackerData",
+          "currentDataMode",
+          "isAdmin",
+          "normalizeAppData",
+          "rebuildItemToBarcode",
+          "refreshUI",
+          "renderContainerIntegrationCheck",
+          "restoreCompleteBackup412",
+          "saveFirebaseData",
+          "sendContainerSnapshot",
+          "setDoc"
+        ],
+        "writes": [
+          "containerTrackerData"
+        ]
+      }
+    ]
+  },
+  "planner": {
+    "scope": "planner",
+    "features": [
+      {
+        "id": "state",
+        "file": "modules/state.js",
+        "owns": [
+          "SEED",
+          "IMAGE_MAP",
+          "KEY",
+          "ELIGIBLE_SOURCE_ORDER",
+          "REVIEW_SEED_LOOKUP",
+          "$",
+          "esc",
+          "initial",
+          "plannerRole",
+          "trackerFeed",
+          "state",
+          "dirtyDrafts",
+          "scopedKey",
+          "loadScoped"
+        ],
+        "imports": [],
+        "writes": [
+          "$",
+          "ELIGIBLE_SOURCE_ORDER",
+          "IMAGE_MAP",
+          "KEY",
+          "REVIEW_SEED_LOOKUP",
+          "SEED",
+          "dirtyDrafts",
+          "esc",
+          "initial",
+          "loadScoped",
+          "plannerRole",
+          "scopedKey",
+          "state",
+          "trackerFeed"
+        ]
+      },
+      {
+        "id": "draft-recovery",
+        "file": "modules/draft-recovery.js",
+        "owns": [
+          "plannerUid",
+          "localRecovery",
+          "localRecoveryScope",
+          "recoveryTimer",
+          "saveFingerprints",
+          "previousContainerCode",
+          "recoveryKey",
+          "localDraftCopy",
+          "draftFingerprint",
+          "autosaveLabel",
+          "flushRecovery",
+          "stageLocalDraft",
+          "loadLocalRecovery",
+          "clearRecoveredWork",
+          "mergeChangingContainerKey"
+        ],
+        "imports": [
+          "$",
+          "currentKey",
+          "deferredDrafts",
+          "dirtyDrafts",
+          "draft",
+          "loadWork",
+          "plannerRole",
+          "renderAll",
+          "selectedWorkApplied",
+          "state",
+          "trackerFeed",
+          "updateWorkSelect"
+        ],
+        "writes": [
+          "autosaveLabel",
+          "clearRecoveredWork",
+          "draftFingerprint",
+          "flushRecovery",
+          "loadLocalRecovery",
+          "localDraftCopy",
+          "localRecovery",
+          "localRecoveryScope",
+          "mergeChangingContainerKey",
+          "plannerUid",
+          "previousContainerCode",
+          "recoveryKey",
+          "recoveryTimer",
+          "saveFingerprints",
+          "selectedWorkApplied",
+          "stageLocalDraft"
+        ]
+      },
+      {
+        "id": "units",
+        "file": "modules/units.js",
+        "owns": [
+          "persist",
+          "today",
+          "dayDiff",
+          "round",
+          "fmt",
+          "norm",
+          "trackedItem",
+          "photo",
+          "parseMYOBFactor",
+          "factorInfo",
+          "factor",
+          "val",
+          "shelfLife"
+        ],
+        "imports": [
+          "IMAGE_MAP",
+          "monthlyInfo",
+          "state",
+          "storeLocal",
+          "trackerFeed"
+        ],
+        "writes": [
+          "dayDiff",
+          "factor",
+          "factorInfo",
+          "fmt",
+          "norm",
+          "parseMYOBFactor",
+          "persist",
+          "photo",
+          "round",
+          "shelfLife",
+          "today",
+          "trackedItem",
+          "val"
+        ]
+      },
+      {
+        "id": "customer-orders",
+        "file": "modules/customer-orders.js",
+        "owns": [
+          "bucket",
+          "activeOrders",
+          "orderNeed"
+        ],
+        "imports": [
+          "norm",
+          "round",
+          "state"
+        ],
+        "writes": [
+          "activeOrders",
+          "bucket",
+          "orderNeed"
+        ]
+      },
+      {
+        "id": "incoming-stock",
+        "file": "modules/incoming-stock.js",
+        "owns": [
+          "allPis",
+          "containerNaturalCollator",
+          "parseContainerSortKey",
+          "compareContainerIds",
+          "incoming",
+          "allocationCode",
+          "piWithReservations"
+        ],
+        "imports": [
+          "norm",
+          "round",
+          "state",
+          "trackerFeed"
+        ],
+        "writes": [
+          "allPis",
+          "allocationCode",
+          "compareContainerIds",
+          "containerNaturalCollator",
+          "incoming",
+          "parseContainerSortKey",
+          "piWithReservations"
+        ]
+      },
+      {
+        "id": "purchase-calculation",
+        "file": "modules/purchase-calculation.js",
+        "owns": [
+          "calc",
+          "currentKey",
+          "draft",
+          "getItems"
+        ],
+        "imports": [
+          "$",
+          "customerSourceReady",
+          "dayDiff",
+          "factor",
+          "incoming",
+          "norm",
+          "orderNeed",
+          "round",
+          "state",
+          "today",
+          "trackerFeed",
+          "val"
+        ],
+        "writes": [
+          "calc",
+          "currentKey",
+          "draft",
+          "getItems"
+        ]
+      },
+      {
+        "id": "table-filters",
+        "file": "modules/table-filters.js",
+        "owns": [
+          "SORT_FIELDS",
+          "tableSort",
+          "columnFilters",
+          "openColumnKey",
+          "columnValue",
+          "passesColumnFilters",
+          "sortRows",
+          "renderSortMarks",
+          "closeColumnFilter",
+          "showColumnFilter"
+        ],
+        "imports": [
+          "$",
+          "shelfLife"
+        ],
+        "writes": [
+          "SORT_FIELDS",
+          "closeColumnFilter",
+          "columnFilters",
+          "columnValue",
+          "openColumnKey",
+          "passesColumnFilters",
+          "renderSortMarks",
+          "showColumnFilter",
+          "sortRows",
+          "tableSort"
+        ]
+      },
+      {
+        "id": "planning-view",
+        "file": "modules/planning-view.js",
+        "owns": [
+          "renderPlan",
+          "updateDraftTotal"
+        ],
+        "imports": [
+          "$",
+          "calc",
+          "closeColumnFilter",
+          "closePhotoPreview",
+          "closePiTip",
+          "dayDiff",
+          "draft",
+          "esc",
+          "fmt",
+          "getItems",
+          "monthlyCell",
+          "passesColumnFilters",
+          "photo",
+          "plannerRole",
+          "renderSalesHeads",
+          "renderSortMarks",
+          "salesMonthCells",
+          "shelfLife",
+          "sortRows",
+          "today",
+          "updateTableHeader"
+        ],
+        "writes": [
+          "renderPlan",
+          "updateDraftTotal"
+        ]
+      },
+      {
+        "id": "product-details",
+        "file": "modules/product-details.js",
+        "owns": [
+          "currentPiTipTrigger",
+          "closePiTip",
+          "formatTransitEta",
+          "showPiDetails",
+          "setInactive",
+          "currentPhotoTrigger",
+          "closePhotoPreview",
+          "showPhotoPreview",
+          "openZoom",
+          "zoomScale",
+          "updateZoom",
+          "showExplain"
+        ],
+        "imports": [
+          "$",
+          "calc",
+          "draft",
+          "esc",
+          "fmt",
+          "openPlannerDialog",
+          "photo",
+          "piWithReservations",
+          "plannerRole",
+          "saveCatalogPatch",
+          "state"
+        ],
+        "writes": [
+          "closePhotoPreview",
+          "closePiTip",
+          "currentPhotoTrigger",
+          "currentPiTipTrigger",
+          "formatTransitEta",
+          "openZoom",
+          "setInactive",
+          "showExplain",
+          "showPhotoPreview",
+          "showPiDetails",
+          "updateZoom",
+          "zoomScale"
+        ]
+      },
+      {
+        "id": "work-orders",
+        "file": "modules/work-orders.js",
+        "owns": [
+          "renderContainers",
+          "download",
+          "csvCell",
+          "exportCsv",
+          "saveDraft",
+          "renderAll"
+        ],
+        "imports": [
+          "$",
+          "allPis",
+          "autosaveLabel",
+          "compareContainerIds",
+          "currentKey",
+          "customerSourceReady",
+          "draft",
+          "draftFingerprint",
+          "esc",
+          "flushRecovery",
+          "fmt",
+          "persist",
+          "plannerRole",
+          "refreshRetryStatus",
+          "renderCatalogSources",
+          "renderManagement",
+          "renderNotes",
+          "renderPending",
+          "renderPlan",
+          "renderSourceReview",
+          "saveFingerprints",
+          "stageLocalDraft",
+          "state",
+          "trackedItem",
+          "trackerFeed"
+        ],
+        "writes": [
+          "csvCell",
+          "download",
+          "exportCsv",
+          "renderAll",
+          "renderContainers",
+          "saveDraft"
+        ]
+      },
+      {
+        "id": "planning-events",
+        "file": "modules/planning-events.js",
+        "owns": [
+          "setArrivalDefault"
+        ],
+        "imports": [
+          "$",
+          "autosaveLabel",
+          "calc",
+          "closeColumnFilter",
+          "closePhotoPreview",
+          "closePiTip",
+          "columnFilters",
+          "currentKey",
+          "currentPhotoTrigger",
+          "currentPiTipTrigger",
+          "dirtyDrafts",
+          "draft",
+          "flushRecovery",
+          "mergeChangingContainerKey",
+          "openColumnKey",
+          "openZoom",
+          "persist",
+          "plannerRole",
+          "previousContainerCode",
+          "renderAll",
+          "renderNotes",
+          "renderPlan",
+          "saveCatalogPatch",
+          "setInactive",
+          "shelfLife",
+          "showColumnFilter",
+          "showExplain",
+          "showPhotoPreview",
+          "showPiDetails",
+          "stageLocalDraft",
+          "state",
+          "tableSort",
+          "updateDraftTotal",
+          "updateTableHeader",
+          "val"
+        ],
+        "writes": [
+          "previousContainerCode",
+          "setArrivalDefault",
+          "tableSort"
+        ]
+      },
+      {
+        "id": "work-order-actions",
+        "file": "modules/work-order-actions.js",
+        "owns": [
+          "selectedWorkApplied",
+          "preparedWorks",
+          "updateWorkSelect",
+          "loadWork",
+          "applyPreparedDefaults",
+          "renderNotes",
+          "exportPlanButton"
+        ],
+        "imports": [
+          "$",
+          "currentKey",
+          "esc",
+          "exportCsv",
+          "persist",
+          "plannerRole",
+          "previousContainerCode",
+          "renderAll",
+          "saveDraft",
+          "state",
+          "trackerFeed",
+          "updateZoom",
+          "zoomScale"
+        ],
+        "writes": [
+          "applyPreparedDefaults",
+          "exportPlanButton",
+          "loadWork",
+          "preparedWorks",
+          "previousContainerCode",
+          "renderNotes",
+          "selectedWorkApplied",
+          "updateWorkSelect",
+          "zoomScale"
+        ]
+      },
+      {
+        "id": "sheet-reader",
+        "file": "modules/sheet-reader.js",
+        "owns": [
+          "parseSheet"
+        ],
+        "imports": [
+          "$",
+          "download",
+          "state"
+        ],
+        "writes": [
+          "parseSheet"
+        ]
+      },
+      {
+        "id": "catalog-sync",
+        "file": "modules/catalog-sync.js",
+        "owns": [
+          "CATALOG_FIELDS",
+          "catalogRemote",
+          "catalogReady",
+          "cloudSequence",
+          "cloudJobs",
+          "migrationConflicts",
+          "importPreview",
+          "normalizePlannerState",
+          "storeLocal",
+          "loadPlannerMode",
+          "meaningfulNumber",
+          "itemKey",
+          "rebuildCatalog",
+          "catalogRecord",
+          "discoverCatalog",
+          "mergePatch",
+          "saveCatalogPatch",
+          "sendCloud",
+          "applyCatalogSnapshot",
+          "finishCloud",
+          "sourceSave"
+        ],
+        "imports": [
+          "$",
+          "ELIGIBLE_SOURCE_ORDER",
+          "KEY",
+          "SEED",
+          "dirtyDrafts",
+          "hydrateSales",
+          "initial",
+          "norm",
+          "refreshRetryStatus",
+          "renderAll",
+          "renderPending",
+          "salesDecoded",
+          "salesError",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesPending",
+          "salesSignature",
+          "salesSummary",
+          "scopedKey",
+          "state",
+          "trackerFeed",
+          "updateSalesSummary"
+        ],
+        "writes": [
+          "CATALOG_FIELDS",
+          "applyCatalogSnapshot",
+          "catalogReady",
+          "catalogRecord",
+          "catalogRemote",
+          "cloudJobs",
+          "cloudSequence",
+          "dirtyDrafts",
+          "discoverCatalog",
+          "finishCloud",
+          "importPreview",
+          "itemKey",
+          "loadPlannerMode",
+          "meaningfulNumber",
+          "mergePatch",
+          "migrationConflicts",
+          "normalizePlannerState",
+          "rebuildCatalog",
+          "salesDecoded",
+          "salesError",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesPending",
+          "salesSignature",
+          "salesSummary",
+          "saveCatalogPatch",
+          "sendCloud",
+          "sourceSave",
+          "state",
+          "storeLocal"
+        ]
+      },
+      {
+        "id": "product-management",
+        "file": "modules/product-management.js",
+        "owns": [
+          "itemIssues",
+          "showHistory",
+          "kindSelect",
+          "statusSelect",
+          "renderManagement",
+          "renderPending",
+          "renderCatalogSources"
+        ],
+        "imports": [
+          "$",
+          "esc",
+          "factor",
+          "factorInfo",
+          "fmt",
+          "migrationConflicts",
+          "monthlyManagement",
+          "normalizePlannerState",
+          "openPlannerDialog",
+          "photo",
+          "plannerRole",
+          "saveCatalogPatch",
+          "sendCloud",
+          "shelfLife",
+          "state",
+          "storeLocal",
+          "trackerFeed",
+          "val"
+        ],
+        "writes": [
+          "itemIssues",
+          "kindSelect",
+          "renderCatalogSources",
+          "renderManagement",
+          "renderPending",
+          "showHistory",
+          "state",
+          "statusSelect"
+        ]
+      },
+      {
+        "id": "import-dialog",
+        "file": "modules/import-dialog.js",
+        "owns": [
+          "pick",
+          "previewImport",
+          "fileHandler"
+        ],
+        "imports": [
+          "$",
+          "exportSettings412",
+          "importPreview",
+          "meaningfulNumber",
+          "norm",
+          "openPlannerDialog",
+          "parseSheetGrid412",
+          "previewUnified",
+          "renderAll",
+          "sourceSave",
+          "state",
+          "today",
+          "unifiedImportGrid"
+        ],
+        "writes": [
+          "fileHandler",
+          "importPreview",
+          "pick",
+          "previewImport"
+        ]
+      },
+      {
+        "id": "product-exports",
+        "file": "modules/product-exports.js",
+        "owns": [
+          "sourceStatus",
+          "sourceExportRows",
+          "safeExcelText",
+          "exportSourceWorkbook",
+          "renderSourceReview"
+        ],
+        "imports": [
+          "$",
+          "catalogReady",
+          "esc",
+          "monthlyInfo",
+          "shelfLife",
+          "state",
+          "trackerFeed",
+          "val"
+        ],
+        "writes": [
+          "exportSourceWorkbook",
+          "renderSourceReview",
+          "safeExcelText",
+          "sourceExportRows",
+          "sourceStatus"
+        ]
+      },
+      {
+        "id": "status-import",
+        "file": "modules/status-import.js",
+        "owns": [
+          "pendingStatusImport",
+          "statusHead",
+          "statusCodeHeaders",
+          "statusValueHeaders",
+          "parseStatusValue",
+          "statusDelimitedRows",
+          "statusRowsFromGrid",
+          "parseStatusFile",
+          "stageStatusImport",
+          "openStatusImport",
+          "refreshShelfImporterRole",
+          "refreshStatusImporterRole"
+        ],
+        "imports": [
+          "$",
+          "catalogReady",
+          "esc",
+          "norm",
+          "openPlannerDialog",
+          "plannerRole",
+          "saveCatalogPatch",
+          "state",
+          "trackerFeed"
+        ],
+        "writes": [
+          "openStatusImport",
+          "parseStatusFile",
+          "parseStatusValue",
+          "pendingStatusImport",
+          "refreshShelfImporterRole",
+          "refreshStatusImporterRole",
+          "stageStatusImport",
+          "statusCodeHeaders",
+          "statusDelimitedRows",
+          "statusHead",
+          "statusRowsFromGrid",
+          "statusValueHeaders"
+        ]
+      },
+      {
+        "id": "shelf-life-import",
+        "file": "modules/shelf-life-import.js",
+        "owns": [
+          "pendingShelfImport",
+          "shelfColName",
+          "shelfItemHeaders",
+          "shelfBarcodeHeaders",
+          "shelfMonthsHeaders",
+          "normalizeShelfBarcode",
+          "parseShelfGrid",
+          "loadShelfFile",
+          "previewShelfImport"
+        ],
+        "imports": [
+          "$",
+          "catalogReady",
+          "csvCell",
+          "download",
+          "esc",
+          "norm",
+          "openPlannerDialog",
+          "plannerRole",
+          "saveCatalogPatch",
+          "shelfLife",
+          "state",
+          "statusDelimitedRows",
+          "trackerFeed"
+        ],
+        "writes": [
+          "loadShelfFile",
+          "normalizeShelfBarcode",
+          "parseShelfGrid",
+          "pendingShelfImport",
+          "previewShelfImport",
+          "shelfBarcodeHeaders",
+          "shelfColName",
+          "shelfItemHeaders",
+          "shelfMonthsHeaders"
+        ]
+      },
+      {
+        "id": "inventory-import",
+        "file": "modules/inventory-import.js",
+        "owns": [
+          "parseInventoryPaste",
+          "pendingInventoryImport",
+          "previewPastedInventory",
+          "commitPastedInventory"
+        ],
+        "imports": [
+          "$",
+          "catalogReady",
+          "discoverCatalog",
+          "esc",
+          "norm",
+          "openPlannerDialog",
+          "parseMYOBFactor",
+          "plannerRole",
+          "rebuildCatalog",
+          "renderAll",
+          "sourceSave",
+          "state",
+          "trackerFeed"
+        ],
+        "writes": [
+          "commitPastedInventory",
+          "parseInventoryPaste",
+          "pendingInventoryImport",
+          "previewPastedInventory"
+        ]
+      },
+      {
+        "id": "host-bridge",
+        "file": "modules/host-bridge.js",
+        "owns": [
+          "refreshRetryStatus",
+          "updateTableHeader",
+          "deferredDrafts",
+          "customerSourceReady",
+          "plannerHeightLast",
+          "plannerHeightPending",
+          "sendPlannerHeight"
+        ],
+        "imports": [
+          "$",
+          "applyCatalogSnapshot",
+          "applyPreparedDefaults",
+          "autosaveLabel",
+          "catalogReady",
+          "clearRecoveredWork",
+          "currentKey",
+          "dirtyDrafts",
+          "discoverCatalog",
+          "draftFingerprint",
+          "events",
+          "finishCloud",
+          "flushRecovery",
+          "loadLocalRecovery",
+          "loadPlannerMode",
+          "localRecovery",
+          "localRecoveryScope",
+          "notifyPlannerWidth412",
+          "plannerRole",
+          "plannerUid",
+          "rebuildCatalog",
+          "refreshShelfImporterRole",
+          "refreshStatusImporterRole",
+          "renderAll",
+          "renderNotes",
+          "saveFingerprints",
+          "selectedWorkApplied",
+          "showColumnFilter",
+          "state",
+          "storeLocal",
+          "trackerFeed",
+          "updateWorkSelect"
+        ],
+        "writes": [
+          "catalogReady",
+          "customerSourceReady",
+          "deferredDrafts",
+          "localRecovery",
+          "localRecoveryScope",
+          "plannerHeightLast",
+          "plannerHeightPending",
+          "plannerRole",
+          "plannerUid",
+          "refreshRetryStatus",
+          "selectedWorkApplied",
+          "sendPlannerHeight",
+          "trackerFeed",
+          "updateTableHeader"
+        ]
+      },
+      {
+        "id": "settings-import",
+        "file": "modules/settings-import.js",
+        "owns": [
+          "unifiedPending",
+          "UNIFIED_FIELDS",
+          "unifiedImportGrid",
+          "unifiedImportFile",
+          "previewUnified"
+        ],
+        "imports": [
+          "$",
+          "catalogReady",
+          "esc",
+          "events",
+          "exportSettings412",
+          "factor",
+          "norm",
+          "openPlannerDialog",
+          "parseStatusValue",
+          "plannerRole",
+          "saveCatalogPatch",
+          "shelfColName",
+          "shelfItemHeaders",
+          "shelfLife",
+          "state",
+          "statusDelimitedRows",
+          "trackerFeed",
+          "val"
+        ],
+        "writes": [
+          "UNIFIED_FIELDS",
+          "previewUnified",
+          "unifiedImportFile",
+          "unifiedImportGrid",
+          "unifiedPending"
+        ]
+      },
+      {
+        "id": "dialog-position",
+        "file": "modules/dialog-position.js",
+        "owns": [
+          "positionPlannerDialog",
+          "openPlannerDialog",
+          "dialogPositionPending",
+          "schedulePlannerDialogs"
+        ],
+        "imports": [],
+        "writes": [
+          "dialogPositionPending",
+          "openPlannerDialog",
+          "positionPlannerDialog",
+          "schedulePlannerDialogs"
+        ]
+      },
+      {
+        "id": "sales-worker",
+        "file": "modules/sales-worker.js",
+        "owns": [
+          "salesImportWorker"
+        ],
+        "imports": [],
+        "writes": [
+          "salesImportWorker"
+        ]
+      },
+      {
+        "id": "sales-core",
+        "file": "modules/sales-core.js",
+        "owns": [
+          "SalesCore"
+        ],
+        "imports": [],
+        "writes": [
+          "SalesCore"
+        ]
+      },
+      {
+        "id": "sales-state",
+        "file": "modules/sales-state.js",
+        "owns": [
+          "salesDecoded",
+          "salesSummary",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesError",
+          "salesPending",
+          "salesWorker",
+          "salesSignature",
+          "salesBusy",
+          "salesAllowedCodes",
+          "updateSalesSummary",
+          "gzipText",
+          "gunzipText",
+          "decodeSales",
+          "hydrateSales"
+        ],
+        "imports": [
+          "SalesCore",
+          "renderAll",
+          "state",
+          "storeLocal",
+          "today",
+          "trackerFeed"
+        ],
+        "writes": [
+          "decodeSales",
+          "gunzipText",
+          "gzipText",
+          "hydrateSales",
+          "salesAllowedCodes",
+          "salesBusy",
+          "salesDecoded",
+          "salesError",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesPending",
+          "salesSignature",
+          "salesSummary",
+          "salesWorker",
+          "updateSalesSummary"
+        ]
+      },
+      {
+        "id": "monthly-sales",
+        "file": "modules/monthly-sales.js",
+        "owns": [
+          "monthlyInfo"
+        ],
+        "imports": [
+          "factor",
+          "salesError",
+          "salesLoading",
+          "salesSummary",
+          "state"
+        ],
+        "writes": [
+          "monthlyInfo"
+        ]
+      },
+      {
+        "id": "sales-view",
+        "file": "modules/sales-view.js",
+        "owns": [
+          "monthlyCell",
+          "monthlyManagement",
+          "salesMonthCells",
+          "renderSalesHeads",
+          "refreshSalesUI",
+          "salesStatus"
+        ],
+        "imports": [
+          "$",
+          "SalesCore",
+          "esc",
+          "fmt",
+          "monthlyInfo",
+          "plannerRole",
+          "salesBusy",
+          "salesDecoded",
+          "salesError",
+          "salesLoading",
+          "salesPending",
+          "salesSummary",
+          "state",
+          "today"
+        ],
+        "writes": [
+          "monthlyCell",
+          "monthlyManagement",
+          "refreshSalesUI",
+          "renderSalesHeads",
+          "salesMonthCells",
+          "salesStatus"
+        ]
+      },
+      {
+        "id": "sales-import",
+        "file": "modules/sales-import.js",
+        "owns": [
+          "parseSalesFile",
+          "prepareSales",
+          "selectSalesFile"
+        ],
+        "imports": [
+          "$",
+          "SalesCore",
+          "esc",
+          "factor",
+          "fmt",
+          "gzipText",
+          "monthlyInfo",
+          "plannerRole",
+          "plannerUid",
+          "refreshSalesUI",
+          "salesAllowedCodes",
+          "salesBusy",
+          "salesDecoded",
+          "salesImportWorker",
+          "salesLoading",
+          "salesPending",
+          "salesStatus",
+          "salesWorker",
+          "state",
+          "today",
+          "trackerFeed"
+        ],
+        "writes": [
+          "parseSalesFile",
+          "prepareSales",
+          "salesBusy",
+          "salesPending",
+          "salesWorker",
+          "selectSalesFile"
+        ]
+      },
+      {
+        "id": "sales-events",
+        "file": "modules/sales-events.js",
+        "owns": [
+          "showMonthlyDialog",
+          "restoreMonthly",
+          "renderAllBeforeSales"
+        ],
+        "imports": [
+          "$",
+          "csvCell",
+          "download",
+          "events",
+          "fmt",
+          "hydrateSales",
+          "monthlyInfo",
+          "openPlannerDialog",
+          "plannerRole",
+          "prepareSales",
+          "refreshSalesUI",
+          "renderAll",
+          "renderPlan",
+          "salesBusy",
+          "salesDecoded",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesPending",
+          "salesSignature",
+          "salesSummary",
+          "saveCatalogPatch",
+          "selectSalesFile",
+          "sourceSave",
+          "state",
+          "trackerFeed",
+          "updateTableHeader"
+        ],
+        "writes": [
+          "renderAll",
+          "renderAllBeforeSales",
+          "restoreMonthly",
+          "salesDecoded",
+          "salesLoadGeneration",
+          "salesLoading",
+          "salesPending",
+          "salesSignature",
+          "salesSummary",
+          "showMonthlyDialog"
+        ]
+      },
+      {
+        "id": "workspace",
+        "file": "modules/workspace.js",
+        "owns": [
+          "notifyPlannerWidth412",
+          "parseSheetGrid412",
+          "exportSettings412",
+          "snapshotPlanner412",
+          "restorePlanner412",
+          "managementHead",
+          "hiddenSettingsPanel",
+          "advancedSettings"
+        ],
+        "imports": [
+          "$",
+          "cloudJobs",
+          "csvCell",
+          "deferredDrafts",
+          "dirtyDrafts",
+          "download",
+          "events",
+          "factor",
+          "flushRecovery",
+          "hydrateSales",
+          "importPreview",
+          "localRecovery",
+          "monthlyInfo",
+          "pendingInventoryImport",
+          "pendingShelfImport",
+          "pendingStatusImport",
+          "plannerRole",
+          "rebuildCatalog",
+          "renderAll",
+          "salesBusy",
+          "salesPending",
+          "salesSignature",
+          "salesWorker",
+          "saveCatalogPatch",
+          "saveFingerprints",
+          "shelfLife",
+          "state",
+          "statusDelimitedRows",
+          "storeLocal",
+          "trackerFeed",
+          "unifiedPending",
+          "val"
+        ],
+        "writes": [
+          "advancedSettings",
+          "deferredDrafts",
+          "dirtyDrafts",
+          "exportSettings412",
+          "hiddenSettingsPanel",
+          "importPreview",
+          "localRecovery",
+          "managementHead",
+          "notifyPlannerWidth412",
+          "parseSheetGrid412",
+          "pendingInventoryImport",
+          "pendingShelfImport",
+          "pendingStatusImport",
+          "restorePlanner412",
+          "salesBusy",
+          "salesPending",
+          "salesSignature",
+          "salesWorker",
+          "snapshotPlanner412",
+          "unifiedPending"
+        ]
+      }
+    ]
+  },
+  "container": {
+    "scope": "container",
+    "features": [
+      {
+        "id": "state",
+        "file": "modules/state.js",
+        "owns": [
+          "DEF",
+          "D",
+          "PI",
+          "E",
+          "unsub",
+          "piUnsub",
+          "$",
+          "esc",
+          "today",
+          "uid",
+          "money"
+        ],
+        "imports": [],
+        "writes": [
+          "$",
+          "D",
+          "DEF",
+          "E",
+          "PI",
+          "esc",
+          "money",
+          "piUnsub",
+          "today",
+          "uid",
+          "unsub"
+        ]
+      },
+      {
+        "id": "logistics-dates",
+        "file": "modules/logistics-dates.js",
+        "owns": [
+          "validShippingDate",
+          "estimatedMonth15",
+          "dateInfo",
+          "norm",
+          "piFor",
+          "piStats",
+          "log"
+        ],
+        "imports": [
+          "D",
+          "DEF",
+          "PI",
+          "today",
+          "uid"
+        ],
+        "writes": [
+          "dateInfo",
+          "estimatedMonth15",
+          "log",
+          "norm",
+          "piFor",
+          "piStats",
+          "validShippingDate"
+        ]
+      },
+      {
+        "id": "host-bridge",
+        "file": "modules/host-bridge.js",
+        "owns": [
+          "saveCallbacks",
+          "saveSequence",
+          "persist",
+          "lastContainerHeight",
+          "sendContainerHeight"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "DEF",
+          "PI",
+          "events",
+          "norm"
+        ],
+        "writes": [
+          "D",
+          "PI",
+          "lastContainerHeight",
+          "persist",
+          "saveCallbacks",
+          "saveSequence",
+          "sendContainerHeight"
+        ]
+      },
+      {
+        "id": "workflow",
+        "file": "modules/workflow.js",
+        "owns": [
+          "active",
+          "stage",
+          "actionIssues",
+          "filt",
+          "complete"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "dateInfo",
+          "log",
+          "piStats",
+          "today"
+        ],
+        "writes": [
+          "actionIssues",
+          "active",
+          "complete",
+          "filt",
+          "stage"
+        ]
+      },
+      {
+        "id": "overview",
+        "file": "modules/overview.js",
+        "owns": [
+          "card",
+          "board",
+          "codeKey",
+          "codeSort",
+          "tableSummary",
+          "listTable",
+          "renderOverview",
+          "renderArchive"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "actionIssues",
+          "active",
+          "applyOverviewView",
+          "dateInfo",
+          "esc",
+          "filt",
+          "piStats",
+          "stage",
+          "today"
+        ],
+        "writes": [
+          "board",
+          "card",
+          "codeKey",
+          "codeSort",
+          "listTable",
+          "renderArchive",
+          "renderOverview",
+          "tableSummary"
+        ]
+      },
+      {
+        "id": "details",
+        "file": "modules/details.js",
+        "owns": [],
+        "imports": [
+          "$",
+          "D",
+          "dateInfo",
+          "esc",
+          "money",
+          "piStats",
+          "stage"
+        ],
+        "writes": []
+      },
+      {
+        "id": "settings-and-todos",
+        "file": "modules/settings-and-todos.js",
+        "owns": [
+          "todos",
+          "settings"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "active",
+          "esc",
+          "filt",
+          "today"
+        ],
+        "writes": [
+          "settings",
+          "todos"
+        ]
+      },
+      {
+        "id": "navigation",
+        "file": "modules/navigation.js",
+        "owns": [
+          "overviewView",
+          "applyOverviewView"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "complete",
+          "persist",
+          "renderArchive",
+          "renderOverview",
+          "sendContainerHeight",
+          "settings",
+          "todos"
+        ],
+        "writes": [
+          "applyOverviewView",
+          "overviewView"
+        ]
+      },
+      {
+        "id": "editor",
+        "file": "modules/editor.js",
+        "owns": [
+          "df",
+          "syncDraft",
+          "showOps",
+          "form"
+        ],
+        "imports": [
+          "$",
+          "D",
+          "E",
+          "complete",
+          "dateInfo",
+          "esc",
+          "log",
+          "money",
+          "persist",
+          "piStats",
+          "stage",
+          "today",
+          "uid"
+        ],
+        "writes": [
+          "E",
+          "df",
+          "form",
+          "showOps",
+          "syncDraft"
+        ]
+      },
+      {
+        "id": "editing-actions",
+        "file": "modules/editing-actions.js",
+        "owns": [],
+        "imports": [
+          "D",
+          "log",
+          "persist"
+        ],
+        "writes": []
+      },
+      {
+        "id": "exports",
+        "file": "modules/exports.js",
+        "owns": [],
+        "imports": [
+          "D",
+          "dateInfo",
+          "norm",
+          "persist",
+          "stage",
+          "today"
+        ],
+        "writes": [
+          "D"
+        ]
+      },
+      {
+        "id": "workspace",
+        "file": "modules/workspace.js",
+        "owns": [
+          "ensureContainerBack412",
+          "originalContainerRender412"
+        ],
+        "imports": [
+          "$",
+          "events"
+        ],
+        "writes": [
+          "ensureContainerBack412",
+          "originalContainerRender412"
+        ]
+      }
+    ]
+  }
+}

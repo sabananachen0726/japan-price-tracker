@@ -1,0 +1,289 @@
+{
+  "scope": "container",
+  "features": [
+    {
+      "id": "state",
+      "file": "modules/state.js",
+      "owns": [
+        "DEF",
+        "D",
+        "PI",
+        "E",
+        "unsub",
+        "piUnsub",
+        "$",
+        "esc",
+        "today",
+        "uid",
+        "money"
+      ],
+      "imports": [],
+      "writes": [
+        "$",
+        "D",
+        "DEF",
+        "E",
+        "PI",
+        "esc",
+        "money",
+        "piUnsub",
+        "today",
+        "uid",
+        "unsub"
+      ]
+    },
+    {
+      "id": "logistics-dates",
+      "file": "modules/logistics-dates.js",
+      "owns": [
+        "validShippingDate",
+        "estimatedMonth15",
+        "dateInfo",
+        "norm",
+        "piFor",
+        "piStats",
+        "log"
+      ],
+      "imports": [
+        "D",
+        "DEF",
+        "PI",
+        "today",
+        "uid"
+      ],
+      "writes": [
+        "dateInfo",
+        "estimatedMonth15",
+        "log",
+        "norm",
+        "piFor",
+        "piStats",
+        "validShippingDate"
+      ]
+    },
+    {
+      "id": "host-bridge",
+      "file": "modules/host-bridge.js",
+      "owns": [
+        "saveCallbacks",
+        "saveSequence",
+        "persist",
+        "lastContainerHeight",
+        "sendContainerHeight"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "DEF",
+        "PI",
+        "events",
+        "norm"
+      ],
+      "writes": [
+        "D",
+        "PI",
+        "lastContainerHeight",
+        "persist",
+        "saveCallbacks",
+        "saveSequence",
+        "sendContainerHeight"
+      ]
+    },
+    {
+      "id": "workflow",
+      "file": "modules/workflow.js",
+      "owns": [
+        "active",
+        "stage",
+        "actionIssues",
+        "filt",
+        "complete"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "dateInfo",
+        "log",
+        "piStats",
+        "today"
+      ],
+      "writes": [
+        "actionIssues",
+        "active",
+        "complete",
+        "filt",
+        "stage"
+      ]
+    },
+    {
+      "id": "overview",
+      "file": "modules/overview.js",
+      "owns": [
+        "card",
+        "board",
+        "codeKey",
+        "codeSort",
+        "tableSummary",
+        "listTable",
+        "renderOverview",
+        "renderArchive"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "actionIssues",
+        "active",
+        "applyOverviewView",
+        "dateInfo",
+        "esc",
+        "filt",
+        "piStats",
+        "stage",
+        "today"
+      ],
+      "writes": [
+        "board",
+        "card",
+        "codeKey",
+        "codeSort",
+        "listTable",
+        "renderArchive",
+        "renderOverview",
+        "tableSummary"
+      ]
+    },
+    {
+      "id": "details",
+      "file": "modules/details.js",
+      "owns": [],
+      "imports": [
+        "$",
+        "D",
+        "dateInfo",
+        "esc",
+        "money",
+        "piStats",
+        "stage"
+      ],
+      "writes": []
+    },
+    {
+      "id": "settings-and-todos",
+      "file": "modules/settings-and-todos.js",
+      "owns": [
+        "todos",
+        "settings"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "active",
+        "esc",
+        "filt",
+        "today"
+      ],
+      "writes": [
+        "settings",
+        "todos"
+      ]
+    },
+    {
+      "id": "navigation",
+      "file": "modules/navigation.js",
+      "owns": [
+        "overviewView",
+        "applyOverviewView"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "complete",
+        "persist",
+        "renderArchive",
+        "renderOverview",
+        "sendContainerHeight",
+        "settings",
+        "todos"
+      ],
+      "writes": [
+        "applyOverviewView",
+        "overviewView"
+      ]
+    },
+    {
+      "id": "editor",
+      "file": "modules/editor.js",
+      "owns": [
+        "df",
+        "syncDraft",
+        "showOps",
+        "form"
+      ],
+      "imports": [
+        "$",
+        "D",
+        "E",
+        "complete",
+        "dateInfo",
+        "esc",
+        "log",
+        "money",
+        "persist",
+        "piStats",
+        "stage",
+        "today",
+        "uid"
+      ],
+      "writes": [
+        "E",
+        "df",
+        "form",
+        "showOps",
+        "syncDraft"
+      ]
+    },
+    {
+      "id": "editing-actions",
+      "file": "modules/editing-actions.js",
+      "owns": [],
+      "imports": [
+        "D",
+        "log",
+        "persist"
+      ],
+      "writes": []
+    },
+    {
+      "id": "exports",
+      "file": "modules/exports.js",
+      "owns": [],
+      "imports": [
+        "D",
+        "dateInfo",
+        "norm",
+        "persist",
+        "stage",
+        "today"
+      ],
+      "writes": [
+        "D"
+      ]
+    },
+    {
+      "id": "workspace",
+      "file": "modules/workspace.js",
+      "owns": [
+        "ensureContainerBack412",
+        "originalContainerRender412"
+      ],
+      "imports": [
+        "$",
+        "events"
+      ],
+      "writes": [
+        "ensureContainerBack412",
+        "originalContainerRender412"
+      ]
+    }
+  ]
+}

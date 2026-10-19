@@ -1,0 +1,72 @@
+(() => {
+  const releases = [{
+    "version": "V4.13.0",
+    "date": "2026-10-19",
+    "items": ["程式重構為具明確依賴的功能模組，原始碼與單檔建置分離；既有資料及操作流程相容。"]
+  }, {
+    "version": "V4.12.0",
+    "date": "2026-10-19",
+    "items": ["整合五個主要入口與固定窄版；只有訂貨規劃顯示六個月銷量時展寬。", "銷售兩檔可累積預覽；設定匯入統一空白不修改，匯出保留自動／手動月銷來源。", "PI 支援完整保存期限（月），與 PI 原子儲存；完整備份涵蓋訂貨共享資料。"]
+  }, {
+    "version": "V4.12.0",
+    "date": "2026-10-16",
+    "items": ["保存期限無標題兩欄自動辨識 Barcode 或 Item Code，配對歧義略過。清除商品名稱 O/S 前綴、放大訂貨數字、修復匯入中心返回訂貨規劃；不滿六個月也依現有已結束月份計算並標註。商品主檔直接讀取 Onsight Product Data Export Excel，篩選 Place of Production Value 包含 JAPAN 的所有分類；同條碼不同 Item Code 分開保留並標註。月銷範圍跟隨最新日本貨清單。保留長頁面彈窗定位修正。", "只計算本工具日本貨清單可配對的品號；清單外產品在匯入時略過，不計算月銷、不共用儲存。Admin 可匯入 CSV／CSV.GZ 與 XLSM，排除兩間 KAISI。", "無正數出貨月份排除，負數扣回；平均月銷依目前 Factor 換算，支援手動覆蓋與恢復自動。"]
+  }, {
+    "version": "V4.9.0",
+    "date": "2026-10-12",
+    "items": ["Container Tracker 流程精簡為 Quotation／Shipping／Archive；新貨櫃從 Quotation 開始，取消 Planning、Confirmed、Port Arrived、Warehouse 階段。", "移除五個統計卡片，改為兩欄看板；修正 Container Tracker 內嵌雙重捲動，改由主頁自然捲動。", "拆櫃日新增獨立「已拆櫃確認」：只有確認且日期已到，PI 才退出在途庫存；Expected Month 15 日仍僅供推估。", "舊狀態在畫面相容顯示，不自動批次改寫歷史貨櫃；保留結案條件、權限與 Firebase 儲存位置。"]
+  }, {
+    "version": "V4.8.9",
+    "date": "2026-10-12",
+    "items": ["Container Tracker 簡化物流日期：只保留到港日、拆櫃日及 Expected Month，移除多組裝櫃／出港／預計與實際日期的編輯欄。", "若兩個日期都空白，顯示 Expected Month 當月 15 日作為 ETA 推估；推估日期不會自行標記為已拆櫃。", "拆櫃日到達當天起，所有 PI／訂貨規劃使用同一條件判定已拆櫃；Final PI 不再獨立提供到倉日修改入口。", "既有貨櫃沿用舊日期做唯讀相容，僅重新儲存該貨櫃時改用新欄位；不會自動批次改寫 Firebase 舊資料。", "貨櫃及 PI Excel 匯出跟著調整日期欄位；保留付款、Final Container List 與 Checklist 功能。"]
+  }, {
+    "version": "V4.8.8",
+    "date": "2026-10-12",
+    "items": ["完整 MYOB 匯入同時讀取 Item Number、On Hand、Custom List 3；先預覽再確認套用。", "Factor 以最新完整 MYOB 快照為準，手動覆蓋只維持到下一批完整 MYOB 匯入；來源與時間只顯示在資料管理。", "訂貨庫存與商品設定仍沿用現有 Firebase 文件，無額外定時讀取。", "修正右上角版本號和近期更新紀錄，改由單一版本清單產生。"]
+  }, {
+    "version": "V4.8.7",
+    "date": "2026-10-12",
+    "items": ["PI／貨櫃查詢新增多筆 Item Code／Barcode 批次查詢，提供商品彙總、明細及未找到的 Excel 匯出。"]
+  }, {
+    "version": "V4.8.6",
+    "date": "2026-10-12",
+    "items": ["保存期限批次匯入新增 Barcode／JAN 配對；保留 Item Code，相同或衝突條碼先驗證再套用。"]
+  }, {
+    "version": "V4.8.5",
+    "date": "2026-10-12",
+    "items": ["訂貨規劃合併其他 PI 來貨及客訂為在途可用庫存，浮動明細列出 ETA 與已分配／未分配客訂。", "訂貨商品表頭改成 Excel 式固定欄位名稱。"]
+  }, {
+    "version": "V4.8.4",
+    "date": "2026-10-12",
+    "items": ["其他 PI 明細排序忽略貨櫃前面的英文代碼，依 YY／MM／序號升序。"]
+  }, {
+    "version": "V4.8.3",
+    "date": "2026-10-12",
+    "items": ["訂貨草稿輸入時本機自動暫存，避免誤關頁面遺失；新增各商品採購備註。", "訂貨長表固定表頭初版、修正 PI 自然排序初版。"]
+  }, {
+    "version": "V4.8.2",
+    "date": "2026-10-12",
+    "items": ["新增資料匯入中心，集中商品主檔、報價、Final PI、訂貨設定及備份／復原。", "新增商品訂貨設定 Excel 整合預覽與套用。"]
+  }, {
+    "version": "V4.8.1",
+    "date": "2026-10-09",
+    "items": ["修正商品縮圖比例；修正客訂讀取說明為 24 小時快取。"]
+  }, {
+    "version": "V4.8.0",
+    "date": "2026-10-09",
+    "items": ["訂貨規劃新增保存期限（月）設定與批次匯入。", "訂貨商品表移除內層捲動及多餘留白。"]
+  }];
+  const version = releases[0].version;
+  document.getElementById('appVersionButton').textContent = version;
+  document.getElementById('appVersionModal').textContent = version;
+  document.title = '日本廠商價格比對與管理系統 ' + version + '｜LIVE / TEST';
+  const container = document.getElementById('releaseNotesList');
+  const escape = s => String(s).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[ch]);
+  container.innerHTML = releases.map((r, i) => `<div class="alert ${i ? 'alert-secondary' : 'alert-primary'} py-2"><strong>${escape(r.version)}</strong> <span class="text-muted ms-2">${escape(r.date)}</span></div><ul class="small">${r.items.map(item => `<li>${escape(item)}</li>`).join('')}</ul>`).join('');
+})();

@@ -1,0 +1,195 @@
+<div class="tab-pane fade" id="add-panel" role="tabpanel">
+            <div class="import-hub-hero"><h3><i class="fa-solid fa-box-archive me-2"></i>資料匯入中心</h3>
+<p>選擇商品主檔、廠商報價、PI 或訂貨資料，再預覽並確認更新。備份、帳號與進階維護請至右上方「系統設定」。</p>
+<div class="import-hub-warning">先預覽再確認；LIVE 供同事共用，TEST 僅保留在此瀏覽器。</div>
+<div class="import-switcher" role="group" aria-label="選擇匯入資料類別">
+<button type="button" class="btn btn-outline-primary active" data-import-view="master">① 商品主檔</button>
+<button type="button" class="btn btn-outline-primary" data-import-view="quotes">② 廠商報價</button>
+<button type="button" class="btn btn-outline-primary" data-import-view="pi">③ Final PI</button>
+<button type="button" class="btn btn-outline-primary" data-import-view="planner">④ 訂貨資料設定</button>
+<button type="button" class="btn btn-outline-secondary" data-import-view="backup">⑤ 備份／復原</button>
+</div></div><section class="import-hub-section import-admin" id="hub-master" data-import-section="master"><div class="import-section-head"><h4>① 商品主檔</h4><p>直接匯入 Onsight Product Data Export Excel；按欄位名稱讀取，篩選 Place of Production Value 包含 JAPAN 的所有分類（不分大小寫）。依 Item Code 更新，同條碼商品全部保留並標註；未列出的舊商品不刪除。Admin 專用。</p></div><div class="bg-light p-3 border rounded mb-3">
+                            <h6>匯入 Onsight Product Data Export Excel（只取日本貨）：</h6>
+                            <div class="row g-2">
+                                <div class="col-md-9">
+                                    <input type="file" id="masterCSVFile" class="form-control" accept=".xlsx,.xls">
+                                </div>
+                                <div class="col-md-3">
+                                    <select id="masterEncodingSelect" class="form-select" hidden disabled>
+                                        <option value="auto">編碼：自動辨識 (預設)</option>
+                                        <option value="shift-jis">編碼：Shift-JIS (日文Excel)</option>
+                                        <option value="big5">編碼：Big5 (繁中Excel)</option>
+                                        <option value="utf-8">編碼：UTF-8 (標準萬國碼)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="btnImportMasterCSV" class="btn btn-info text-white w-100" type="button"><i class="fa-solid fa-upload me-1"></i>匯入商品主檔</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p id="japanMasterStatus" class="small text-muted" role="status">讀取 Product Code、Barcode（空白改讀 Barcode Value）、Product Name、Image URL、Place of Production Value 及 Item Kind Value。不匯入庫存、價格或 Factor。</p><div class="border rounded p-3 mb-3 bg-white">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div>
+                                    <h6 class="mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i>主檔匯入紀錄 / 復原</h6>
+                                    <small class="text-muted">從此版本開始記錄最近 5 次匯入。可查看檔名與新增/更新筆數，並復原指定批次。舊版本已匯入的資料無法追溯到原始檔案。</small>
+                                </div>
+                            </div>
+                            <div id="masterImportHistory" class="small text-muted">尚無可復原的匯入紀錄。</div>
+                        </div>
+
+                        </section><section class="import-hub-section import-admin" id="hub-quotes" data-import-section="quotes"><div class="import-section-head"><h4>② 廠商報價</h4><p>同一組報價資料有三種輸入方式：大批 CSV／TXT、少量 Excel 貼上、單筆手動。匯入前請核對廠商、貨櫃與價格單位。</p></div><div class="row g-4 mx-auto" style="max-width: 900px;">
+                
+                <div class="col-md-12">
+                    <div class="card p-4 border-primary border-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="m-0 text-primary"><i class="fa-solid fa-file-csv me-2"></i>【快速】整批 CSV / TXT 報價單匯入</h4>
+                            <div>
+                                <button class="btn btn-outline-secondary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#encodingHelpModal"><i class="fa-solid fa-circle-question me-1"></i>遇到亂碼怎麼辦？</button>
+                                <button id="btnDownloadTemplate" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-download me-1"></i>下載報價單 CSV 範本</button>
+                            </div>
+                        </div>
+                        <p class="text-muted small">支援 Excel 匯出的 CSV 或 TXT 文字檔。若單價為 $0 可選擇或註明「停產」或「等待報價」。</p>
+                        
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <input type="file" id="batchQuoteCSVFile" class="form-control" accept=".csv, .txt">
+                            </div>
+                            <div class="col-md-4">
+                                <select id="quoteEncodingSelect" class="form-select">
+                                    <option value="auto">編碼：自動辨識 (預設)</option>
+                                    <option value="shift-jis">編碼：Shift-JIS (日文Excel)</option>
+                                    <option value="big5">編碼：Big5 (繁中Excel)</option>
+                                    <option value="utf-8">編碼：UTF-8 (標準萬國碼)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <button id="btnImportBatchCSV" class="btn btn-primary w-100" type="button"><i class="fa-solid fa-upload me-1"></i>開始批次匯入報價</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card p-4 border-success">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title m-0 text-success"><i class="fa-solid fa-list-check me-2"></i>快速補報價（適合廠商回覆十幾項等待報價）</h5>
+                            <span class="badge bg-success">不用做 CSV</span>
+                        </div>
+                        <p class="text-muted small mb-3">先選廠商與貨櫃，再從 Excel 直接貼上多行。每行格式：<b>Item Code / JAN</b>、<b>價格</b>、<b>備註（可空白）</b>。支援 Tab、逗號或空白分隔。</p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4"><select id="quickBatchSupplier" class="form-select"></select></div>
+                            <div class="col-md-4"><input id="quickBatchContainer" class="form-control" placeholder="貨櫃號碼，例如 JSR26B0901 / JSR26B1101F"></div>
+                            <div class="col-md-4"><button id="btnQuickBatchImport" class="btn btn-success w-100"><i class="fa-solid fa-bolt me-1"></i>一次錄入全部報價</button></div>
+                        </div>
+                        <textarea id="quickBatchText" class="form-control font-monospace" rows="7" placeholder="WHH001	125
+WHH002	138	賞味期限 2027/03
+4901330112813	0	停產"></textarea>
+                        <div id="quickBatchHint" class="small text-muted mt-2">貼上後會用 Item Code 或 JAN 自動找到商品；找不到的項目會建立為「待補商品資料」，報價仍會保留。</div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card p-4">
+                        <h5 class="card-title mb-3 text-secondary"><i class="fa-solid fa-pen-to-square me-2"></i>單筆手動錄入報價</h5>
+                        <div id="lastManualQuoteStatus" class="alert alert-success py-2 px-3 mb-3 d-none"></div>
+                        <form id="priceForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">產品 Barcode (JAN Code) <span class="text-danger">*</span></label>
+                                    <input type="text" id="inputBarcode" class="form-control" placeholder="例如: 4901330112813" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Item Code (內部料號，選填)</label>
+                                    <input type="text" id="inputItemCode" class="form-control" placeholder="例如: WHH005">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">商品名稱 (若主檔無對應將存入主檔)</label>
+                                    <input type="text" id="inputName" class="form-control" placeholder="例如: Calbee 蝦條 白鹽味 70g">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">圖片 URL (若主檔無對應將存入主檔)</label>
+                                    <input type="url" id="inputImgUrl" class="form-control" placeholder="https://example.com/image.jpg">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">廠商名稱 <span class="text-danger">*</span></label>
+                                    <select id="inputSupplier" class="form-select" required></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">報價金額 (JPY ¥) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" id="inputPrice" class="form-control" placeholder="0 表示停產/等待報價" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">貨櫃號碼 <span class="text-danger">*</span></label>
+                                    <input type="text" id="inputContainer" class="form-control" placeholder="例如: CTN-2024-001" required>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">備註/狀態 (如：停產、等待報價)</label>
+                                    <input type="text" id="inputNote" class="form-control" placeholder="賞味期限、停產、等待報價等...">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-secondary w-100 mt-3"><i class="fa-solid fa-plus me-1"></i>新增單筆紀錄</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </section><section class="import-hub-section import-admin" id="hub-pi" data-import-section="pi"><p class="alert alert-info small">PI 可加選填「保存期限（月）」／Shelf Life (Months) 欄位，填 1～120 整數。無標題時單櫃為第 6 欄、多櫃為第 8 欄；空白保留原設定。預覽會列出修改與衝突，確認後一併儲存。這是完整保存期限，不是剩餘效期。</p><div class="import-section-head"><h4>③ Final PI</h4><p>使用單櫃或多櫃匯入，都是同一套 PI 資料；同櫃再次匯入會<b>完整覆蓋該櫃 PI 明細</b>，並需重新核對 Final 標記。</p></div><div class="card p-4 border-primary">
+                        <details>
+                            <summary class="d-flex flex-wrap justify-content-between align-items-center gap-2" style="cursor:pointer; list-style:none;">
+                                <div>
+                                    <h4 class="mb-1 text-primary"><i class="fa-solid fa-file-invoice me-2"></i>Final PI 匯入 <span class="fs-6 text-muted">（點擊展開）</span></h4>
+                                    <div class="small text-muted">一條貨櫃只保留最後一份 Final PI；同櫃再次匯入會完整覆蓋舊明細。</div>
+                                </div>
+                                <span class="badge bg-primary">價格＝單包價｜數量＝箱數</span>
+                            </summary>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-6"><label class="form-label fw-bold">貨櫃號碼</label><input id="finalPiContainer" class="form-control" placeholder="例如 JSR26B1201"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold">廠商</label><select id="finalPiSupplier" class="form-select"></select></div>
+                            <div class="col-12 mt-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                    <label class="form-label fw-bold mb-0">貼上 Final PI</label>
+                                    <div class="d-flex flex-wrap gap-1"><input id="finalPiFile" type="file" accept=".csv,.txt" class="d-none"><button id="btnDownloadFinalPiTemplate" class="btn btn-sm btn-outline-success" type="button"><i class="fa-solid fa-download me-1"></i>下載 CSV Template</button><button id="btnChooseFinalPiFile" class="btn btn-sm btn-outline-secondary" type="button"><i class="fa-solid fa-file-arrow-up me-1"></i>讀取 CSV / TXT 到框內</button></div>
+                                </div>
+                                <textarea id="finalPiPaste" class="form-control font-monospace" rows="9" placeholder="JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date
+4901234567890	20	ASA001	125	2027/06/30
+4901234567891	30
+4901234567892	15	ASA003"></textarea>
+                                <div class="form-text"><strong>固定欄位順序：</strong>JAN Code / Barcode <span class="text-danger">（必填）</span>｜箱數 Qty(CTN) <span class="text-danger">（必填）</span>｜Item Code（選填）｜單包價 Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。選填欄位可留空；從 Excel 貼上時會保留中間空白欄位。</div>
+                            </div>
+                            <div class="col-12"><button id="btnImportFinalPi" class="btn btn-primary w-100" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>匯入 / 覆蓋此貨櫃 Final PI</button></div>
+                        </div>
+                        <div id="finalPiImportHint" class="small mt-2 text-muted"></div>
+                        <hr class="my-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><div><h5 class="mb-1 text-primary"><i class="fa-solid fa-layer-group me-2"></i>多櫃一次匯入</h5><div class="small text-muted">一份 CSV / Excel 貼上可包含多條貨櫃；系統依 Container No. 自動分組。已存在的貨櫃會以本次資料完整覆蓋，舊 PI 明細不合併。</div></div></div>
+                        <textarea id="finalPiMultiPaste" class="form-control font-monospace" rows="8" placeholder="Container No.	Supplier	JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date
+JSR26B1201	SilkRoad	4901234567890	20	ASA001	125	2027/06/30
+JSR26B1202	Tencho	4901234567891	30"></textarea>
+                        <div class="form-text"><strong>多櫃固定順序：</strong>Container No.（必填）｜Supplier（必填）｜JAN Code（必填）｜Qty CTN（必填）｜Item Code（選填）｜Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。物流日期由 Container Tracker 管理。</div>
+                        <button id="btnImportFinalPiMulti" class="btn btn-primary w-100 mt-2" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>多櫃一次匯入 / 覆蓋</button>
+                        <div id="finalPiMultiHint" class="small mt-2 text-muted"></div>
+                        </details>
+                    </div>
+                </section><section class="import-hub-section" id="hub-planner" data-import-section="planner"><div class="import-section-head"><h4>④ 訂貨資料設定</h4><p>Admin／Editor 可維護 MYOB 快照、月銷／安全庫存／Factor、保存期限與 Active／Inactive；客訂只手動更新，不另外匯入 Excel。</p></div><p class="import-planner-note"><b>訂貨設定將顯示在下方。</b>系統沿用同一個訂貨畫面與 Firebase 連線，不另開視窗或重複載入商品。</p></section><section class="import-hub-section import-admin" id="hub-backup" data-import-section="backup"><div class="import-section-head"><h4>⑤ 備份／復原（高風險）</h4><p>整份 JSON 備份還原不同於商品主檔匯入。只在必要時使用，先備份目前資料、檢查模式及確認可能覆蓋的範圍。</p></div><div class="card p-4 h-100">
+                        <h4><i class="fa-solid fa-database me-2 text-primary"></i>全系統資料備份與復原</h4>
+                        <p class="text-muted small">包含商品主檔、圖片 URL、條碼綁定、廠商、報價歷史、待補商品狀態與主檔匯入復原紀錄。</p>
+                        
+                        <div class="d-grid gap-2 mb-3">
+                            <button id="btnExportCSV" class="btn btn-success"><i class="fa-solid fa-file-csv me-2"></i>匯出完整系統備份 JSON 檔</button>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">匯入備份檔恢復資料（JSON；亦支援舊版 CSV）：</label>
+                            <input class="form-control" type="file" id="importCSVFile" accept=".json, .csv, .txt">
+                        </div>
+
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button id="btnLoadDemo" class="btn btn-outline-info btn-sm"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>載入測試範例資料</button>
+                            <button id="btnClearData" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-trash me-1"></i>清空雲端資料</button>
+                        </div>
+                    </div>
+                </section></div>

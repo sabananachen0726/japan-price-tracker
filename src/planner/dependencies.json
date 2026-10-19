@@ -1,0 +1,1172 @@
+{
+  "scope": "planner",
+  "features": [
+    {
+      "id": "state",
+      "file": "modules/state.js",
+      "owns": [
+        "SEED",
+        "IMAGE_MAP",
+        "KEY",
+        "ELIGIBLE_SOURCE_ORDER",
+        "REVIEW_SEED_LOOKUP",
+        "$",
+        "esc",
+        "initial",
+        "plannerRole",
+        "trackerFeed",
+        "state",
+        "dirtyDrafts",
+        "scopedKey",
+        "loadScoped"
+      ],
+      "imports": [],
+      "writes": [
+        "$",
+        "ELIGIBLE_SOURCE_ORDER",
+        "IMAGE_MAP",
+        "KEY",
+        "REVIEW_SEED_LOOKUP",
+        "SEED",
+        "dirtyDrafts",
+        "esc",
+        "initial",
+        "loadScoped",
+        "plannerRole",
+        "scopedKey",
+        "state",
+        "trackerFeed"
+      ]
+    },
+    {
+      "id": "draft-recovery",
+      "file": "modules/draft-recovery.js",
+      "owns": [
+        "plannerUid",
+        "localRecovery",
+        "localRecoveryScope",
+        "recoveryTimer",
+        "saveFingerprints",
+        "previousContainerCode",
+        "recoveryKey",
+        "localDraftCopy",
+        "draftFingerprint",
+        "autosaveLabel",
+        "flushRecovery",
+        "stageLocalDraft",
+        "loadLocalRecovery",
+        "clearRecoveredWork",
+        "mergeChangingContainerKey"
+      ],
+      "imports": [
+        "$",
+        "currentKey",
+        "deferredDrafts",
+        "dirtyDrafts",
+        "draft",
+        "loadWork",
+        "plannerRole",
+        "renderAll",
+        "selectedWorkApplied",
+        "state",
+        "trackerFeed",
+        "updateWorkSelect"
+      ],
+      "writes": [
+        "autosaveLabel",
+        "clearRecoveredWork",
+        "draftFingerprint",
+        "flushRecovery",
+        "loadLocalRecovery",
+        "localDraftCopy",
+        "localRecovery",
+        "localRecoveryScope",
+        "mergeChangingContainerKey",
+        "plannerUid",
+        "previousContainerCode",
+        "recoveryKey",
+        "recoveryTimer",
+        "saveFingerprints",
+        "selectedWorkApplied",
+        "stageLocalDraft"
+      ]
+    },
+    {
+      "id": "units",
+      "file": "modules/units.js",
+      "owns": [
+        "persist",
+        "today",
+        "dayDiff",
+        "round",
+        "fmt",
+        "norm",
+        "trackedItem",
+        "photo",
+        "parseMYOBFactor",
+        "factorInfo",
+        "factor",
+        "val",
+        "shelfLife"
+      ],
+      "imports": [
+        "IMAGE_MAP",
+        "monthlyInfo",
+        "state",
+        "storeLocal",
+        "trackerFeed"
+      ],
+      "writes": [
+        "dayDiff",
+        "factor",
+        "factorInfo",
+        "fmt",
+        "norm",
+        "parseMYOBFactor",
+        "persist",
+        "photo",
+        "round",
+        "shelfLife",
+        "today",
+        "trackedItem",
+        "val"
+      ]
+    },
+    {
+      "id": "customer-orders",
+      "file": "modules/customer-orders.js",
+      "owns": [
+        "bucket",
+        "activeOrders",
+        "orderNeed"
+      ],
+      "imports": [
+        "norm",
+        "round",
+        "state"
+      ],
+      "writes": [
+        "activeOrders",
+        "bucket",
+        "orderNeed"
+      ]
+    },
+    {
+      "id": "incoming-stock",
+      "file": "modules/incoming-stock.js",
+      "owns": [
+        "allPis",
+        "containerNaturalCollator",
+        "parseContainerSortKey",
+        "compareContainerIds",
+        "incoming",
+        "allocationCode",
+        "piWithReservations"
+      ],
+      "imports": [
+        "norm",
+        "round",
+        "state",
+        "trackerFeed"
+      ],
+      "writes": [
+        "allPis",
+        "allocationCode",
+        "compareContainerIds",
+        "containerNaturalCollator",
+        "incoming",
+        "parseContainerSortKey",
+        "piWithReservations"
+      ]
+    },
+    {
+      "id": "purchase-calculation",
+      "file": "modules/purchase-calculation.js",
+      "owns": [
+        "calc",
+        "currentKey",
+        "draft",
+        "getItems"
+      ],
+      "imports": [
+        "$",
+        "customerSourceReady",
+        "dayDiff",
+        "factor",
+        "incoming",
+        "norm",
+        "orderNeed",
+        "round",
+        "state",
+        "today",
+        "trackerFeed",
+        "val"
+      ],
+      "writes": [
+        "calc",
+        "currentKey",
+        "draft",
+        "getItems"
+      ]
+    },
+    {
+      "id": "table-filters",
+      "file": "modules/table-filters.js",
+      "owns": [
+        "SORT_FIELDS",
+        "tableSort",
+        "columnFilters",
+        "openColumnKey",
+        "columnValue",
+        "passesColumnFilters",
+        "sortRows",
+        "renderSortMarks",
+        "closeColumnFilter",
+        "showColumnFilter"
+      ],
+      "imports": [
+        "$",
+        "shelfLife"
+      ],
+      "writes": [
+        "SORT_FIELDS",
+        "closeColumnFilter",
+        "columnFilters",
+        "columnValue",
+        "openColumnKey",
+        "passesColumnFilters",
+        "renderSortMarks",
+        "showColumnFilter",
+        "sortRows",
+        "tableSort"
+      ]
+    },
+    {
+      "id": "planning-view",
+      "file": "modules/planning-view.js",
+      "owns": [
+        "renderPlan",
+        "updateDraftTotal"
+      ],
+      "imports": [
+        "$",
+        "calc",
+        "closeColumnFilter",
+        "closePhotoPreview",
+        "closePiTip",
+        "dayDiff",
+        "draft",
+        "esc",
+        "fmt",
+        "getItems",
+        "monthlyCell",
+        "passesColumnFilters",
+        "photo",
+        "plannerRole",
+        "renderSalesHeads",
+        "renderSortMarks",
+        "salesMonthCells",
+        "shelfLife",
+        "sortRows",
+        "today",
+        "updateTableHeader"
+      ],
+      "writes": [
+        "renderPlan",
+        "updateDraftTotal"
+      ]
+    },
+    {
+      "id": "product-details",
+      "file": "modules/product-details.js",
+      "owns": [
+        "currentPiTipTrigger",
+        "closePiTip",
+        "formatTransitEta",
+        "showPiDetails",
+        "setInactive",
+        "currentPhotoTrigger",
+        "closePhotoPreview",
+        "showPhotoPreview",
+        "openZoom",
+        "zoomScale",
+        "updateZoom",
+        "showExplain"
+      ],
+      "imports": [
+        "$",
+        "calc",
+        "draft",
+        "esc",
+        "fmt",
+        "openPlannerDialog",
+        "photo",
+        "piWithReservations",
+        "plannerRole",
+        "saveCatalogPatch",
+        "state"
+      ],
+      "writes": [
+        "closePhotoPreview",
+        "closePiTip",
+        "currentPhotoTrigger",
+        "currentPiTipTrigger",
+        "formatTransitEta",
+        "openZoom",
+        "setInactive",
+        "showExplain",
+        "showPhotoPreview",
+        "showPiDetails",
+        "updateZoom",
+        "zoomScale"
+      ]
+    },
+    {
+      "id": "work-orders",
+      "file": "modules/work-orders.js",
+      "owns": [
+        "renderContainers",
+        "download",
+        "csvCell",
+        "exportCsv",
+        "saveDraft",
+        "renderAll"
+      ],
+      "imports": [
+        "$",
+        "allPis",
+        "autosaveLabel",
+        "compareContainerIds",
+        "currentKey",
+        "customerSourceReady",
+        "draft",
+        "draftFingerprint",
+        "esc",
+        "flushRecovery",
+        "fmt",
+        "persist",
+        "plannerRole",
+        "refreshRetryStatus",
+        "renderCatalogSources",
+        "renderManagement",
+        "renderNotes",
+        "renderPending",
+        "renderPlan",
+        "renderSourceReview",
+        "saveFingerprints",
+        "stageLocalDraft",
+        "state",
+        "trackedItem",
+        "trackerFeed"
+      ],
+      "writes": [
+        "csvCell",
+        "download",
+        "exportCsv",
+        "renderAll",
+        "renderContainers",
+        "saveDraft"
+      ]
+    },
+    {
+      "id": "planning-events",
+      "file": "modules/planning-events.js",
+      "owns": [
+        "setArrivalDefault"
+      ],
+      "imports": [
+        "$",
+        "autosaveLabel",
+        "calc",
+        "closeColumnFilter",
+        "closePhotoPreview",
+        "closePiTip",
+        "columnFilters",
+        "currentKey",
+        "currentPhotoTrigger",
+        "currentPiTipTrigger",
+        "dirtyDrafts",
+        "draft",
+        "flushRecovery",
+        "mergeChangingContainerKey",
+        "openColumnKey",
+        "openZoom",
+        "persist",
+        "plannerRole",
+        "previousContainerCode",
+        "renderAll",
+        "renderNotes",
+        "renderPlan",
+        "saveCatalogPatch",
+        "setInactive",
+        "shelfLife",
+        "showColumnFilter",
+        "showExplain",
+        "showPhotoPreview",
+        "showPiDetails",
+        "stageLocalDraft",
+        "state",
+        "tableSort",
+        "updateDraftTotal",
+        "updateTableHeader",
+        "val"
+      ],
+      "writes": [
+        "previousContainerCode",
+        "setArrivalDefault",
+        "tableSort"
+      ]
+    },
+    {
+      "id": "work-order-actions",
+      "file": "modules/work-order-actions.js",
+      "owns": [
+        "selectedWorkApplied",
+        "preparedWorks",
+        "updateWorkSelect",
+        "loadWork",
+        "applyPreparedDefaults",
+        "renderNotes",
+        "exportPlanButton"
+      ],
+      "imports": [
+        "$",
+        "currentKey",
+        "esc",
+        "exportCsv",
+        "persist",
+        "plannerRole",
+        "previousContainerCode",
+        "renderAll",
+        "saveDraft",
+        "state",
+        "trackerFeed",
+        "updateZoom",
+        "zoomScale"
+      ],
+      "writes": [
+        "applyPreparedDefaults",
+        "exportPlanButton",
+        "loadWork",
+        "preparedWorks",
+        "previousContainerCode",
+        "renderNotes",
+        "selectedWorkApplied",
+        "updateWorkSelect",
+        "zoomScale"
+      ]
+    },
+    {
+      "id": "sheet-reader",
+      "file": "modules/sheet-reader.js",
+      "owns": [
+        "parseSheet"
+      ],
+      "imports": [
+        "$",
+        "download",
+        "state"
+      ],
+      "writes": [
+        "parseSheet"
+      ]
+    },
+    {
+      "id": "catalog-sync",
+      "file": "modules/catalog-sync.js",
+      "owns": [
+        "CATALOG_FIELDS",
+        "catalogRemote",
+        "catalogReady",
+        "cloudSequence",
+        "cloudJobs",
+        "migrationConflicts",
+        "importPreview",
+        "normalizePlannerState",
+        "storeLocal",
+        "loadPlannerMode",
+        "meaningfulNumber",
+        "itemKey",
+        "rebuildCatalog",
+        "catalogRecord",
+        "discoverCatalog",
+        "mergePatch",
+        "saveCatalogPatch",
+        "sendCloud",
+        "applyCatalogSnapshot",
+        "finishCloud",
+        "sourceSave"
+      ],
+      "imports": [
+        "$",
+        "ELIGIBLE_SOURCE_ORDER",
+        "KEY",
+        "SEED",
+        "dirtyDrafts",
+        "hydrateSales",
+        "initial",
+        "norm",
+        "refreshRetryStatus",
+        "renderAll",
+        "renderPending",
+        "salesDecoded",
+        "salesError",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesPending",
+        "salesSignature",
+        "salesSummary",
+        "scopedKey",
+        "state",
+        "trackerFeed",
+        "updateSalesSummary"
+      ],
+      "writes": [
+        "CATALOG_FIELDS",
+        "applyCatalogSnapshot",
+        "catalogReady",
+        "catalogRecord",
+        "catalogRemote",
+        "cloudJobs",
+        "cloudSequence",
+        "dirtyDrafts",
+        "discoverCatalog",
+        "finishCloud",
+        "importPreview",
+        "itemKey",
+        "loadPlannerMode",
+        "meaningfulNumber",
+        "mergePatch",
+        "migrationConflicts",
+        "normalizePlannerState",
+        "rebuildCatalog",
+        "salesDecoded",
+        "salesError",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesPending",
+        "salesSignature",
+        "salesSummary",
+        "saveCatalogPatch",
+        "sendCloud",
+        "sourceSave",
+        "state",
+        "storeLocal"
+      ]
+    },
+    {
+      "id": "product-management",
+      "file": "modules/product-management.js",
+      "owns": [
+        "itemIssues",
+        "showHistory",
+        "kindSelect",
+        "statusSelect",
+        "renderManagement",
+        "renderPending",
+        "renderCatalogSources"
+      ],
+      "imports": [
+        "$",
+        "esc",
+        "factor",
+        "factorInfo",
+        "fmt",
+        "migrationConflicts",
+        "monthlyManagement",
+        "normalizePlannerState",
+        "openPlannerDialog",
+        "photo",
+        "plannerRole",
+        "saveCatalogPatch",
+        "sendCloud",
+        "shelfLife",
+        "state",
+        "storeLocal",
+        "trackerFeed",
+        "val"
+      ],
+      "writes": [
+        "itemIssues",
+        "kindSelect",
+        "renderCatalogSources",
+        "renderManagement",
+        "renderPending",
+        "showHistory",
+        "state",
+        "statusSelect"
+      ]
+    },
+    {
+      "id": "import-dialog",
+      "file": "modules/import-dialog.js",
+      "owns": [
+        "pick",
+        "previewImport",
+        "fileHandler"
+      ],
+      "imports": [
+        "$",
+        "exportSettings412",
+        "importPreview",
+        "meaningfulNumber",
+        "norm",
+        "openPlannerDialog",
+        "parseSheetGrid412",
+        "previewUnified",
+        "renderAll",
+        "sourceSave",
+        "state",
+        "today",
+        "unifiedImportGrid"
+      ],
+      "writes": [
+        "fileHandler",
+        "importPreview",
+        "pick",
+        "previewImport"
+      ]
+    },
+    {
+      "id": "product-exports",
+      "file": "modules/product-exports.js",
+      "owns": [
+        "sourceStatus",
+        "sourceExportRows",
+        "safeExcelText",
+        "exportSourceWorkbook",
+        "renderSourceReview"
+      ],
+      "imports": [
+        "$",
+        "catalogReady",
+        "esc",
+        "monthlyInfo",
+        "shelfLife",
+        "state",
+        "trackerFeed",
+        "val"
+      ],
+      "writes": [
+        "exportSourceWorkbook",
+        "renderSourceReview",
+        "safeExcelText",
+        "sourceExportRows",
+        "sourceStatus"
+      ]
+    },
+    {
+      "id": "status-import",
+      "file": "modules/status-import.js",
+      "owns": [
+        "pendingStatusImport",
+        "statusHead",
+        "statusCodeHeaders",
+        "statusValueHeaders",
+        "parseStatusValue",
+        "statusDelimitedRows",
+        "statusRowsFromGrid",
+        "parseStatusFile",
+        "stageStatusImport",
+        "openStatusImport",
+        "refreshShelfImporterRole",
+        "refreshStatusImporterRole"
+      ],
+      "imports": [
+        "$",
+        "catalogReady",
+        "esc",
+        "norm",
+        "openPlannerDialog",
+        "plannerRole",
+        "saveCatalogPatch",
+        "state",
+        "trackerFeed"
+      ],
+      "writes": [
+        "openStatusImport",
+        "parseStatusFile",
+        "parseStatusValue",
+        "pendingStatusImport",
+        "refreshShelfImporterRole",
+        "refreshStatusImporterRole",
+        "stageStatusImport",
+        "statusCodeHeaders",
+        "statusDelimitedRows",
+        "statusHead",
+        "statusRowsFromGrid",
+        "statusValueHeaders"
+      ]
+    },
+    {
+      "id": "shelf-life-import",
+      "file": "modules/shelf-life-import.js",
+      "owns": [
+        "pendingShelfImport",
+        "shelfColName",
+        "shelfItemHeaders",
+        "shelfBarcodeHeaders",
+        "shelfMonthsHeaders",
+        "normalizeShelfBarcode",
+        "parseShelfGrid",
+        "loadShelfFile",
+        "previewShelfImport"
+      ],
+      "imports": [
+        "$",
+        "catalogReady",
+        "csvCell",
+        "download",
+        "esc",
+        "norm",
+        "openPlannerDialog",
+        "plannerRole",
+        "saveCatalogPatch",
+        "shelfLife",
+        "state",
+        "statusDelimitedRows",
+        "trackerFeed"
+      ],
+      "writes": [
+        "loadShelfFile",
+        "normalizeShelfBarcode",
+        "parseShelfGrid",
+        "pendingShelfImport",
+        "previewShelfImport",
+        "shelfBarcodeHeaders",
+        "shelfColName",
+        "shelfItemHeaders",
+        "shelfMonthsHeaders"
+      ]
+    },
+    {
+      "id": "inventory-import",
+      "file": "modules/inventory-import.js",
+      "owns": [
+        "parseInventoryPaste",
+        "pendingInventoryImport",
+        "previewPastedInventory",
+        "commitPastedInventory"
+      ],
+      "imports": [
+        "$",
+        "catalogReady",
+        "discoverCatalog",
+        "esc",
+        "norm",
+        "openPlannerDialog",
+        "parseMYOBFactor",
+        "plannerRole",
+        "rebuildCatalog",
+        "renderAll",
+        "sourceSave",
+        "state",
+        "trackerFeed"
+      ],
+      "writes": [
+        "commitPastedInventory",
+        "parseInventoryPaste",
+        "pendingInventoryImport",
+        "previewPastedInventory"
+      ]
+    },
+    {
+      "id": "host-bridge",
+      "file": "modules/host-bridge.js",
+      "owns": [
+        "refreshRetryStatus",
+        "updateTableHeader",
+        "deferredDrafts",
+        "customerSourceReady",
+        "plannerHeightLast",
+        "plannerHeightPending",
+        "sendPlannerHeight"
+      ],
+      "imports": [
+        "$",
+        "applyCatalogSnapshot",
+        "applyPreparedDefaults",
+        "autosaveLabel",
+        "catalogReady",
+        "clearRecoveredWork",
+        "currentKey",
+        "dirtyDrafts",
+        "discoverCatalog",
+        "draftFingerprint",
+        "events",
+        "finishCloud",
+        "flushRecovery",
+        "loadLocalRecovery",
+        "loadPlannerMode",
+        "localRecovery",
+        "localRecoveryScope",
+        "notifyPlannerWidth412",
+        "plannerRole",
+        "plannerUid",
+        "rebuildCatalog",
+        "refreshShelfImporterRole",
+        "refreshStatusImporterRole",
+        "renderAll",
+        "renderNotes",
+        "saveFingerprints",
+        "selectedWorkApplied",
+        "showColumnFilter",
+        "state",
+        "storeLocal",
+        "trackerFeed",
+        "updateWorkSelect"
+      ],
+      "writes": [
+        "catalogReady",
+        "customerSourceReady",
+        "deferredDrafts",
+        "localRecovery",
+        "localRecoveryScope",
+        "plannerHeightLast",
+        "plannerHeightPending",
+        "plannerRole",
+        "plannerUid",
+        "refreshRetryStatus",
+        "selectedWorkApplied",
+        "sendPlannerHeight",
+        "trackerFeed",
+        "updateTableHeader"
+      ]
+    },
+    {
+      "id": "settings-import",
+      "file": "modules/settings-import.js",
+      "owns": [
+        "unifiedPending",
+        "UNIFIED_FIELDS",
+        "unifiedImportGrid",
+        "unifiedImportFile",
+        "previewUnified"
+      ],
+      "imports": [
+        "$",
+        "catalogReady",
+        "esc",
+        "events",
+        "exportSettings412",
+        "factor",
+        "norm",
+        "openPlannerDialog",
+        "parseStatusValue",
+        "plannerRole",
+        "saveCatalogPatch",
+        "shelfColName",
+        "shelfItemHeaders",
+        "shelfLife",
+        "state",
+        "statusDelimitedRows",
+        "trackerFeed",
+        "val"
+      ],
+      "writes": [
+        "UNIFIED_FIELDS",
+        "previewUnified",
+        "unifiedImportFile",
+        "unifiedImportGrid",
+        "unifiedPending"
+      ]
+    },
+    {
+      "id": "dialog-position",
+      "file": "modules/dialog-position.js",
+      "owns": [
+        "positionPlannerDialog",
+        "openPlannerDialog",
+        "dialogPositionPending",
+        "schedulePlannerDialogs"
+      ],
+      "imports": [],
+      "writes": [
+        "dialogPositionPending",
+        "openPlannerDialog",
+        "positionPlannerDialog",
+        "schedulePlannerDialogs"
+      ]
+    },
+    {
+      "id": "sales-worker",
+      "file": "modules/sales-worker.js",
+      "owns": [
+        "salesImportWorker"
+      ],
+      "imports": [],
+      "writes": [
+        "salesImportWorker"
+      ]
+    },
+    {
+      "id": "sales-core",
+      "file": "modules/sales-core.js",
+      "owns": [
+        "SalesCore"
+      ],
+      "imports": [],
+      "writes": [
+        "SalesCore"
+      ]
+    },
+    {
+      "id": "sales-state",
+      "file": "modules/sales-state.js",
+      "owns": [
+        "salesDecoded",
+        "salesSummary",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesError",
+        "salesPending",
+        "salesWorker",
+        "salesSignature",
+        "salesBusy",
+        "salesAllowedCodes",
+        "updateSalesSummary",
+        "gzipText",
+        "gunzipText",
+        "decodeSales",
+        "hydrateSales"
+      ],
+      "imports": [
+        "SalesCore",
+        "renderAll",
+        "state",
+        "storeLocal",
+        "today",
+        "trackerFeed"
+      ],
+      "writes": [
+        "decodeSales",
+        "gunzipText",
+        "gzipText",
+        "hydrateSales",
+        "salesAllowedCodes",
+        "salesBusy",
+        "salesDecoded",
+        "salesError",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesPending",
+        "salesSignature",
+        "salesSummary",
+        "salesWorker",
+        "updateSalesSummary"
+      ]
+    },
+    {
+      "id": "monthly-sales",
+      "file": "modules/monthly-sales.js",
+      "owns": [
+        "monthlyInfo"
+      ],
+      "imports": [
+        "factor",
+        "salesError",
+        "salesLoading",
+        "salesSummary",
+        "state"
+      ],
+      "writes": [
+        "monthlyInfo"
+      ]
+    },
+    {
+      "id": "sales-view",
+      "file": "modules/sales-view.js",
+      "owns": [
+        "monthlyCell",
+        "monthlyManagement",
+        "salesMonthCells",
+        "renderSalesHeads",
+        "refreshSalesUI",
+        "salesStatus"
+      ],
+      "imports": [
+        "$",
+        "SalesCore",
+        "esc",
+        "fmt",
+        "monthlyInfo",
+        "plannerRole",
+        "salesBusy",
+        "salesDecoded",
+        "salesError",
+        "salesLoading",
+        "salesPending",
+        "salesSummary",
+        "state",
+        "today"
+      ],
+      "writes": [
+        "monthlyCell",
+        "monthlyManagement",
+        "refreshSalesUI",
+        "renderSalesHeads",
+        "salesMonthCells",
+        "salesStatus"
+      ]
+    },
+    {
+      "id": "sales-import",
+      "file": "modules/sales-import.js",
+      "owns": [
+        "parseSalesFile",
+        "prepareSales",
+        "selectSalesFile"
+      ],
+      "imports": [
+        "$",
+        "SalesCore",
+        "esc",
+        "factor",
+        "fmt",
+        "gzipText",
+        "monthlyInfo",
+        "plannerRole",
+        "plannerUid",
+        "refreshSalesUI",
+        "salesAllowedCodes",
+        "salesBusy",
+        "salesDecoded",
+        "salesImportWorker",
+        "salesLoading",
+        "salesPending",
+        "salesStatus",
+        "salesWorker",
+        "state",
+        "today",
+        "trackerFeed"
+      ],
+      "writes": [
+        "parseSalesFile",
+        "prepareSales",
+        "salesBusy",
+        "salesPending",
+        "salesWorker",
+        "selectSalesFile"
+      ]
+    },
+    {
+      "id": "sales-events",
+      "file": "modules/sales-events.js",
+      "owns": [
+        "showMonthlyDialog",
+        "restoreMonthly",
+        "renderAllBeforeSales"
+      ],
+      "imports": [
+        "$",
+        "csvCell",
+        "download",
+        "events",
+        "fmt",
+        "hydrateSales",
+        "monthlyInfo",
+        "openPlannerDialog",
+        "plannerRole",
+        "prepareSales",
+        "refreshSalesUI",
+        "renderAll",
+        "renderPlan",
+        "salesBusy",
+        "salesDecoded",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesPending",
+        "salesSignature",
+        "salesSummary",
+        "saveCatalogPatch",
+        "selectSalesFile",
+        "sourceSave",
+        "state",
+        "trackerFeed",
+        "updateTableHeader"
+      ],
+      "writes": [
+        "renderAll",
+        "renderAllBeforeSales",
+        "restoreMonthly",
+        "salesDecoded",
+        "salesLoadGeneration",
+        "salesLoading",
+        "salesPending",
+        "salesSignature",
+        "salesSummary",
+        "showMonthlyDialog"
+      ]
+    },
+    {
+      "id": "workspace",
+      "file": "modules/workspace.js",
+      "owns": [
+        "notifyPlannerWidth412",
+        "parseSheetGrid412",
+        "exportSettings412",
+        "snapshotPlanner412",
+        "restorePlanner412",
+        "managementHead",
+        "hiddenSettingsPanel",
+        "advancedSettings"
+      ],
+      "imports": [
+        "$",
+        "cloudJobs",
+        "csvCell",
+        "deferredDrafts",
+        "dirtyDrafts",
+        "download",
+        "events",
+        "factor",
+        "flushRecovery",
+        "hydrateSales",
+        "importPreview",
+        "localRecovery",
+        "monthlyInfo",
+        "pendingInventoryImport",
+        "pendingShelfImport",
+        "pendingStatusImport",
+        "plannerRole",
+        "rebuildCatalog",
+        "renderAll",
+        "salesBusy",
+        "salesPending",
+        "salesSignature",
+        "salesWorker",
+        "saveCatalogPatch",
+        "saveFingerprints",
+        "shelfLife",
+        "state",
+        "statusDelimitedRows",
+        "storeLocal",
+        "trackerFeed",
+        "unifiedPending",
+        "val"
+      ],
+      "writes": [
+        "advancedSettings",
+        "deferredDrafts",
+        "dirtyDrafts",
+        "exportSettings412",
+        "hiddenSettingsPanel",
+        "importPreview",
+        "localRecovery",
+        "managementHead",
+        "notifyPlannerWidth412",
+        "parseSheetGrid412",
+        "pendingInventoryImport",
+        "pendingShelfImport",
+        "pendingStatusImport",
+        "restorePlanner412",
+        "salesBusy",
+        "salesPending",
+        "salesSignature",
+        "salesWorker",
+        "snapshotPlanner412",
+        "unifiedPending"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Container Tracker</title><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>{{file:styles/base.css}}</style>
+<style id="jpt-module-ui">{{file:styles/overrides.css}}</style>
+</head><body>
+<div id="login" class="login hide"><h2>🚢 Container Tracker</h2><p class="tiny">使用 Kaisi 現有 Firebase 帳號登入。</p><input id="email" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password"><button class="pri" style="width:100%" onclick="doLogin()">登入</button><div id="loginmsg" class="tiny"></div></div>
+<div id="app" class="hide"><div class="top"><div class="toprow"><div><div class="title">🚢 Container Tracker</div><div class="tiny">Quotation → Shipping → Archive · Linked with Japan Price Tracker</div></div><div><span id="cloud" class="status">連線中</span> </div></div>
+<div class="nav" id="nav"><button class="active" data-p="overview" onclick="page('overview')">Overview</button><button data-p="todo" onclick="page('todo')">To-do</button><button data-p="archive" onclick="page('archive')">Archive</button><button data-p="settings" onclick="page('settings')">Settings</button></div></div>
+<div class="wrap"><div id="mainToolbar" class="toolbar"><button class="pri" onclick="newC()">＋ 新增貨櫃</button><input id="search" placeholder="搜尋 Container / Supplier / Notes / To-do" oninput="render()"><select class="overview-only" id="statusFilter" onchange="render()"><option value="ALL">全部狀態</option><option>QUOTATION</option><option>SHIPPING</option></select><select class="overview-only" id="attentionFilter" onchange="render()"><option value="ALL">全部</option><option value="ACTION">需要處理</option><option value="PI">PI Not Final</option><option value="PAYMENT">Payment Pending</option><option value="OVERDUE">日期待確認</option><option value="CHECKLIST">Checklist Pending</option></select><label class="filter-check overview-only"><input id="frozenOnly" type="checkbox" onchange="render()"> ❄ Frozen</label></div>
+{{file:views/overview.html}}{{file:views/todos.html}}{{file:views/archive.html}}{{file:views/settings.html}}</div></div>
+<div id="quickDrawerBackdrop" class="drawer-backdrop" onclick="closeDrawer()"></div><aside id="quickDrawer" class="quick-drawer"><div id="drawerBody"></div></aside>
+<div id="modal" class="modal"><div class="panel">
+<div style="display:flex;justify-content:space-between;align-items:center;padding-top:18px">
+<div class="tiny">Container Tracker　›　<span style="color:#0f6cf2;font-weight:800">Container Detail</span></div>
+<button class="soft" onclick="closeM()">← 返回 Overview</button>
+</div><h2 id="mt"></h2><div id="form"></div><div class="actions"><button class="soft" onclick="closeM()">取消</button><button class="pri" onclick="saveC()">儲存</button></div></div></div>
+<script type="module">{{application-script}}</script></body></html>

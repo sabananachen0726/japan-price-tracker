@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本廠商價格比對與管理系統 V4.13.0｜LIVE / TEST</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>{{file:styles/base.css}}</style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="authGate" class="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex align-items-center justify-content-center" style="z-index:2000;">
+  <div class="card p-4 shadow" style="width:min(92vw,420px);">
+    <div class="text-center mb-3"><i class="fa-solid fa-lock fa-2x text-primary"></i><h4 class="mt-2 mb-1">日本採購系統登入</h4><div class="text-muted small">請使用公司授權帳號登入</div></div>
+    <form id="loginForm">
+      <div class="mb-3"><label class="form-label">Email</label><input id="loginEmail" type="email" class="form-control" autocomplete="username" required></div>
+      <div class="mb-3"><label class="form-label">Password</label><input id="loginPassword" type="password" class="form-control" autocomplete="current-password" required></div>
+      <div id="loginError" class="alert alert-danger py-2 small d-none"></div>
+      <button id="btnLogin" class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-right-to-bracket me-1"></i>登入</button>
+    </form>
+  </div>
+</div>
+<div id="protectedApp" class="d-none">
+<div id="testModeBanner" class="alert alert-warning rounded-0 mb-0 py-2 text-center fw-bold d-none"><i class="fa-solid fa-flask me-2"></i>TEST MODE｜所有修改只存在這台電腦，不會寫回正式 Firebase｜可用「從 LIVE 更新 TEST」重建測試資料</div>
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h2><i class="fa-solid fa-scale-balanced me-2 text-primary"></i>日本廠商價格比對與管理系統</h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span id="authUser" class="small text-muted d-none"></span><span id="roleBadge" class="badge bg-primary d-none"></span><button id="btnUsers" type="button" class="btn btn-sm btn-outline-primary d-none" data-bs-toggle="modal" data-bs-target="#usersModal">帳號權限</button><div class="btn-group btn-group-sm" role="group" aria-label="資料模式"><button id="btnModeLive" type="button" class="btn btn-success"><i class="fa-solid fa-cloud me-1"></i>LIVE</button><button id="btnModeTest" type="button" class="btn btn-outline-warning"><i class="fa-solid fa-flask me-1"></i>TEST</button></div><span class="badge bg-secondary" id="cloudStatus"><i class="fa-solid fa-cloud me-1"></i>等待登入</span><button id="btnRefreshTestData" class="btn btn-sm btn-warning d-none" type="button" title="重新從正式 Firebase 複製最新資料到 TEST；只讀取 LIVE，不會寫回 LIVE"><i class="fa-solid fa-rotate me-1"></i>從 LIVE 更新 TEST</button><button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#versionInfoModal"><i class="fa-solid fa-clock-rotate-left me-1"></i><span id="appVersionButton">V4.8.9</span> 更新紀錄</button><button id="btnLogout" class="btn btn-sm btn-outline-secondary d-none" type="button"><i class="fa-solid fa-right-from-bracket me-1"></i>登出</button></div>
+    </div>
+
+<div id="themeSwitcher" hidden><button id="themeOrder"></button><button id="themeContainer"></button></div><ul class="nav nav-pills nav-fill mb-4 card p-2 flex-row" id="mainTabs" role="tablist"><li class="nav-item"><button id="planner-tab" class="nav-link active" data-bs-toggle="tab" data-bs-target="#planner-panel" type="button">訂貨規劃</button></li><li class="nav-item"><button id="settings-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-panel" type="button">商品管理</button></li><li class="nav-item"><button id="compare-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#compare-panel" type="button">商品價格比對</button></li><li class="nav-item"><button id="container-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#container-panel" type="button">貨櫃與 PI</button></li><li class="nav-item"><button id="add-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#add-panel" type="button">資料匯入中心</button></li></ul>
+    <div class="tab-content" id="mainTabsContent">
+
+        {{file:views/price-comparison.html}}
+
+        {{file:views/imports.html}}
+
+        {{file:views/products.html}}
+{{file:views/pi-query.html}}
+
+        {{file:views/containers.html}}
+
+        {{file:views/planning.html}}
+
+    </div>
+
+<div class="modal fade" id="usersModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">帳號與權限管理</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="alert alert-info small">請先在 Firebase Console → Authentication 建立 Email/Password 帳號，複製該帳號 UID 到此核准。系統不儲存同事密碼。</div><div class="row g-2 mb-3"><div class="col-md-5"><input id="grantUid" class="form-control" placeholder="Firebase Auth UID"></div><div class="col-md-4"><input id="grantEmail" class="form-control" type="email" placeholder="同事 Email"></div><div class="col-md-3"><select id="grantRole" class="form-select"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="disabled">停用</option></select></div></div><button id="grantSave" class="btn btn-primary">儲存／核准帳號</button><div id="grantStatus" class="small mt-2"></div><hr><button id="refreshUsers" class="btn btn-outline-secondary btn-sm mb-2">更新帳號列表</button><div id="userRows" class="small">按更新帳號列表載入</div></div></div></div></div>
+<div class="modal fade" id="editMasterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>快速編輯商品主檔</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMasterPrimaryBarcode">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Primary Barcode (主條碼)</label>
+            <input type="text" id="editMasterBarcodeDisplay" class="form-control bg-light" readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">內部料號 (Item Code)</label>
+            <input type="text" id="editMasterItemCode" class="form-control" placeholder="例如: WHH005">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">商品名稱</label>
+            <input type="text" id="editMasterName" class="form-control" placeholder="例如: Calbee 蝦條 70g">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">圖片 URL</label>
+            <input type="url" id="editMasterImgUrl" class="form-control" placeholder="https://example.com/image.jpg">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSaveMasterEdit"><i class="fa-solid fa-floppy-disk me-1"></i>儲存修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-body text-center p-2">
+        <img id="modalImage" src="" class="modal-img" alt="商品放大圖">
+      </div>
+      <div class="modal-footer p-1 justify-content-center">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="encodingHelpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-circle-exclamation text-warning me-2"></i>匯入發生亂碼的排除步驟</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6>方式 1：手動指定檔案編碼（最快速）</h6>
+        <p class="small text-muted mb-3">匯入時，在檔案選擇框旁邊的「編碼」下拉選單中切換：<br>
+        • 日文 Excel 產生的 CSV 檔：選擇 <b>Shift-JIS</b><br>
+        • 繁體中文 Excel 產生的 CSV 檔：選擇 <b>Big5</b></p>
+
+        <h6>方式 2：使用 Windows 記事本轉換為 UTF-8</h6>
+        <ol class="small text-muted mb-0">
+            <li>在電腦上的 CSV/TXT 檔上點右鍵 -&gt; 開啟檔案 -&gt; 選擇<b>「記事本」</b>。</li>
+            <li>點選左上角<b>「檔案」-&gt;「另存新檔」</b>。</li>
+            <li>將視窗右下角的<b>「編碼」</b>從 ANSI 改選為 <b>UTF-8</b>。</li>
+            <li>存檔後重新回到網頁匯入即可。</li>
+        </ol>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="versionInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>版本資訊 / 更新紀錄</h5>
+          <div class="small text-muted mt-1">Japan Price Tracker｜目前版本 <strong id="appVersionModal">V4.9.0</strong>｜Production</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="releaseNotesList"><p class="text-muted">載入近期更新紀錄中…</p></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script type="module">{{application-script}}</script>
+
+
+<div class="modal fade" id="quickQuoteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-yen-sign me-2 text-primary"></i>快速錄入價格</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="fw-bold mb-1" id="quickQuoteProductName"></div><div class="small text-muted mb-3" id="quickQuoteProductCode"></div>
+      <input type="hidden" id="quickQuoteBarcode">
+      <div class="row g-2">
+        <div class="col-6"><label class="form-label">廠商</label><select id="quickQuoteSupplier" class="form-select"></select></div>
+        <div class="col-6"><label class="form-label">價格 ¥</label><input id="quickQuotePrice" type="number" step="0.01" class="form-control" autofocus></div>
+        <div class="col-12"><label class="form-label">貨櫃號碼</label><input id="quickQuoteContainer" class="form-control" placeholder="例如 JSR26B0901 / JSR26B1101F"></div>
+        <div class="col-12"><label class="form-label">備註 / 狀態</label><input id="quickQuoteNote" class="form-control" placeholder="可空白；例如等待報價、停產、賞味期限"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" id="btnSaveQuickQuote"><i class="fa-solid fa-floppy-disk me-1"></i>儲存並留在價格比對</button></div>
+  </div></div>
+</div>
+</div><script id="kaisi-release-history">{{release-script}}</script>
+<dialog id="japanMasterPreview" style="border:0;border-radius:14px;padding:24px;width:min(1180px,95vw);max-height:90vh;overflow:auto;box-shadow:0 18px 65px #182b4655"><h3>日本貨商品主檔匯入預覽</h3><strong id="japanMasterSummary"></strong><div id="japanMasterDetails" class="small mt-3"></div><div class="d-flex gap-2 justify-content-end mt-3"><button class="btn btn-outline-secondary" type="button" onclick="this.closest('dialog').close()">取消</button><button id="japanMasterApply" class="btn btn-primary" type="button">確認匯入日本貨</button></div></dialog></body>
+</html>

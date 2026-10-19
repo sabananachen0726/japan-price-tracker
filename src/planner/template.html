@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kaisi 採購工作台 V4.13.0</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>{{file:styles/base.css}}</style></head><body><header><div><h1>Kaisi · 日本貨訂貨規劃</h1><small>以 Item Code 串接商品照片、庫存、月銷、客訂與 PI</small></div><span class="tag">可操作原型 · 客訂連動示範</span></header><main>
+<nav class="tabs" aria-label="訂貨工具"><button class="active" data-tab="plan">訂貨規劃</button><button data-tab="containers">工作單紀錄</button><button data-tab="settings">資料管理</button><button data-tab="pending">待補資料</button><button data-tab="imports">資料匯入中心</button><span id="catalogSync" class="tag" style="margin-left:auto">等待共享資料</span></nav>
+{{file:views/planning.html}}
+{{file:views/work-orders.html}}
+{{file:views/products.html}}
+{{file:views/imports.html}}{{file:views/pending.html}}
+<dialog id="importDialog" class="modal"><h3 id="importTitle"></h3><p id="importSummary"></p><details><summary>查看配對與待確認明細</summary><pre id="importDetails" style="white-space:pre-wrap;max-height:45vh;overflow:auto"></pre></details><div class="toolbar"><button id="applyImport" class="primary">套用更新</button><button onclick="document.getElementById('importDialog').close()">取消</button></div></dialog>
+
+<dialog id="statusImportDialog" class="modal status-import-modal" aria-label="批次更新訂貨商品狀態">
+ <h3 style="margin-top:0">批次匯入 Active／Inactive</h3>
+ <p class="mini">貼上 Excel 兩欄 <b>Item Code</b>、<b>Status</b>，或直接上傳本系統匯出的「Active／Inactive Excel」。支援 .xlsx、.xls、.csv、.tsv。</p>
+ <textarea id="statusImportPaste" spellcheck="false" placeholder="Item Code	Status
+ACE005	Inactive
+ACE006	Active"></textarea>
+ <div class="toolbar"><button id="statusImportPreviewPaste" type="button" class="primary">預覽貼上的資料</button><button id="statusImportChooseFile" type="button">選擇 Excel／CSV 檔案</button><input id="statusImportFile" type="file" class="hidden" accept=".xlsx,.xls,.csv,.tsv,.txt"></div>
+ <div class="status-import-note mini">Active＝可訂；Inactive＝暫停訂購（原本是「停產」的商品若仍設為 Inactive，會維持停產）。<br>未提供的商品不變；無法配對的品號不新增商品。__JAN_ 暫時編號若存在於清單也可更新，但未來配對正式品號後需重新確認狀態。<b>TEST 模式只存本機；LIVE 才同步 Firebase。</b></div>
+ <div id="statusImportPreviewArea" class="status-import-preview hidden" aria-live="polite"><strong id="statusImportPreviewSummary"></strong><div id="statusImportPreviewDetails" class="scroll-preview"></div></div>
+ <div class="toolbar" style="justify-content:flex-end"><button id="statusImportCancel" type="button">關閉</button><button id="statusImportApply" class="primary" type="button" disabled>確認套用變更</button></div>
+</dialog>
+
+<dialog id="shelfImportDialog" class="modal shelf-import-dialog" aria-label="批次匯入固定保存期限">
+ <h3 style="margin-top:0">批次匯入固定保存期限（月）</h3>
+ <p class="mini muted">以 <b>Barcode／JAN（優先）</b> 或 <b>Item Code</b> 配對，支援從 Excel 貼上兩欄，或上傳 Excel／CSV。無標題兩欄會自動辨識第一欄的 Barcode／Item Code，第二欄為保存期限；可混合貼上。也支援 <b>Barcode / JAN</b>、<b>Item Code</b> 與 <b>Shelf Life (Months)</b> 標題。配對不唯一時略過並提示。月數限 1～120；空白略過，<b>CLEAR</b> 才清除既有值。</p>
+ <textarea id="shelfPaste" spellcheck="false" placeholder="Barcode / JAN	Shelf Life (Months)
+4901234567894	12
+4901234567887	18"></textarea>
+ <div class="mini muted">若同時提供 Barcode 和 Item Code，兩者必須指向同一商品；Barcode 重複對應多款商品或無法配對時，預覽會標示並略過。Excel 條碼欄請設為「文字」，保留開頭 0。</div>
+ <div class="toolbar"><button id="shelfPreviewPaste" class="primary" type="button">預覽貼上資料</button><button id="shelfChooseFile" type="button">選擇 Excel／CSV</button><input id="shelfFile" type="file" class="hidden" accept=".xlsx,.xls,.csv,.tsv,.txt"></div>
+ <div class="mini muted">只套用已配對且實際變更的商品，預覽後才儲存；Admin／Editor 可修改，Viewer 唯讀。TEST 模式只儲存在本機。</div>
+ <strong id="shelfPreviewSummary" class="mini" aria-live="polite"></strong>
+ <div id="shelfPreviewDetails" class="shelf-import-result hidden"></div>
+ <div class="toolbar" style="justify-content:flex-end"><button id="shelfClose" type="button">關閉</button><button id="shelfApply" type="button" class="primary" disabled>確認套用變更</button></div>
+</dialog>
+<dialog id="inventoryPasteDialog" class="modal"><h3>更新 MYOB 庫存與 Factor</h3><p>可直接貼上完整 MYOB 表格，讀取 <b>Item Number、On Hand、Custom List 3</b>。完整匯入後 MYOB Factor 優先；先前手動 Factor 自動失效。舊的兩欄格式仍可使用，但只更新庫存，不重設 Factor。</p><textarea id="inventoryPaste" rows="9" style="width:100%;font:13px monospace;resize:vertical" placeholder="Item Number	Name	On Hand	Custom List 3
+KR404	Kirin 午後奶茶	129	CTN
+ZY207	周義牛皮豆干	57	5Unit/CTN"></textarea><p class="mini muted">先預覽再確認。套用後會完整取代上一份庫存快照；未出現的品號庫存待確認。只更新庫存與 MYOB 單位，不修改商品主檔、價格、月銷或安全庫存。</p><p id="inventoryPasteResult" aria-live="polite"></p><div id="inventoryPastePreview" class="mini" style="max-height:220px;overflow:auto"></div><div class="toolbar"><button id="previewInventoryPaste" type="button">預覽 MYOB</button><button id="applyInventoryPaste" class="primary" disabled>確認套用快照</button><button type="button" onclick="document.getElementById('inventoryPasteDialog').close()">關閉</button></div></dialog>
+<dialog id="zoomDialog" class="modal zoom-dialog" aria-label="商品圖片預覽"><div class="zoom-actions"><strong id="zoomTitle">商品圖片</strong><div class="zoom-tools"><button id="zoomOut" type="button">− 縮小</button><button id="zoomIn" type="button">＋ 放大</button><button id="zoomReset" type="button">重設</button><button id="zoomClose" type="button">✕ 關閉</button></div></div><div class="zoom-stage"><img id="zoomImage" alt="商品圖片大圖"></div><div class="mini muted">滾輪或＋／− 可縮放圖片，按 Esc 關閉。</div></dialog>
+<div id="piHoverTip" class="pi-hover-tip" role="tooltip" aria-hidden="true"></div>
+<div id="photoHoverCard" class="photo-hover-card" role="tooltip" aria-hidden="true"><img id="photoHoverImage" alt=""><div id="photoHoverCaption" class="photo-caption"></div></div>
+<div id="columnFilterTip" class="column-filter-tip" role="dialog" aria-label="商品欄位篩選" aria-hidden="true"><strong id="filterTipTitle">篩選</strong><label id="filterTextLabel">關鍵字<input id="filterText" type="text" placeholder="輸入商品編號或名稱"></label><div id="filterNumberFields"><label>條件<select id="filterCondition"><option value="all">全部數值</option><option value="positive">大於 0</option><option value="zero">等於 0</option><option value="empty">沒有設定／無數值</option><option value="min">大於或等於</option><option value="max">小於或等於</option><option value="range">介於兩個數值</option></select></label><label>最小值<input id="filterMin" type="number" step="any" placeholder="最小值"></label><label>最大值<input id="filterMax" type="number" step="any" placeholder="最大值"></label></div><div class="filter-actions"><button id="resetColumnFilter" type="button">清除此欄</button><button id="applyColumnFilter" class="primary" type="button">套用</button></div></div>
+<dialog id="monthlyOverrideDialog" class="modal"><h3 id="monthlyOverrideTitle">平均月銷</h3><p id="monthlyOverrideInfo" class="mini"></p><label>手動月銷（採購單位／月） <input id="monthlyOverrideValue" type="number" min="0" step="any"></label><div class="toolbar"><button id="monthlyOverrideSave" type="button" class="primary">儲存手動值</button><button id="monthlyOverrideAuto" type="button">恢復自動</button><button type="button" onclick="this.closest('dialog').close()">關閉</button></div></dialog><dialog id="infoDialog" class="modal"><h3 id="dialogTitle"></h3><div id="dialogBody"></div><hr class="sep"><button onclick="document.getElementById('infoDialog').close()">關閉</button></dialog>
+<dialog id="unifiedDialog" class="modal" style="width:min(850px,calc(100vw - 24px));max-height:88vh;overflow:auto" aria-label="合併商品設定批次匯入"><h3>批次匯入商品訂貨設定</h3>
+<p class="mini">Excel 第一張工作表須包含 Item Code，其他欄位可任意選擇：Monthly Sales、Safety Stock、Factor、Shelf Life (Months)、Status。空白不更新，CLEAR 可清除數值。Status 只接受 Active／Inactive。</p>
+<textarea id="unifiedPaste" style="width:100%;min-height:150px;resize:vertical;font:13px/1.5 monospace;padding:10px" placeholder="Item Code	Monthly Sales	Safety Stock	Factor	Shelf Life (Months)	Status
+ACE005	6	12	12	18	Active"></textarea>
+<div class="toolbar"><button id="unifiedPreviewPaste" type="button" class="primary">預覽貼上的資料</button><button id="unifiedChooseFile" type="button">選擇 Excel／CSV</button><input id="unifiedFile" type="file" class="hidden" accept=".xlsx,.xls,.csv,.tsv,.txt"></div>
+<div id="unifiedWarning" class="mini warn"></div><strong id="unifiedSummary" class="mini" aria-live="polite"></strong><div id="unifiedPreview" class="hidden" style="max-height:310px;overflow:auto;border:1px solid #dce4ee;border-radius:8px;margin-top:10px;padding:7px"></div>
+<div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button id="unifiedCancel" type="button">關閉</button><button id="unifiedApply" class="primary" type="button" disabled>確認套用變更</button></div></dialog></main><script id="seed" type="application/json">{{file:data/seed.json}}</script><script>{{application-script}}</script></body></html>

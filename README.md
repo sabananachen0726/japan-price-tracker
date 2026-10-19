@@ -1,0 +1,92 @@
+# Japan Price Tracker — V4.13.0 模組化原始碼
+
+## GitHub 自動部署
+
+本儲存庫保存完整模組化原始碼。網站網址：
+https://sabananachen0726.github.io/japan-price-tracker/
+
+修改 `src/` 後提交至 `main`，GitHub Actions 會自動安裝固定版本套件、執行 `npm run check`，並把產生的 `dist/` 部署到 GitHub Pages。測試或建置失敗時不會部署。
+
+部署流程位於 `.github/workflows/deploy.yml`，進度可在儲存庫的 **Actions** 頁查看，亦可使用 **Run workflow** 手動重新部署。Pages 的發布來源需設為 **GitHub Actions**。
+
+`dist/` 是自動建置結果，不需提交；請在 `src/` 修改模組，不要修改根目錄的舊版單檔網頁。
+
+## 日常使用
+
+開啟 `dist/index.html`，沿用原本的登入及資料。這是可直接使用的單一 HTML；不需要安裝 Node.js。
+
+`dist/planner.html`、`dist/container.html` 是供開發檢查的子頁面。正常操作只開 `dist/index.html`。
+
+## 原始碼位置
+
+| 目錄 | 負責內容 |
+| --- | --- |
+| `src/core` | 模組啟動順序、狀態存取契約、視窗訊息訂閱 |
+| `src/shell/modules` | Firebase／登入、資料同步、價格、PI、備份、主頁切換 |
+| `src/shell/dom/modules` | 各項功能的按鈕及表單事件，於 DOM 就緒時啟動 |
+| `src/shell/dom/domain` | 可獨立測試的日本商品主檔解析 |
+| `src/planner/modules` | 訂貨計算、商品設定、各類匯入、銷售及工作單 |
+| `src/planner/domain` | 不依賴畫面的月銷彙總、單位解析、背景檔案解析器 |
+| `src/container/modules` | 貨櫃進度、待辦、表單、檢查清單 |
+| 各應用的 `views` | 個別頁面的 HTML |
+| 各應用的 `styles` | 樣式 |
+| `src/planner/data` | 既有內建快照與圖片對照資料 |
+| `tests` | 模組契約、業務規則、相容性與瀏覽器回歸測試 |
+
+每個應用的 `bootstrap.js` 是入口。`architecture.json` 與各應用的 `dependencies.json` 是建置時產生的依賴清單。
+
+## 建置
+
+使用 Node.js 20 或更新版本，在此資料夾執行：
+
+```bash
+npm ci
+npm run build
+```
+
+產出 `dist/index.html`。建置會先產生訂貨及貨櫃子應用，再嵌入主頁。原始碼不儲存長串的 Base64 子應用，也不需要修改舊版 HTML 再套用文字修補。
+
+固定版本的套件及 `package-lock.json` 已隨附。執行中的網頁仍使用原本的 Firebase、Bootstrap 與 SheetJS 載入方式。
+
+## 修改模組
+
+每個功能檔案包含三個介面：
+
+- `definition`：`owns` 宣告本模組擁有的狀態／函式；`imports` 宣告讀取的依賴；`writes` 宣告允許變更的名稱。
+- `register(context)`：只登錄函式，不操作畫面、不讀取 Firebase。
+- `initialize(context)`：依 `bootstrap.js` 的順序建立狀態及綁定事件。
+
+啟動時先完成所有函式登錄，再逐一初始化，保留既有函式提升及執行順序。讀取未宣告的依賴、重複宣告、初始化前讀取或覆寫常數，會明確報錯。
+
+這次採用受控的共享 context 以保留既有欄位及流程；功能之間仍有明列的狀態依賴。訂貨與貨櫃子頁面的 HTML 事件處理器保留相容層。新增功能時，優先把純計算放入 `domain`，避免擴大共享狀態。
+
+視窗訊息統一經 `src/core/events.js` 訂閱；原本的訊息來源、角色與模式檢查仍由對應功能處理。
+
+銷售背景解析器必須可以單獨執行，因為它會序列化後放進 Worker。不要為建置開啟會注入外部命名輔助函式的 `keepNames` 選項。
+
+## 測試
+
+```bash
+npm run check
+npx playwright install chromium
+npm run test:browser
+```
+
+`check` 會建置並執行模組、計算與 HTML／CSS／內建資料相容性測試。
+
+瀏覽器測試使用假的 Firebase 回應，實際操作完整網頁，不會寫入正式資料。預設包含小型 gzip 銷售資料，驗證背景解析、KAISI 排除、退貨扣回及商品範圍。
+
+要另外驗證實際匯入檔，可設定以下環境變數再執行 `npm run test:browser`：
+
+- `JPT_MASTER_FILE`：商品主檔 Excel 完整路徑。
+- `JPT_HISTORY_FILE`：歷史 CSV／CSV.GZ 完整路徑。
+- `JPT_CURRENT_FILE`：最新 XLSM／XLSX 完整路徑。
+- `JPT_CHROME_PATH`：選填，已安裝 Chromium 的執行檔路徑。
+
+大型原始銷售檔未放入此原始碼包。`tests/vendor` 只供離線重現前端測試，不是新增的正式網頁依賴。
+
+## 相容性
+
+這次重構保留既有 Firebase 專案、文件名稱、本機儲存鍵、PI 欄位、月銷算法與角色權限。畫面結構、樣式及內建資料以既有 V4.12.0 的指紋驗證。
+
+完整備份的 `backupVersion` 維持 `4.12.0`，因為備份格式未變；應用版本則為 V4.13.0。請勿為了重構而重設資料或重新建立 Firebase 專案。

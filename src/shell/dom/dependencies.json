@@ -1,0 +1,277 @@
+{
+  "scope": "shell/dom",
+  "features": [
+    {
+      "id": "startup",
+      "file": "modules/startup.js",
+      "owns": [
+        "finalPiSearch"
+      ],
+      "imports": [
+        "downloadFinalPiTemplate",
+        "escapeFinalPiText",
+        "exportFinalPiBatch",
+        "finalPiBatchSnapshot",
+        "importFinalPi",
+        "importFinalPiMulti",
+        "looksLikeFinalPiMulti",
+        "readFinalPiBatchFile",
+        "renderFinalPiBatchSearch",
+        "renderFinalPiSearch"
+      ],
+      "writes": [
+        "finalPiBatchSnapshot",
+        "finalPiSearch"
+      ]
+    },
+    {
+      "id": "search-events",
+      "file": "modules/search-events.js",
+      "owns": [
+        "searchDebounceTimer",
+        "searchComposing",
+        "searchInput",
+        "batchSearchInput",
+        "compareResultsContainer"
+      ],
+      "imports": [
+        "renderCompareList",
+        "saveFirebaseData"
+      ],
+      "writes": [
+        "batchSearchInput",
+        "compareResultsContainer",
+        "searchComposing",
+        "searchDebounceTimer",
+        "searchInput"
+      ]
+    },
+    {
+      "id": "product-events",
+      "file": "modules/product-events.js",
+      "owns": [
+        "masterSearchInput",
+        "btnSelectAllMasterFiltered",
+        "btnClearMasterSelection",
+        "btnDeleteSelectedMaster",
+        "masterPageSize",
+        "btnMasterPrev",
+        "btnMasterNext"
+      ],
+      "imports": [
+        "masterCurrentPage",
+        "masterSearchTerm",
+        "masterSelectedProducts",
+        "rebuildItemToBarcode",
+        "renderMasterTable",
+        "saveFirebaseData",
+        "updateMasterSelectionUI"
+      ],
+      "writes": [
+        "btnClearMasterSelection",
+        "btnDeleteSelectedMaster",
+        "btnMasterNext",
+        "btnMasterPrev",
+        "btnSelectAllMasterFiltered",
+        "masterCurrentPage",
+        "masterPageSize",
+        "masterSearchInput",
+        "masterSearchTerm"
+      ]
+    },
+    {
+      "id": "workbench-events",
+      "file": "modules/workbench-events.js",
+      "owns": [],
+      "imports": [
+        "copySupplierOrders",
+        "downloadMasterTemplate",
+        "downloadQuoteTemplate",
+        "exportPurchaseDecisionCSV",
+        "renderCompareList",
+        "renderPurchaseWorkbench",
+        "updateWorkbenchTotals"
+      ],
+      "writes": []
+    },
+    {
+      "id": "quote-entry",
+      "file": "modules/quote-entry.js",
+      "owns": [
+        "fillManualProduct",
+        "autoFillManualFromBarcode",
+        "autoFillManualFromItemCode"
+      ],
+      "imports": [
+        "cleanBarcode",
+        "resolveToPrimaryBarcode",
+        "saveFirebaseData",
+        "upsertContainerQuote"
+      ],
+      "writes": [
+        "autoFillManualFromBarcode",
+        "autoFillManualFromItemCode",
+        "fillManualProduct"
+      ]
+    },
+    {
+      "id": "quick-quotes",
+      "file": "modules/quick-quotes.js",
+      "owns": [
+        "btnQuickBatchImport",
+        "btnSaveQuickQuote"
+      ],
+      "imports": [
+        "cleanBarcode",
+        "normalizeContainerNo",
+        "renderCompareList",
+        "resolveToPrimaryBarcode",
+        "saveFirebaseData",
+        "showAppToast",
+        "upsertContainerQuote"
+      ],
+      "writes": [
+        "btnQuickBatchImport",
+        "btnSaveQuickQuote"
+      ]
+    },
+    {
+      "id": "system-settings-events",
+      "file": "modules/system-settings-events.js",
+      "owns": [],
+      "imports": [
+        "cleanBarcode",
+        "saveFirebaseData"
+      ],
+      "writes": []
+    },
+    {
+      "id": "exports-events",
+      "file": "modules/exports-events.js",
+      "owns": [],
+      "imports": [
+        "exportMasterProductsToCSV",
+        "exportToCSV"
+      ],
+      "writes": []
+    },
+    {
+      "id": "quote-import",
+      "file": "modules/quote-import.js",
+      "owns": [
+        "renderMasterImportHistory"
+      ],
+      "imports": [
+        "cleanBarcode",
+        "escapeHtml",
+        "getTimestampString",
+        "resolveToPrimaryBarcode",
+        "saveFirebaseData",
+        "upsertContainerQuote"
+      ],
+      "writes": [
+        "renderMasterImportHistory"
+      ]
+    },
+    {
+      "id": "master-rollback",
+      "file": "modules/master-rollback.js",
+      "owns": [],
+      "imports": [
+        "currentDataMode",
+        "decompressMasterUndo",
+        "isAdmin",
+        "masterCurrentPage",
+        "masterSelectedProducts",
+        "migrateBarcodeReferences",
+        "normalizeItemCode",
+        "rebuildItemToBarcode",
+        "refreshUI",
+        "renderMasterImportHistory",
+        "saveFirebaseData",
+        "sendPlannerSnapshot"
+      ],
+      "writes": [
+        "masterCurrentPage"
+      ]
+    },
+    {
+      "id": "master-import",
+      "file": "modules/master-import.js",
+      "owns": [
+        "JapanMasterImport",
+        "japanMasterPending",
+        "compressMasterUndo",
+        "decompressMasterUndo",
+        "previewJapanMaster"
+      ],
+      "imports": [
+        "auth",
+        "currentDataMode",
+        "escapeHtml",
+        "isAdmin",
+        "masterCurrentPage",
+        "masterSelectedProducts",
+        "migrateBarcodeReferences",
+        "rebuildItemToBarcode",
+        "refreshUI",
+        "renderMasterImportHistory",
+        "saveFirebaseData",
+        "sendPlannerSnapshot"
+      ],
+      "writes": [
+        "JapanMasterImport",
+        "compressMasterUndo",
+        "decompressMasterUndo",
+        "japanMasterPending",
+        "masterCurrentPage",
+        "previewJapanMaster"
+      ]
+    },
+    {
+      "id": "container-quote-events",
+      "file": "modules/container-quote-events.js",
+      "owns": [],
+      "imports": [
+        "activeManagedContainer",
+        "renderContainerManager",
+        "saveFirebaseData",
+        "updateContainerSelectionInfo"
+      ],
+      "writes": [
+        "activeManagedContainer"
+      ]
+    },
+    {
+      "id": "advanced-data-actions",
+      "file": "modules/advanced-data-actions.js",
+      "owns": [],
+      "imports": [
+        "saveFirebaseData"
+      ],
+      "writes": []
+    },
+    {
+      "id": "backup-restore",
+      "file": "modules/backup-restore.js",
+      "owns": [],
+      "imports": [
+        "CONTAINER_TRACKER_REF",
+        "containerTrackerData",
+        "currentDataMode",
+        "isAdmin",
+        "normalizeAppData",
+        "rebuildItemToBarcode",
+        "refreshUI",
+        "renderContainerIntegrationCheck",
+        "restoreCompleteBackup412",
+        "saveFirebaseData",
+        "sendContainerSnapshot",
+        "setDoc"
+      ],
+      "writes": [
+        "containerTrackerData"
+      ]
+    }
+  ]
+}

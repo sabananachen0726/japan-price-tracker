@@ -1,0 +1,7 @@
+<div class="tab-pane fade show active" id="planner-panel" role="tabpanel">
+            <div class="border-bottom bg-light px-3 py-2" id="customerSourcePanel">
+ <div class="d-flex gap-2 align-items-center flex-wrap"><strong>客訂來源</strong><span id="customerSourceStatus" role="status">客訂尚未連線</span><button type="button" id="customerSourceRefresh" class="btn btn-sm btn-outline-primary">更新客訂</button><details><summary class="small">連線說明／更換帳號</summary><p class="small mb-1">開啟訂貨頁自動讀取，24 小時內使用快取；手動更新至少間隔 30 秒。無定時輪詢、不寫回客訂。兩個 Firebase 專案的首次登入各自獨立。</p><button type="button" id="customerSourceDisconnect" class="btn btn-sm btn-outline-secondary">登出客訂帳號</button></details></div>
+ <form id="customerSourceLogin" class="d-flex gap-2 align-items-center flex-wrap mt-2"><input type="email" id="customerSourceEmail" class="form-control form-control-sm" style="max-width:260px" autocomplete="username" placeholder="客訂工具 Email" required><input type="password" id="customerSourcePassword" class="form-control form-control-sm" style="max-width:200px" autocomplete="current-password" placeholder="客訂工具密碼" required><label class="small"><input type="checkbox" id="customerSourceRemember" checked> 記住客訂登入</label><button type="submit" id="customerSourceConnect" class="btn btn-sm btn-primary">連接客訂帳號</button></form>
+</div>
+            <iframe id="plannerFrame" title="日本貨訂貨規劃" style="display:block;width:100%;height:760px;min-height:760px;border:0;background:#fff;overflow:hidden" scrolling="no"></iframe><div id="kaisiFrozenPlannerHead" aria-label="訂貨商品欄位（固定表頭）"></div>
+        </div>
