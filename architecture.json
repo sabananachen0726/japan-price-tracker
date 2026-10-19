@@ -114,7 +114,7 @@
         "id": "container-bridge",
         "file": "modules/container-bridge.js",
         "owns": [
-          "EMBEDDED_CONTAINER_TRACKER_B64",
+          "CONTAINER_TRACKER_URL",
           "containerTrackerFrameLoaded",
           "loadEmbeddedContainerTracker",
           "renderContainerIntegrationCheck"
@@ -126,7 +126,7 @@
           "sendContainerSnapshot"
         ],
         "writes": [
-          "EMBEDDED_CONTAINER_TRACKER_B64",
+          "CONTAINER_TRACKER_URL",
           "containerTrackerFrameLoaded",
           "loadEmbeddedContainerTracker",
           "renderContainerIntegrationCheck"
@@ -136,7 +136,7 @@
         "id": "planner-bridge",
         "file": "modules/planner-bridge.js",
         "owns": [
-          "EMBEDDED_ORDER_PLANNER_B64",
+          "ORDER_PLANNER_URL",
           "plannerLoaded",
           "sendPlannerSnapshot",
           "chooseImportView",
@@ -154,7 +154,7 @@
           "sendCustomerSource"
         ],
         "writes": [
-          "EMBEDDED_ORDER_PLANNER_B64",
+          "ORDER_PLANNER_URL",
           "chooseImportView",
           "loadEmbeddedOrderPlanner",
           "plannerLoaded",

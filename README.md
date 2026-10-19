@@ -9,13 +9,15 @@ https://sabananachen0726.github.io/japan-price-tracker/
 
 部署流程位於 `.github/workflows/deploy.yml`，進度可在儲存庫的 **Actions** 頁查看，亦可使用 **Run workflow** 手動重新部署。Pages 的發布來源需設為 **GitHub Actions**。
 
-`dist/` 是自動建置結果，不需提交；請在 `src/` 修改模組，不要修改根目錄的舊版單檔網頁。
+`dist/` 是自動建置結果，不需提交；請在 `src/` 修改模組。
 
 ## 日常使用
 
-開啟 `dist/index.html`，沿用原本的登入及資料。這是可直接使用的單一 HTML；不需要安裝 Node.js。
+開啟線上網站，沿用原本的登入及資料。部署檔案已拆分：小型 `index.html`、`assets/` 中的獨立 JS／CSS、`planner.html`、`container.html`，以及 `data/planner-seed.json`。子頁面在需要時載入；資產檔名包含內容雜湊，避免更新後沿用舊的 JS／CSS 快取。
 
-`dist/planner.html`、`dist/container.html` 是供開發檢查的子頁面。正常操作只開 `dist/index.html`。
+正常操作從主頁進入，讓子頁面沿用主頁的權限與資料同步。請勿只上傳 `index.html`：部署時必須包含整個 `dist/`。
+
+本機預覽需透過 HTTP 伺服器提供整個 `dist/`（例如 `python -m http.server 8080 --directory dist`），再開啟 `http://localhost:8080/`；不支援直接雙擊 HTML 的 `file://` 模式。
 
 ## 原始碼位置
 
@@ -44,7 +46,7 @@ npm ci
 npm run build
 ```
 
-產出 `dist/index.html`。建置會先產生訂貨及貨櫃子應用，再嵌入主頁。原始碼不儲存長串的 Base64 子應用，也不需要修改舊版 HTML 再套用文字修補。
+產出完整 `dist/`。三個 HTML 頁面分別引用獨立的 JS 和 CSS；主頁以相對網址載入訂貨及貨櫃子頁面，不再嵌入 Base64 子應用。內建快照也獨立為 JSON，於訂貨模組啟動前讀取。相對路徑支援 GitHub Pages 的 `/japan-price-tracker/` 子目錄。
 
 固定版本的套件及 `package-lock.json` 已隨附。執行中的網頁仍使用原本的 Firebase、Bootstrap 與 SheetJS 載入方式。
 

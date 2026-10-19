@@ -2,12 +2,21 @@ import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
+import {createHash} from 'node:crypto';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const output=path.resolve(root,process.env.JPT_OUTPUT_DIR||'dist');
 await mkdir(output,{recursive:true});
+await mkdir(path.join(output,'assets'),{recursive:true});
+await mkdir(path.join(output,'data'),{recursive:true});
+async function asset(name,extension,content){
+ const hash=createHash('sha256').update(content).digest('hex').slice(0,12);
+ const file=`assets/${name}-${hash}.${extension}`;
+ await writeFile(path.join(output,file),content);
+ return './'+file;
+}
 async function bundle(file,format,define={}) {
  const result=await build({absWorkingDir:root,entryPoints:[path.join(root,file)],bundle:true,write:false,format,target:'es2022',platform:'browser',keepNames:false,external:['https://*'],define,charset:'utf8',legalComments:'none'});
- return result.outputFiles[0].text.replaceAll('</script','<\\/script');
+ return result.outputFiles[0].text;
 }
 async function page(name,define={}) {
  const base=path.join(root,'src',name);
@@ -16,13 +25,22 @@ async function page(name,define={}) {
   if(depth>12)throw Error('Template include cycle in '+name);
   for(const match of [...text.matchAll(/\{\{file:([^}]+)\}\}/g)]){
    const file=path.resolve(base,match[1]);if(!file.startsWith(base+path.sep))throw Error('Invalid template path');
-   text=text.replace(match[0],await includeFiles(await readFile(file,'utf8'),depth+1));
+   text=text.replace(match[0],name==='planner'&&match[1]==='data/seed.json'?'':await includeFiles(await readFile(file,'utf8'),depth+1));
   }
   return text;
  }
  html=await includeFiles(html);
- html=html.replace('{{application-script}}',await bundle(`src/${name}/bootstrap.js`,name==='shell'?'esm':'iife',define));
- if(name==='shell')html=html.replace('{{release-script}}',await bundle('src/shell/releases.js','iife'));
+ const script=await asset(name,'js',await bundle(`src/${name}/${name==='planner'?'entry':'bootstrap'}.js`,'esm',define));
+ html=html.replace(/<script([^>]*)>\{\{application-script\}\}<\/script>/,(_,attrs)=>`<script${attrs.includes('type=')?attrs:attrs+' type="module"'} src="${script}"></script>`);
+ if(name==='shell'){
+  const release=await asset('releases','js',await bundle('src/shell/releases.js','iife'));
+  html=html.replace(/<script([^>]*)>\{\{release-script\}\}<\/script>/,(_,attrs)=>`<script${attrs} src="${release}"></script>`);
+ }
+ let index=0;
+ for(const match of [...html.matchAll(/<style([^>]*)>([\s\S]*?)<\/style>/g)]){
+  const css=await asset(`${name}-${index++}`,'css',match[2]);
+  html=html.replace(match[0],`<link rel="stylesheet"${match[1]} href="${css}">`);
+ }
  if(/\{\{(?:file:|application-script|release-script)/.test(html))throw Error('Unresolved template in '+name);
  return html;
 }
@@ -37,8 +55,9 @@ for(const scope of ['shell','shell/dom','planner','container']){
  await writeFile(path.join(root,'src',scope,'dependencies.json'),JSON.stringify(architecture[scope],null,2)+'\n');
 }
 await writeFile(path.join(root,'architecture.json'),JSON.stringify(architecture,null,2)+'\n');
+await writeFile(path.join(output,'data/planner-seed.json'),await readFile(path.join(root,'src/planner/data/seed.json')));
 const planner=await page('planner'),container=await page('container');
-const html=await page('shell',{__JPT_ORDER_PLANNER_B64__:JSON.stringify(Buffer.from(planner).toString('base64')),__JPT_CONTAINER_TRACKER_B64__:JSON.stringify(Buffer.from(container).toString('base64'))});
+const html=await page('shell');
 await writeFile(path.join(output,'index.html'),html);
 await writeFile(path.join(output,'planner.html'),planner);await writeFile(path.join(output,'container.html'),container);
 console.log('Built V4.13.0:',path.join(output,'index.html'));

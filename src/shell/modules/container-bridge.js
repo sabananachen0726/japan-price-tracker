@@ -2,7 +2,7 @@
 export const definition = {
   "id": "container-bridge",
   "owns": [{
-    "name": "EMBEDDED_CONTAINER_TRACKER_B64",
+    "name": "CONTAINER_TRACKER_URL",
     "kind": "const"
   }, {
     "name": "containerTrackerFrameLoaded",
@@ -15,19 +15,16 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["auth", "containerTrackerData", "normalizeContainerNo", "sendContainerSnapshot"],
-  "writes": ["EMBEDDED_CONTAINER_TRACKER_B64", "containerTrackerFrameLoaded", "loadEmbeddedContainerTracker", "renderContainerIntegrationCheck"]
+  "writes": ["CONTAINER_TRACKER_URL", "containerTrackerFrameLoaded", "loadEmbeddedContainerTracker", "renderContainerIntegrationCheck"]
 };
 export function register(context) {
   context.loadEmbeddedContainerTracker = function loadEmbeddedContainerTracker() {
     const frame = document.getElementById('containerTrackerFrame');
     if (!frame || context.containerTrackerFrameLoaded || !context.auth.currentUser) return;
     try {
-      const bin = atob(context.EMBEDDED_CONTAINER_TRACKER_B64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      frame.srcdoc = new TextDecoder('utf-8').decode(bytes);
-      context.containerTrackerFrameLoaded = true;
       frame.addEventListener('load', context.sendContainerSnapshot);
+      frame.src = context.CONTAINER_TRACKER_URL;
+      context.containerTrackerFrameLoaded = true;
     } catch (e) {
       console.error('Container Tracker load failed', e);
     }
@@ -45,7 +42,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.EMBEDDED_CONTAINER_TRACKER_B64 = __JPT_CONTAINER_TRACKER_B64__;
+  context.CONTAINER_TRACKER_URL = './container.html';
   context.containerTrackerFrameLoaded = false;
   document.addEventListener('shown.bs.tab', e => {
     if (e.target?.id === 'container-tab') {

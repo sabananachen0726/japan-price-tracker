@@ -7,20 +7,31 @@ export async function getDoc(ref){return snap(ref.path)};export async function s
 export function onSnapshot(ref,cb){(listeners[ref.path]||=[]).push(cb);setTimeout(()=>cb(snap(ref.path)),10);return ()=>{listeners[ref.path]=listeners[ref.path].filter(x=>x!==cb)}};
 export function writeBatch(db){const ops=[];return {set(ref,data,opts){ops.push([ref,data,opts])},async commit(){if(window.__failBatch)throw Error('mock failure');for(const [ref,data,opts] of ops)await setDoc(ref,data,opts)}}};export async function getDocsFromServer(){return {empty:true,docs:[],forEach(){}}};export async function deleteDoc(){};export async function updateDoc(){};export function deleteField(){return null};export function arrayUnion(...x){return x};export function arrayRemove(...x){return x};export class FieldPath{constructor(...x){this.parts=x}}`;
 (async()=>{
- const html=fs.readFileSync(path.join(root,'dist/index.html'));const server=http.createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html)});await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const executablePath=process.env.JPT_CHROME_PATH;const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{}),args:['--no-sandbox']});
+ const mount='/japan-price-tracker/';
+ const server=http.createServer((req,res)=>{
+  const pathname=new URL(req.url,'http://localhost').pathname;
+  if(!pathname.startsWith(mount)){res.writeHead(404);return res.end();}
+  const file=path.resolve(root,'dist',pathname.slice(mount.length)||'index.html');
+  if(!file.startsWith(path.join(root,'dist')+path.sep)||!fs.existsSync(file)){res.writeHead(404);return res.end();}
+  res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'})[path.extname(file)]+'; charset=utf-8');
+  res.end(fs.readFileSync(file));
+ });await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const downloadsPath=path.join(root,'test-results','downloads');fs.mkdirSync(downloadsPath,{recursive:true});
+ const executablePath=process.env.JPT_CHROME_PATH;const browser=await chromium.launch({headless:true,downloadsPath,...(executablePath?{executablePath}:{}),args:['--no-sandbox']});
  try{
   const page=await browser.newPage({viewport:{width:1720,height:1440}}),errors=[],alerts=[];page.setDefaultTimeout(30000);
   page.on('pageerror',e=>{errors.push(e.message);console.log('JSERROR',e.message)});page.on('dialog',async d=>{alerts.push(d.message());console.log('DIALOG',d.message().slice(0,140));await d.accept()});
-  await page.route('**/*',r=>{const u=r.request().url();if(u.startsWith('http://127.0.0.1'))return r.continue();
+  page.on('response',r=>{if(r.url().startsWith('http://127.0.0.1')&&r.status()>=400)errors.push(`HTTP ${r.status()} ${r.url()}`)});
+  await page.route('**/*',r=>{const u=r.request().url();if(u.startsWith('http://127.0.0.1')||u.startsWith('blob:')||u.startsWith('data:'))return r.continue();
    if(u.includes('firebase-app.js'))return r.fulfill({contentType:'text/javascript',body:'export function initializeApp(config,name){return {config,name}}'});
    if(u.includes('firebase-firestore.js'))return r.fulfill({contentType:'text/javascript',body:firestore});
    if(u.includes('firebase-auth.js'))return r.fulfill({contentType:'text/javascript',body:`export function getAuth(app){return {currentUser:app.name?null:{uid:'test-admin',email:'test@example.com'}}};export function onAuthStateChanged(auth,cb){setTimeout(()=>cb(auth.currentUser),10);return ()=>{}};export async function setPersistence(){};export async function signInWithEmailAndPassword(){};export async function signOut(){};export const browserLocalPersistence={},browserSessionPersistence={};`});
    for(const f of ['xlsx.full.min.js','bootstrap.bundle.min.js','bootstrap.min.css'])if(u.includes(f))return r.fulfill({path:path.join(__dirname,'vendor',f),contentType:f.endsWith('.css')?'text/css':'text/javascript'});
    return r.abort();
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>!document.querySelector('#protectedApp').classList.contains('d-none'));
+  await page.goto(`http://127.0.0.1:${server.address().port}${mount}`);await page.waitForFunction(()=>!document.querySelector('#protectedApp').classList.contains('d-none'));
   const frame=page.frameLocator('#plannerFrame');await frame.locator('#productRows tr').first().waitFor();const f=await (await page.$('#plannerFrame')).contentFrame();assert.equal(await page.locator('#mainTabs button').count(),5);
+  assert(f.url().endsWith(mount+'planner.html'));assert.equal(await page.locator('#plannerFrame').getAttribute('srcdoc'),null);
   for(const n of [1720,3440]){await page.setViewportSize({width:n,height:1440});await frame.locator('#salesShowMonths').uncheck();await page.waitForFunction(()=>!document.body.classList.contains('planner-wide'));assert.equal(await page.locator('#protectedApp>.container').evaluate(e=>Math.round(e.getBoundingClientRect().width)),1320);await frame.locator('#salesShowMonths').check();await page.waitForFunction(()=>document.body.classList.contains('planner-wide'));assert.equal(await page.locator('#protectedApp>.container').evaluate(e=>Math.round(e.getBoundingClientRect().width)),n-32);}
   await page.locator('#settings-tab').click();await page.locator('[data-product-view="settings"]').click();await frame.locator('#settings:not(.hidden)').waitFor();await page.locator('#productSearch412').fill('ACE005');assert.equal(await frame.locator('#manageRows tr').count(),1);
   await page.locator('[data-product-view="pending"]').click();await frame.locator('#pending:not(.hidden)').waitFor();await page.locator('[data-product-view="master"]').click();assert(await page.locator('#productMasterView').isVisible());

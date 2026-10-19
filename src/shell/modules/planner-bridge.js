@@ -2,7 +2,7 @@
 export const definition = {
   "id": "planner-bridge",
   "owns": [{
-    "name": "EMBEDDED_ORDER_PLANNER_B64",
+    "name": "ORDER_PLANNER_URL",
     "kind": "const"
   }, {
     "name": "plannerLoaded",
@@ -18,7 +18,7 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["auth", "containerTrackerData", "currentDataMode", "currentRole", "getContainerDates", "legacySafeDate", "normalizeContainerNo", "sendCatalogSources", "sendCustomerSource"],
-  "writes": ["EMBEDDED_ORDER_PLANNER_B64", "chooseImportView", "loadEmbeddedOrderPlanner", "plannerLoaded", "sendPlannerSnapshot"]
+  "writes": ["ORDER_PLANNER_URL", "chooseImportView", "loadEmbeddedOrderPlanner", "plannerLoaded", "sendPlannerSnapshot"]
 };
 export function register(context) {
   context.sendPlannerSnapshot = function sendPlannerSnapshot() {
@@ -152,15 +152,12 @@ export function register(context) {
     const frame = document.getElementById('plannerFrame');
     if (!frame || context.plannerLoaded || !context.auth.currentUser) return;
     frame.addEventListener('load', context.sendPlannerSnapshot);
-    const bin = atob(context.EMBEDDED_ORDER_PLANNER_B64),
-      bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    frame.srcdoc = new TextDecoder('utf-8').decode(bytes);
+    frame.src = context.ORDER_PLANNER_URL;
     context.plannerLoaded = true;
   };
 }
 export function initialize(context) {
-  context.EMBEDDED_ORDER_PLANNER_B64 = __JPT_ORDER_PLANNER_B64__;
+  context.ORDER_PLANNER_URL = './planner.html';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
