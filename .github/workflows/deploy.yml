@@ -1,0 +1,62 @@
+name: Build and deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Import modular source once
+        if: hashFiles('source-import.zip') != ''
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('source-import.zip') as archive:
+              for entry in archive.infolist():
+                  entry.filename = entry.filename.replace('\\', '/')
+                  target = Path(entry.filename)
+                  if target.is_absolute() or '..' in target.parts or target.parts[0] in ('.git', '.github'):
+                      raise ValueError('Invalid archive path')
+                  archive.extract(entry)
+          PY
+          git rm --ignore-unmatch index.html source-import.zip
+          git add src tests .gitignore README.md THIRD_PARTY.md architecture.json build.mjs package.json package-lock.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Import complete V4.13.0 modular source'
+          git push origin HEAD:main
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
