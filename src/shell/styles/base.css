@@ -94,3 +94,8 @@ body:not([data-role="admin"]) #systemBackup412,body:not([data-role="admin"]) #sy
 #mainTabsContent>.tab-pane.fade{transition:none}
 
 #hub-master .col-md-3:has(#masterEncodingSelect){display:none}
+#containerDetailBar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 16px;background:#fff;border:1px solid #dce4ee;border-radius:10px;box-shadow:0 3px 12px #25395412;margin:10px 0}#containerDetailBar[hidden]{display:none}#containerDetailBar [data-detail-summary]{font-size:12px;color:#64748b}#containerDetailBar [data-detail-feedback]{min-height:20px;font-size:12px}#containerDetailBar .detail-bar-actions{display:flex;gap:8px;flex:none}#containerDetailBar .ok{color:#187359}#containerDetailBar .bad{color:#b42318}#containerDetailBar .pending{color:#335e9c}@media(max-width:650px){#containerDetailBar{align-items:flex-start;flex-direction:column}#containerDetailBar .detail-bar-actions{align-self:flex-end}}
+
+#containerDetailBar .btn-primary{background:#255ba6;border-color:#255ba6}#containerDetailBar button{border-radius:7px}
+
+#sharedOrderList [data-proposal-delete]{margin-left:auto}
