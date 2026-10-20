@@ -7,6 +7,7 @@ export const definition = {
 };
 export function register(context) {}
 export function initialize(context) {
+  let containerReturnScroll = null;
   context.events.onMessage(e => {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
@@ -101,13 +102,18 @@ export function initialize(context) {
     }
     if (e.source === plannerWindow && e.data?.type === 'KAISI_ORDER_DELETE') {
       const code = context.normalizeContainerNo(e.data.code);
-      if (!context.isAdmin() || context.currentDataMode !== 'live' || !Object.hasOwn(context.sharedOrderDrafts, code)) {
+      if (!context.isAdmin() || !code || code.startsWith('__')) {
         plannerWindow.postMessage({
           type: 'KAISI_ORDER_DELETE_RESULT',
           code,
           ok: false,
-          error: '僅 Admin 可刪除'
+          error: context.isAdmin() ? '請選擇有效的工作單' : '僅 Admin 可刪除'
         }, '*');
+        return;
+      }
+      // A local draft has never been shared. Clear it locally instead of rejecting an Admin.
+      if (context.currentDataMode === 'test' || !Object.hasOwn(context.sharedOrderDrafts, code)) {
+        plannerWindow.postMessage({ type: 'KAISI_ORDER_DELETE_RESULT', code, ok: true, localOnly: true }, '*');
         return;
       }
       context.deleteProposal(code).then(() => plannerWindow.postMessage({
@@ -184,6 +190,17 @@ export function initialize(context) {
         ok: false,
         error: err.code || err.message
       }, '*'));
+    }
+    if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_VIEW') {
+      const frame = document.getElementById('containerTrackerFrame');
+      const height = Number(e.data.height);
+      if (!frame || !['detail', 'overview'].includes(e.data.view) || !Number.isFinite(height) || height < 760 || height >= 180000) return;
+      if (e.data.view === 'detail' && containerReturnScroll === null) containerReturnScroll = window.scrollY;
+      frame.style.height = height + 'px';
+      const target = e.data.view === 'detail' ? window.scrollY + frame.getBoundingClientRect().top - 110 : containerReturnScroll;
+      if (e.data.view === 'overview') containerReturnScroll = null;
+      requestAnimationFrame(() => window.scrollTo({top: Math.max(0, target ?? window.scrollY), behavior: 'instant'}));
+      return;
     }
     if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_HEIGHT') {
       const h = Number(e.data.height);
