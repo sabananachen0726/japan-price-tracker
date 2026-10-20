@@ -100,7 +100,7 @@ export function register(context) {
   context.sortRows = function sortRows(rows) {
     const key = context.tableSort.key;
     if (key === 'default') {
-      rows.sort((a, b) => (b.chosen > 0) - (a.chosen > 0) || (b.c.suggest > 0) - (a.c.suggest > 0) || a.i.code.localeCompare(b.i.code));
+      rows.sort((a, b) => a.i.code.localeCompare(b.i.code));
       return;
     }
     const dir = context.tableSort.dir === 'desc' ? -1 : 1;
