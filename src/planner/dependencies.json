@@ -440,6 +440,7 @@
         "plannerRole",
         "previousContainerCode",
         "renderAll",
+        "renderPlan",
         "saveDraft",
         "state",
         "trackerFeed",
