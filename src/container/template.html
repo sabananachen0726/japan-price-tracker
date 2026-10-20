@@ -10,8 +10,8 @@
 {{file:views/overview.html}}{{file:views/todos.html}}{{file:views/archive.html}}{{file:views/settings.html}}</div></div>
 <div id="quickDrawerBackdrop" class="drawer-backdrop" onclick="closeDrawer()"></div><aside id="quickDrawer" class="quick-drawer"><div id="drawerBody"></div></aside>
 <div id="modal" class="modal"><div class="panel">
-<div style="display:flex;justify-content:space-between;align-items:center;padding-top:18px">
+<div class="detail-toolbar">
 <div class="tiny">Container Tracker　›　<span style="color:#0f6cf2;font-weight:800">Container Detail</span></div>
-<button class="soft" onclick="closeM()">← 返回 Overview</button>
-</div><h2 id="mt"></h2><div id="form"></div><div class="actions"><button class="soft" onclick="closeM()">取消</button><button class="pri" onclick="saveC()">儲存</button></div></div></div>
+
+</div><div id="containerSaveFeedback" class="save-feedback" role="status" aria-live="polite"></div><h2 id="mt"></h2><div id="containerSummary" class="detail-summary"></div><div id="form"></div><div class="actions"><button class="soft" onclick="closeM()">取消</button></div></div></div>
 <script type="module">{{application-script}}</script></body></html>
