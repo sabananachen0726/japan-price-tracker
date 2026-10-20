@@ -129,7 +129,9 @@ export function initialize(context) {
       context.stageLocalDraft();
       context.flushRecovery();
       context.persist();
-      context.renderPlan();
+      const input = [...context.$('productRows').querySelectorAll('[data-qty]')].find(el => el.dataset.qty === i.code);
+      if (input) input.value = q;
+      context.updateDraftTotal();
     }
   });
   context.$('productRows').addEventListener('mouseover', e => {
