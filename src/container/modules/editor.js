@@ -5,6 +5,9 @@ export const definition = {
     "name": "df",
     "kind": "function"
   }, {
+    "name": "openContainerEditor",
+    "kind": "function"
+  }, {
     "name": "syncDraft",
     "kind": "function"
   }, {
@@ -14,10 +17,17 @@ export const definition = {
     "name": "form",
     "kind": "function"
   }],
-  "imports": ["$", "D", "E", "complete", "dateInfo", "esc", "log", "money", "persist", "piStats", "stage", "today", "uid"],
-  "writes": ["E", "df", "form", "showOps", "syncDraft"]
+  "imports": ["$", "D", "E", "complete", "dateInfo", "esc", "log", "money", "persist", "piStats", "sendContainerHeight", "stage", "today", "uid"],
+  "writes": ["E", "df", "form", "openContainerEditor", "showOps", "syncDraft"]
 };
 export function register(context) {
+  context.openContainerEditor = function openContainerEditor() {
+    document.body.classList.add('editing-container');
+    context.$('modal').scrollTop = 0;
+    window.scrollTo({top: 0, behavior: 'instant'});
+    context.sendContainerHeight();
+    window.parent.postMessage({type: 'KAISI_CONTAINER_VIEW', view: 'detail', height: Math.ceil(context.$('modal').getBoundingClientRect().height) + 12}, '*');
+  };
   context.df = function df(label, k) {
     return `<div class="field"><label>${label}</label><input id="f_${k}" type="date" value="${context.esc(context.E[k] || "")}"></div>`;
   };
@@ -95,6 +105,7 @@ export function initialize(context) {
       versions: []
     };
     context.form();
+    context.openContainerEditor();
   };
   window.editC = id => {
     let c = context.D.containers.find(x => x.id === id);
@@ -106,6 +117,7 @@ export function initialize(context) {
       context.E.unloadConfirmed = dt.unloadConfirmed;
       context.E.status = context.stage(context.E) === 'QUOTATION' ? 'Quotation' : 'Shipping';
       context.form();
+      context.openContainerEditor();
     }
   };
   window.statusPreview = v => {
@@ -115,7 +127,10 @@ export function initialize(context) {
   };
   window.closeM = () => {
     context.$("modal").classList.remove("show");
+    document.body.classList.remove('editing-container');
     context.E = null;
+    context.sendContainerHeight();
+    window.parent.postMessage({type: 'KAISI_CONTAINER_VIEW', view: 'overview', height: Math.ceil(Math.max(760, context.$('app').scrollHeight, context.$('app').getBoundingClientRect().height)) + 12}, '*');
   };
   window.addVersion = () => {
     let d = context.$("v_date").value;

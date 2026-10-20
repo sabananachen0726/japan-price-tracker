@@ -35,7 +35,7 @@ export function register(context) {
     });
   };
   context.sendContainerHeight = function sendContainerHeight() {
-    const root = context.$('app');
+    const root = document.body.classList.contains('editing-container') ? context.$('modal') : context.$('app');
     if (!root || root.classList.contains('hide')) return;
     const h = Math.ceil(Math.max(760, root.scrollHeight, root.getBoundingClientRect().height)) + 12;
     if (Math.abs(h - context.lastContainerHeight) < 5) return;
