@@ -28,19 +28,19 @@ export function register(context) {
     const host = document.getElementById('sharedOrderList'),
       badge = document.getElementById('sharedOrderStatus');
     if (!host) return;
-    const entries = Object.entries(context.sharedOrderDrafts || {}).filter(([code, d]) => code && !code.startsWith('__') && (d.preparedAt || Object.values(d.rows || {}).some(q => Number(q) > 0)));
+    const entries = Object.entries(context.sharedOrderDrafts || {}).filter(([code, d]) => code && !code.startsWith('__') && (d.preparedAt || Object.values(d.rows || {}).some(q => Number(q) > 0) || Object.values(d.itemNotes || {}).some(n => String(n).trim())));
     entries.sort((a, b) => String(b[1].updatedAt || '').localeCompare(String(a[1].updatedAt || '')));
     badge.textContent = entries.length + ' 份採購建議';
     badge.className = 'badge bg-primary';
     host.innerHTML = entries.length ? entries.map(([code, d]) => {
-      const rows = Object.entries(d.rows || {}).filter(([, q]) => Number(q) > 0),
+      const rows = [...new Set([...Object.keys(d.rows || {}), ...Object.keys(d.itemNotes || {})])].filter(item => Number(d.rows?.[item]) > 0 || String(d.itemNotes?.[item] || '').trim()).map(item => [item, Number(d.rows?.[item]) || 0]),
         qty = rows.reduce((n, [, q]) => n + Number(q), 0);
       const tracker = (context.containerTrackerData.containers || []).find(c => context.normalizeContainerNo(c.code) === context.normalizeContainerNo(code));
       return `<details class="border rounded p-2 mb-2"><summary class="fw-bold" style="cursor:pointer">${context.escapeFinalPiText(code)}　${rows.length} 款 / ${qty.toLocaleString()} 箱　<span class="text-muted fw-normal">${context.escapeFinalPiText(d.kind === 'frozen' ? '冷凍' : '乾貨')} · 預計到倉 ${context.escapeFinalPiText(d.arrival || '待填')} · ${d.updatedAt ? '已提交採購建議' : '已安排，待提交'}</span></summary><div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>商品</th><th>Item Code</th><th>Barcode</th><th class="text-end">箱數</th><th>備註</th></tr></thead><tbody>${rows.map(([item, q]) => {
-        const barcode = window.appData.itemToBarcode?.[item] || '',
+        const barcode = window.appData.itemToBarcode?.[item] || d.snapshot?.[item]?.barcode || '',
           product = window.appData.products?.[barcode] || {};
         const photo = /^https:\/\//i.test(product.imgUrl || '') ? `<img src="${context.escapeFinalPiText(product.imgUrl)}" alt="" width="40" height="40" style="object-fit:contain" class="me-2 rounded">` : '';
-        return `<tr><td>${photo}${context.escapeFinalPiText(product.name || item)}</td><td>${context.escapeFinalPiText(item)}</td><td>${context.escapeFinalPiText(barcode || '—')}</td><td class="text-end fw-bold">${Number(q).toLocaleString()}</td><td style="max-width:250px;white-space:normal">${context.escapeFinalPiText(d.itemNotes?.[item] || '—')}</td></tr>`;
+        return `<tr><td>${photo}${context.escapeFinalPiText(product.name || d.snapshot?.[item]?.name || item)}</td><td>${context.escapeFinalPiText(item)}</td><td>${context.escapeFinalPiText(barcode || '—')}</td><td class="text-end fw-bold">${Number(q) > 0 ? Number(q).toLocaleString() : '<span class="badge bg-light text-secondary">僅備註</span>'}</td><td style="max-width:250px;white-space:normal">${context.escapeFinalPiText(d.itemNotes?.[item] || '—')}</td></tr>`;
       }).join('')}</tbody></table></div>${context.isAdmin() ? `<div class="mt-2 d-flex gap-2"><button class="btn btn-sm btn-primary" data-proposal-export="${context.escapeFinalPiText(code)}">下載 Excel</button><button class="btn btn-sm btn-outline-danger" data-proposal-delete="${context.escapeFinalPiText(code)}">刪除建議單</button></div>` : ''}</details>`;
     }).join('') : '尚無已提交的採購建議。';
   };
@@ -53,7 +53,8 @@ export function register(context) {
     while (suppliers.length < 2) suppliers.push('Supplier ' + (suppliers.length + 1));
     const quotes = window.appData.quotes || [];
     const header = ['Item Code', 'Barcode', 'Product Name', ...suppliers.map(s => s + ' Price'), 'QTY', 'Item Note'];
-    const rows = Object.entries(draft.rows || {}).filter(([, q]) => Number(q) > 0).map(([item, qty]) => {
+    const rows = [...new Set([...Object.keys(draft.rows || {}), ...Object.keys(draft.itemNotes || {})])].filter(item => Number(draft.rows?.[item]) > 0 || String(draft.itemNotes?.[item] || '').trim()).map(item => {
+      const qty = Number(draft.rows?.[item]) || 0;
       const barcode = window.appData.itemToBarcode?.[item] || draft.snapshot?.[item]?.barcode || '';
       const product = window.appData.products?.[barcode] || {};
       const snap = draft.snapshot?.[item] || {};
