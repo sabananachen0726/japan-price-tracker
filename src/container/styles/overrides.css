@@ -1,7 +1,12 @@
 
 /* Container Tracker embedded module layout for Japan Price Tracker */
+/* The host owns vertical scrolling, including the detail page. */
+body.editing-container #app{display:none!important}
+body.editing-container .modal.show{position:relative;inset:auto;overflow:visible;min-height:760px}
+body.editing-container{overflow-anchor:none}
+.modal>.panel>div:first-child{position:sticky;top:0;z-index:5;background:#f7f9fc;padding-bottom:12px}
 html,body{background:#f7f9fc!important}
-#app{padding-left:0!important;min-height:100vh!important}
+#app{padding-left:0!important;min-height:760px!important}
 .top{position:sticky!important;top:0!important;z-index:30!important;padding:18px 24px 0!important;background:rgba(255,255,255,.97)!important;box-shadow:0 1px 0 #e4eaf1!important}
 .toprow{max-width:1500px!important;margin:0 auto 14px!important}
 .title{font-size:22px!important}
