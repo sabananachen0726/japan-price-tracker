@@ -339,6 +339,8 @@
         "compareContainerIds",
         "currentKey",
         "customerSourceReady",
+        "deferredDrafts",
+        "dirtyDrafts",
         "draft",
         "draftFingerprint",
         "esc",
