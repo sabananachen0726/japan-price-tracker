@@ -94,6 +94,7 @@ export function register(context) {
     if (context.plannerRole === 'viewer') return;
     const code = context.currentKey(),
       d = context.state.drafts[code] || context.draft();
+    d.rows ||= {};
     d.kind = context.$('kind').value;
     d.arrival = context.$('arrival').value;
     d.coverage = Number(context.$('coverage').value) || 0;
