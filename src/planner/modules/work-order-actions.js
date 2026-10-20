@@ -23,12 +23,12 @@ export const definition = {
     "name": "exportPlanButton",
     "kind": "const"
   }],
-  "imports": ["$", "currentKey", "esc", "exportCsv", "persist", "plannerRole", "previousContainerCode", "renderAll", "saveDraft", "state", "trackerFeed", "updateZoom", "zoomScale"],
+  "imports": ["$", "currentKey", "esc", "exportCsv", "persist", "plannerRole", "previousContainerCode", "renderAll", "renderPlan", "saveDraft", "state", "trackerFeed", "updateZoom", "zoomScale"],
   "writes": ["applyPreparedDefaults", "exportPlanButton", "loadWork", "preparedWorks", "previousContainerCode", "renderNotes", "selectedWorkApplied", "updateWorkSelect", "zoomScale"]
 };
 export function register(context) {
   context.preparedWorks = function preparedWorks() {
-    return Object.entries(context.state.drafts || {}).filter(([code, d]) => !code.startsWith('__') && (d?.preparedAt || Object.values(d?.rows || {}).some(n => +n > 0))).sort((a, b) => String(b[1].preparedAt || b[1].updatedAt || '').localeCompare(String(a[1].preparedAt || a[1].updatedAt || '')));
+    return Object.entries(context.state.drafts || {}).filter(([code, d]) => !code.startsWith('__') && (d?.preparedAt || Object.values(d?.rows || {}).some(n => +n > 0) || Object.values(d?.itemNotes || {}).some(n => String(n).trim()))).sort((a, b) => String(b[1].preparedAt || b[1].updatedAt || '').localeCompare(String(a[1].preparedAt || a[1].updatedAt || '')));
   };
   context.updateWorkSelect = function updateWorkSelect() {
     const list = context.preparedWorks(),
@@ -168,6 +168,11 @@ export function initialize(context) {
   context.$('viewSubmitted').onclick = () => {
     document.querySelector('[data-tab="containers"]').click();
     context.$('containerCards').scrollIntoView({block: 'start', behavior: 'instant'});
+  };
+  context.$('reviewWritten').onclick = () => {
+    const reviewing = context.$('filter').value !== 'written';
+    context.$('filter').value = reviewing ? 'written' : 'all';
+    context.renderPlan();
   };
   context.$('savePlan').onclick = context.saveDraft;
   context.exportPlanButton = context.$('exportPlan');
