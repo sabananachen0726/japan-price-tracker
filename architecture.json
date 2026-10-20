@@ -1764,6 +1764,7 @@
           "plannerRole",
           "previousContainerCode",
           "renderAll",
+          "renderPlan",
           "saveDraft",
           "state",
           "trackerFeed",
@@ -2563,6 +2564,7 @@
         "id": "host-bridge",
         "file": "modules/host-bridge.js",
         "owns": [
+          "setSaveFeedback",
           "saveCallbacks",
           "saveSequence",
           "persist",
@@ -2584,7 +2586,8 @@
           "persist",
           "saveCallbacks",
           "saveSequence",
-          "sendContainerHeight"
+          "sendContainerHeight",
+          "setSaveFeedback"
         ]
       },
       {
@@ -2712,6 +2715,7 @@
         "id": "editor",
         "file": "modules/editor.js",
         "owns": [
+          "updateContainerSummary",
           "df",
           "openContainerEditor",
           "syncDraft",
@@ -2722,6 +2726,7 @@
           "$",
           "D",
           "E",
+          "actionIssues",
           "complete",
           "dateInfo",
           "esc",
@@ -2730,6 +2735,7 @@
           "persist",
           "piStats",
           "sendContainerHeight",
+          "setSaveFeedback",
           "stage",
           "today",
           "uid"
@@ -2740,7 +2746,8 @@
           "form",
           "openContainerEditor",
           "showOps",
-          "syncDraft"
+          "syncDraft",
+          "updateContainerSummary"
         ]
       },
       {
