@@ -13,6 +13,9 @@ export const definition = {
 };
 export function register(context) {
   context.renderPlan = function renderPlan(preserveInputs = false) {
+    const reviewing = context.$('filter').value === 'written';
+    context.$('reviewWritten').setAttribute('aria-pressed', String(reviewing));
+    context.$('reviewWritten').textContent = reviewing ? '▴ 返回全部商品' : '▾ 只看已填寫';
     context.renderSalesHeads();
     context.closePiTip();
     context.closePhotoPreview();
@@ -26,6 +29,7 @@ export function register(context) {
       const c = context.calc(i),
         chosen = +d.rows?.[i.code] || 0;
       if (q && !`${i.code} ${i.name} ${i.barcode}`.toLowerCase().includes(q)) continue;
+      if (filter === 'written' && !chosen && !String(d.itemNotes?.[i.code] || '').trim()) continue;
       if (filter === 'need' && !(c.suggest > 0) || filter === 'chosen' && !chosen || filter === 'issues' && !c.issues.length || filter === 'orders' && !c.ord.count) continue;
       const row = {
         i,
