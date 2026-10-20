@@ -165,6 +165,10 @@ export function initialize(context) {
   }, {
     passive: false
   });
+  context.$('viewSubmitted').onclick = () => {
+    document.querySelector('[data-tab="containers"]').click();
+    context.$('containerCards').scrollIntoView({block: 'start', behavior: 'instant'});
+  };
   context.$('savePlan').onclick = context.saveDraft;
   context.exportPlanButton = context.$('exportPlan');
   if (context.exportPlanButton) context.exportPlanButton.onclick = () => {

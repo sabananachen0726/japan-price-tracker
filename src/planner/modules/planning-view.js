@@ -12,7 +12,7 @@ export const definition = {
   "writes": ["renderPlan", "updateDraftTotal"]
 };
 export function register(context) {
-  context.renderPlan = function renderPlan() {
+  context.renderPlan = function renderPlan(preserveInputs = false) {
     context.renderSalesHeads();
     context.closePiTip();
     context.closePhotoPreview();
@@ -38,7 +38,7 @@ export function register(context) {
     context.sortRows(filtered);
     context.renderSortMarks();
     context.updateTableHeader();
-    context.$('productRows').innerHTML = filtered.map(({
+    const rowsHtml = filtered.map(({
       i,
       c,
       chosen
@@ -53,6 +53,25 @@ export function register(context) {
  <td><strong>${context.fmt(c.suggest)}</strong>${c.issues.length ? `<div><button class="mini" data-explain="${context.esc(i.code)}" title="查看計算原因">計算說明</button></div>` : ''}</td>
  <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${i.code.startsWith('__') || i.kind === 'unknown' ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div></td>
  ${context.salesMonthCells(i)}</tr>`).join('') || '<tr><td colspan="15" class="empty">沒有符合的商品</td></tr>';
+    const body = context.$('productRows');
+    if (preserveInputs) {
+      // Blur from the code field may be focusing an existing quantity input.
+      // Keep those input nodes alive while recalculating PI and suggestions.
+      const next = document.createElement('tbody');
+      next.innerHTML = rowsHtml;
+      for (const attribute of ['data-qty', 'data-item-note', 'data-shelf', 'data-safety']) {
+        const existing = new Map([...body.querySelectorAll('[' + attribute + ']')].map(el => [el.getAttribute(attribute), el]));
+        for (const fresh of next.querySelectorAll('[' + attribute + ']')) {
+          const old = existing.get(fresh.getAttribute(attribute));
+          if (old) {
+            old.value = fresh.value;
+            old.disabled = fresh.disabled;
+            fresh.replaceWith(old);
+          }
+        }
+      }
+      body.replaceChildren(...next.childNodes);
+    } else body.innerHTML = rowsHtml;
     context.$('shown').textContent = `顯示 ${filtered.length} / ${list.length} 筆`;
     const allChosen = Object.values(d.rows || {}).filter(x => Number(x) > 0);
     context.$('draftTotal').textContent = `目前 ${allChosen.length} 款 · ${allChosen.reduce((n, x) => n + Number(x), 0).toLocaleString()} 箱`;

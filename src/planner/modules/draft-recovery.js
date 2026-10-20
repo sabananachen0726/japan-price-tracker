@@ -99,6 +99,7 @@ export function register(context) {
     d.coverage = Number(context.$('coverage').value) || 0;
     context.state.drafts[code] = d;
     context.dirtyDrafts.add(code);
+    context.$('deleteWork').hidden = context.plannerRole !== 'admin' || code.startsWith('__');
     if (!context.plannerUid) return;
     context.localRecovery.works ||= {};
     context.localRecovery.works[code] = {

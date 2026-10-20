@@ -112,6 +112,8 @@ export function initialize(context) {
       context.$('deleteWork').disabled = false;
       if (m.ok) {
         delete context.state.drafts[m.code];
+        delete context.deferredDrafts[m.code];
+        context.saveFingerprints.delete(m.code);
         context.dirtyDrafts.delete(m.code);
         if (context.localRecovery.works) delete context.localRecovery.works[m.code];
         context.flushRecovery();
@@ -122,7 +124,7 @@ export function initialize(context) {
         context.storeLocal();
         context.updateWorkSelect();
         context.renderAll();
-        alert('已刪除採購建議單 ' + m.code);
+        alert((m.localOnly ? '已刪除本機工作單草稿 ' : '已刪除採購建議單 ') + m.code);
       } else alert('刪除失敗：' + (m.error || '未知錯誤'));
       return;
     }
@@ -177,7 +179,9 @@ export function initialize(context) {
         context.saveFingerprints.delete(m.code);
       } else context.autosaveLabel('⚠ Firebase 提交失敗，本機草稿仍保留', 'warn');
       context.storeLocal();
-      alert(m.localOnly ? m.code + ' 已儲存為本機 TEST 草稿' : m.ok ? m.code + ' 已提交採購建議給 Admin' : '共享訂貨儲存失敗：' + (m.error || '未知錯誤'));
+      if (!m.ok) alert('共享訂貨儲存失敗：' + (m.error || '未知錯誤'));
+      context.updateWorkSelect();
+      context.renderAll();
       return;
     }
     if (m.type === 'KAISI_CATALOG_SAVE_RESULT') {

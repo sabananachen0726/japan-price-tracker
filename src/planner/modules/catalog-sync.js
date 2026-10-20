@@ -336,7 +336,7 @@ export function register(context) {
     }
     Object.assign(context.state.rules, context.catalogRemote.rules, context.state.dirtyCatalog.rules);
     for (const [id, key] of [['dryInterval', 'dry'], ['frozenInterval', 'frozen'], ['defaultCoverage', 'coverage']]) context.$(id).value = context.state.rules[key];
-    if (!context.cloudJobs.size) context.$('catalogSync').textContent = context.migrationConflicts.length ? '本機舊設定待確認：請查看待補資料' : '共享商品資料已連動';
+    if (!context.cloudJobs.size) context.$('catalogSync').textContent = context.migrationConflicts.length ? '本機舊設定待確認：請查看待補資料' : '使用共享商品資料';
     context.rebuildCatalog();
     if (Object.keys(missing.overrides).length) context.saveCatalogPatch(missing, true);
     context.discoverCatalog();

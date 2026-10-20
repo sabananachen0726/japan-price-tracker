@@ -24,14 +24,20 @@ export function initialize(context) {
     context.renderAll();
   });
   context.setArrivalDefault();
-  ['kind', 'arrival', 'coverage', 'search', 'filter', 'container'].forEach(id => context.$(id).addEventListener(['search', 'container', 'coverage'].includes(id) ? 'input' : 'change', () => {
+  // A work code is committed on change (blur or another action), not on every keystroke.
+  // Rebuilding hundreds of product rows while typing blocks the input and moves focus.
+  context.$('container').addEventListener('input', () => {
+    context.$('deleteWork').hidden = true;
+    context.autosaveLabel('工作單號碼編輯中 · 離開欄位後暫存，按提交才會共用');
+  });
+  ['kind', 'arrival', 'coverage', 'search', 'filter', 'container'].forEach(id => context.$(id).addEventListener(['search', 'coverage'].includes(id) ? 'input' : 'change', () => {
     if (id === 'container') {
       const now = context.currentKey();
       context.mergeChangingContainerKey(context.previousContainerCode || '__未命名草稿__', now);
       context.previousContainerCode = now;
       if (context.plannerRole !== 'viewer' && Object.hasOwn(context.state.drafts, now)) context.stageLocalDraft();
     } else if (['kind', 'arrival', 'coverage'].includes(id) && context.plannerRole !== 'viewer') context.stageLocalDraft();
-    context.renderPlan();
+    context.renderPlan(id === 'container');
     if (id === 'container') {
       context.$('deleteWork').hidden = context.plannerRole !== 'admin' || !Object.hasOwn(context.state.drafts, context.currentKey()) || context.currentKey().startsWith('__');
       context.renderNotes();
