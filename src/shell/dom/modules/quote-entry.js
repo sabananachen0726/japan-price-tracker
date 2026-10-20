@@ -43,7 +43,7 @@ export function initialize(context) {
   document.getElementById('inputItemCode')?.addEventListener('blur', context.autoFillManualFromItemCode);
   // 單筆新增報價表單
 
-  document.getElementById("priceForm").onsubmit = function (e) {
+  document.getElementById("priceForm").onsubmit = async function (e) {
     e.preventDefault();
     const barcode = context.cleanBarcode(document.getElementById("inputBarcode").value);
     const itemCode = document.getElementById("inputItemCode").value.trim();
@@ -81,7 +81,7 @@ export function initialize(context) {
       note,
       date: new Date().toISOString().split('T')[0]
     });
-    context.saveFirebaseData();
+    if (!await context.saveFirebaseData()) return;
     const status = document.getElementById('lastManualQuoteStatus');
     if (status) {
       const shownItem = itemCode || window.appData.products?.[primaryB]?.itemCode || barcode;

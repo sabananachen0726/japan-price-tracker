@@ -72,11 +72,16 @@ npm run build
 npm run check
 npx playwright install chromium
 npm run test:browser
+npm run test:e2e
 ```
 
 `check` 會建置並執行模組、計算與 HTML／CSS／內建資料相容性測試。
 
 瀏覽器測試使用假的 Firebase 回應，實際操作完整網頁，不會寫入正式資料。預設包含小型 gzip 銷售資料，驗證背景解析、KAISI 排除、退貨扣回及商品範圍。
+
+`test:e2e` 是完整功能稽核：登入／角色、頁面導覽、廠商、條碼關聯、商品 CRUD 與合成 Excel 匯入、報價與比價、LIVE／TEST 隔離、庫存與商品設定匯入、工作單與留言、貨櫃／待辦／歸檔、帳號管理及儲存失敗重試。逐案例結果與失敗原因自動寫入 `test-results/e2e-audit.md`／`.json`；GitHub Actions 會保留報告，測試失敗時阻擋部署。
+
+可用 `JPT_REPORT_FILE` 指定 Markdown 輸出位置，或用 `JPT_E2E_FILTER`（案例編號正規表示式）重測特定案例。稽核使用合成資料，不涵蓋正式 Firebase Security Rules 或第三方真實帳號。
 
 要另外驗證實際匯入檔，可設定以下環境變數再執行 `npm run test:browser`：
 

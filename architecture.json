@@ -404,6 +404,7 @@
         "id": "data-modes",
         "file": "modules/data-modes.js",
         "owns": [
+          "savedAppData",
           "normalizeAppData",
           "setModeUI",
           "updateTestDataInfo",
@@ -442,6 +443,7 @@
           "unsubscribeData"
         ],
         "writes": [
+          "savedAppData",
           "containerTrackerData",
           "copyLiveToTest",
           "currentDataMode",
@@ -476,6 +478,10 @@
           "saveFirebaseData"
         ],
         "imports": [
+          "containerTrackerFrameLoaded",
+          "plannerLoaded",
+          "refreshUI",
+          "savedAppData",
           "PROD_DOC_REF",
           "TEST_LOCAL_KEY",
           "applyRoleUI",
@@ -510,6 +516,9 @@
           "updateTestDataInfo"
         ],
         "writes": [
+          "containerTrackerFrameLoaded",
+          "plannerLoaded",
+          "savedAppData",
           "authGate",
           "authUser",
           "btnLogout",
@@ -1177,6 +1186,7 @@
         "file": "modules/system-settings-events.js",
         "owns": [],
         "imports": [
+          "rebuildItemToBarcode",
           "cleanBarcode",
           "saveFirebaseData"
         ],

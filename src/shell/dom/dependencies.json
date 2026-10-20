@@ -140,6 +140,7 @@
       "file": "modules/system-settings-events.js",
       "owns": [],
       "imports": [
+        "rebuildItemToBarcode",
         "cleanBarcode",
         "saveFirebaseData"
       ],

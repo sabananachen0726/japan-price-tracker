@@ -32,8 +32,8 @@ export const definition = {
     "name": "saveFirebaseData",
     "kind": "function"
   }],
-  "imports": ["PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
-  "writes": ["authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
+  "imports": ["containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
+  "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
   context.saveFirebaseData = async function saveFirebaseData() {
@@ -41,6 +41,7 @@ export function register(context) {
       alert("僅 Admin 可儲存此區資料。");
       return false;
     }
+    const pendingData = structuredClone(window.appData);
     context.searchCache.valid = false;
     const statusBadge = document.getElementById("cloudStatus");
     try {
@@ -49,7 +50,8 @@ export function register(context) {
           statusBadge.className = "badge bg-warning text-dark";
           statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>TEST 儲存中...';
         }
-        localStorage.setItem(context.TEST_LOCAL_KEY, JSON.stringify(window.appData));
+        localStorage.setItem(context.TEST_LOCAL_KEY, JSON.stringify(pendingData));
+        context.savedAppData = structuredClone(pendingData);
         context.updateTestDataInfo('TEST 已儲存在本機');
         return true;
       }
@@ -57,13 +59,19 @@ export function register(context) {
         statusBadge.className = "badge bg-secondary";
         statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 儲存中...';
       }
-      await context.setDoc(context.PROD_DOC_REF, window.appData);
+      await context.setDoc(context.PROD_DOC_REF, pendingData);
+      context.savedAppData = structuredClone(pendingData);
       if (statusBadge) {
         statusBadge.className = "badge bg-success";
         statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>LIVE Firebase 已同步';
       }
       return true;
     } catch (e) {
+      if (context.savedAppData && JSON.stringify(window.appData) === JSON.stringify(pendingData)) {
+        window.appData = structuredClone(context.savedAppData);
+        context.searchCache.valid = false;
+        context.refreshUI();
+      }
       console.error(context.currentDataMode + ' save error: ', e);
       if (statusBadge) {
         statusBadge.className = "badge bg-danger";
@@ -151,6 +159,12 @@ export function initialize(context) {
       }
       context.stopCatalogListeners();
       context.resetCustomerSource();
+      for (const id of ['plannerFrame', 'containerTrackerFrame']) {
+        const frame = document.getElementById(id);
+        frame?.removeAttribute('src');
+      }
+      context.plannerLoaded = false;
+      context.containerTrackerFrameLoaded = false;
       context.sharedOrderDrafts = {};
       context.renderSharedOrderDrafts();
       document.getElementById('containerTrackerFrame')?.contentWindow?.postMessage({

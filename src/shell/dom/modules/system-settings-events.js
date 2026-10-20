@@ -2,14 +2,14 @@
 export const definition = {
   "id": "system-settings-events",
   "owns": [],
-  "imports": ["cleanBarcode", "saveFirebaseData"],
+  "imports": ["rebuildItemToBarcode", "cleanBarcode", "saveFirebaseData"],
   "writes": []
 };
 export function register(context) {}
 export function initialize(context) {
   // 新增條碼綁定
 
-  document.getElementById("btnAddMapping").onclick = function () {
+  document.getElementById("btnAddMapping").onclick = async function () {
     const primaryB = context.cleanBarcode(document.getElementById("mapPrimaryBarcode").value);
     const aliasB = context.cleanBarcode(document.getElementById("mapAliasBarcode").value);
     if (!primaryB || !aliasB) {
@@ -25,7 +25,7 @@ export function initialize(context) {
     }
     if (!window.appData.mappings[primaryB].includes(aliasB)) {
       window.appData.mappings[primaryB].push(aliasB);
-      context.saveFirebaseData();
+      if (!await context.saveFirebaseData()) return;
       document.getElementById("mapAliasBarcode").value = '';
       alert("關聯條碼綁定成功！");
     } else {
@@ -34,7 +34,7 @@ export function initialize(context) {
   };
   // 儲存快速編輯商品主檔 Modal
 
-  document.getElementById("btnSaveMasterEdit").onclick = function () {
+  document.getElementById("btnSaveMasterEdit").onclick = async function () {
     const bc = document.getElementById("editMasterPrimaryBarcode").value;
     const ic = document.getElementById("editMasterItemCode").value.trim();
     const nm = document.getElementById("editMasterName").value.trim();
@@ -48,17 +48,18 @@ export function initialize(context) {
     if (ic) {
       window.appData.itemToBarcode[ic] = bc;
     }
-    context.saveFirebaseData();
+    context.rebuildItemToBarcode();
+    if (!await context.saveFirebaseData()) return;
     bootstrap.Modal.getInstance(document.getElementById('editMasterModal')).hide();
   };
   // 新增廠商
 
-  document.getElementById("btnAddSupplier").onclick = function () {
+  document.getElementById("btnAddSupplier").onclick = async function () {
     const name = document.getElementById("newSupplierName").value.trim();
     if (!name) return;
     if (!window.appData.suppliers.includes(name)) {
       window.appData.suppliers.push(name);
-      context.saveFirebaseData();
+      if (!await context.saveFirebaseData()) return;
       document.getElementById("newSupplierName").value = '';
     } else {
       alert("該廠商名稱已存在！");

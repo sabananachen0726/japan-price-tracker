@@ -22,6 +22,7 @@ export function initialize(context) {
     const lines = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
     const parsed = [],
       invalid = [];
+    const stagedProducts = new Map();
     let newProductCount = 0;
     for (const line of lines) {
       let parts = line.includes('\t') ? line.split('\t') : line.includes(',') ? line.split(',') : line.split(/\s+/);
@@ -49,14 +50,13 @@ export function initialize(context) {
         isNewProduct = true;
         const looksLikeJan = /^\d{8,14}$/.test(cleanKey);
         primaryB = looksLikeJan ? cleanKey : `PENDING_ITEM_${normalizedItem}`;
-        if (!window.appData.products[primaryB]) {
-          window.appData.products[primaryB] = {
+        if (!window.appData.products[primaryB] && !stagedProducts.has(primaryB)) {
+          stagedProducts.set(primaryB, {
             itemCode: looksLikeJan ? '' : key.trim(),
             name: '⚠️ 待補商品資料',
             imgUrl: '',
             pendingProduct: true
-          };
-          if (!looksLikeJan) window.appData.itemToBarcode[normalizedItem] = primaryB;
+          });
           newProductCount++;
         }
       }
@@ -73,6 +73,10 @@ export function initialize(context) {
     let msg = `準備錄入 ${parsed.length} 筆報價\n✓ ${existingCount} 筆已存在商品\n🆕 ${newProductCount} 筆為新商品，將建立「待補商品資料」\n廠商：${supplier}\n貨櫃：${containerNo}`;
     if (invalid.length) msg += `\n\n⚠️ ${invalid.length} 筆格式或價格無效，將略過。`;
     if (!confirm(msg + '\n\n確定繼續？')) return;
+    for (const [barcode, product] of stagedProducts) {
+      window.appData.products[barcode] = product;
+      if (product.itemCode) window.appData.itemToBarcode[product.itemCode.toUpperCase()] = barcode;
+    }
     const today = new Date().toISOString().split('T')[0];
     let added = 0,
       updated = 0,
@@ -90,7 +94,10 @@ export function initialize(context) {
       });
       if (result.action === 'added') added++;else if (result.action === 'updated') updated++;else skipped++;
     });
-    await context.saveFirebaseData();
+    if (!await context.saveFirebaseData()) {
+      document.getElementById('quickBatchHint').textContent = '儲存失敗，輸入已保留，請重試。';
+      return;
+    }
     document.getElementById('quickBatchText').value = '';
     document.getElementById('quickBatchHint').innerHTML = `<span class="text-success fw-bold">✓ 新增報價 ${added} 筆｜更新價格 ${updated} 筆｜跳過重複 ${skipped} 筆｜建立新商品 ${newProductCount} 筆</span>` + (invalid.length ? `；另有 ${invalid.length} 筆格式無效` : '');
     context.renderCompareList();

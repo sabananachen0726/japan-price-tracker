@@ -1,7 +1,7 @@
 // shell: data-modes. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "data-modes",
-  "owns": [{
+  "owns": [{"name":"savedAppData","kind":"let"},{
     "name": "normalizeAppData",
     "kind": "function"
   }, {
@@ -36,7 +36,7 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["CONTAINER_TRACKER_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "containerTrackerData", "currentDataMode", "customerGeneration", "normalizeContainerNo", "onSnapshot", "refreshCustomerSource", "refreshUI", "renderContainerIntegrationCheck", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderSharedOrderDrafts", "searchCache", "sendContainerSnapshot", "sendCustomerSource", "sendPlannerSnapshot", "showAppToast", "unsubscribeContainerTracker", "unsubscribeData"],
-  "writes": ["containerTrackerData", "copyLiveToTest", "currentDataMode", "customerGeneration", "linkedTrackerContainer", "normalizeAppData", "readLiveSnapshotOnce", "setModeUI", "startContainerTrackerLink", "startDataListener", "startLiveListener", "startTestMode", "switchDataMode", "unsubscribeContainerTracker", "unsubscribeData", "updateTestDataInfo"]
+  "writes": ["savedAppData", "containerTrackerData", "copyLiveToTest", "currentDataMode", "customerGeneration", "linkedTrackerContainer", "normalizeAppData", "readLiveSnapshotOnce", "setModeUI", "startContainerTrackerLink", "startDataListener", "startLiveListener", "startTestMode", "switchDataMode", "unsubscribeContainerTracker", "unsubscribeData", "updateTestDataInfo"]
 };
 export function register(context) {
   context.normalizeAppData = function normalizeAppData(data) {
@@ -108,6 +108,7 @@ export function register(context) {
       window.appData = context.normalizeAppData(JSON.parse(JSON.stringify(liveData)));
       localStorage.setItem(context.TEST_LOCAL_KEY, JSON.stringify(window.appData));
       localStorage.setItem(context.TEST_LOCAL_KEY + '_copied_at', new Date().toISOString());
+      context.savedAppData = structuredClone(window.appData);
       context.searchCache.valid = false;
       context.refreshUI();
       context.updateTestDataInfo('TEST 已從 LIVE 更新');
@@ -136,6 +137,7 @@ export function register(context) {
     context.unsubscribeData = context.onSnapshot(context.PROD_DOC_REF, snapshot => {
       if (context.currentDataMode !== 'live') return;
       if (snapshot.exists()) window.appData = context.normalizeAppData(snapshot.data());else window.appData = context.normalizeAppData({});
+      if (!snapshot.metadata?.hasPendingWrites) context.savedAppData = structuredClone(window.appData);
       context.searchCache.valid = false;
       context.refreshUI();
       if (statusBadge) {
@@ -188,6 +190,7 @@ export function register(context) {
     if (saved) {
       try {
         window.appData = context.normalizeAppData(JSON.parse(saved));
+        context.savedAppData = structuredClone(window.appData);
         context.searchCache.valid = false;
         context.refreshUI();
         context.updateTestDataInfo('TEST 本機');
@@ -227,4 +230,4 @@ export function register(context) {
     if (context.currentDataMode === 'test') await context.startTestMode();else context.startLiveListener();
   };
 }
-export function initialize(context) {}
+export function initialize(context) { context.savedAppData = null; }

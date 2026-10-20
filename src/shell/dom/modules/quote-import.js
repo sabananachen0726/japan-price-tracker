@@ -36,7 +36,7 @@ export function initialize(context) {
     }
     const file = fileInput.files[0];
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = async function (e) {
       const text = e.target.result;
       const lines = text.split(/\r?\n/);
       const previewRows = [];
@@ -91,7 +91,7 @@ export function initialize(context) {
           }
         }
       });
-      context.saveFirebaseData();
+      if (!await context.saveFirebaseData()) return;
       alert(`匯入完成！\n新增：${addedCount} 筆\n價格更新：${updatedCount} 筆（自動備註「價錢更新」）\n重複跳過：${skippedCount} 筆`);
       fileInput.value = '';
     };
