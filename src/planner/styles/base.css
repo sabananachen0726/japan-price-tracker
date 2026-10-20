@@ -376,3 +376,8 @@ body.product-management #settings>.panel:first-of-type{margin-bottom:12px}
 
 /* Shared data is a quiet status, not an action chip. */
 .catalog-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#526277;max-width:330px;line-height:1.5;text-align:left}.catalog-status:before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#6487ae}.workspace-status{align-items:center}#viewSubmitted{color:var(--blue);background:white}#deleteWork{justify-self:start;font-size:12px;padding:7px 10px}.workspace-fields .work-delete{background:white;color:#a33139;border-color:#e4c9cd}
+
+/* Consistent actions and explicit review mode. */
+button{border-radius:7px}button:focus-visible,summary:focus-visible{outline:2px solid #83aae2;outline-offset:2px}#reviewWritten[aria-pressed="true"]{background:#e9f1fd;border-color:#7196ca;color:#174b91}#reviewWritten{white-space:nowrap}#autosaveStatus{min-height:32px}#containerCards [data-delete]{margin-left:22px}#containerCards .panel{padding:14px 10px;border-bottom:1px solid var(--line)}
+
+button.primary,.preset-button{background:#255ba6;border-color:#255ba6;color:white}.tag{border-radius:6px}#autosaveStatus.ok{animation:saved-feedback 4.5s ease-out}@keyframes saved-feedback{from{color:#187359}to{color:#516d84}}
