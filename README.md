@@ -97,3 +97,5 @@ npm run test:e2e
 這次重構保留既有 Firebase 專案、文件名稱、本機儲存鍵、PI 欄位、月銷算法與角色權限。畫面結構、樣式及內建資料以既有 V4.12.0 的指紋驗證。
 
 完整備份的 `backupVersion` 維持 `4.12.0`，因為備份格式未變；應用版本則為 V4.13.0。請勿為了重構而重設資料或重新建立 Firebase 專案。
+
+UI workflow update: the approved HTML/CSS snapshot hashes were refreshed for the shared-data status, submitted-proposal entry and single-scroll container editor. E2E UI-01 through UI-09 cover typing, local/shared deletion, permission denial, failed deletion, navigation and repeated scroll restoration.
