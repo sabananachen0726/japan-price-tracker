@@ -8,6 +8,16 @@ export const definition = {
 export function register(context) {}
 export function initialize(context) {
   let containerReturnScroll = null;
+  const containerFrame = document.getElementById('containerTrackerFrame');
+  const detailBar = document.createElement('div');
+  detailBar.id = 'containerDetailBar';
+  detailBar.hidden = true;
+  detailBar.innerHTML = '<div><strong data-detail-title></strong><div data-detail-summary></div><div data-detail-feedback role="status" aria-live="polite"></div></div><div class="detail-bar-actions"><button type="button" class="btn btn-outline-secondary" data-detail-action="back">← 返回列表</button><button type="button" class="btn btn-primary" data-detail-action="save">儲存變更</button></div>';
+  containerFrame?.parentElement.before(detailBar);
+  detailBar.addEventListener('click', e => {
+    const action = e.target.closest('[data-detail-action]')?.dataset.detailAction;
+    if (action) containerFrame?.contentWindow?.postMessage({type: 'KAISI_CONTAINER_ACTION', action}, '*');
+  });
   context.events.onMessage(e => {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
@@ -163,7 +173,11 @@ export function initialize(context) {
       Object.entries(draft.itemNotes || {}).forEach(([item, note]) => {
         const code = String(item || '').toUpperCase();
         const message = String(note || '').trim();
-        if (context.safeCatalogKey(code) && message && message.length <= 250) cleaned.itemNotes[code] = message;
+        if (context.safeCatalogKey(code) && message && message.length <= 250) {
+          cleaned.itemNotes[code] = message;
+          const barcode = window.appData.itemToBarcode?.[code] || '';
+          cleaned.snapshot[code] ||= {barcode, name: window.appData.products?.[barcode]?.name || code};
+        }
       });
       if (context.currentDataMode === 'test') {
         plannerWindow.postMessage({
@@ -179,7 +193,8 @@ export function initialize(context) {
           [code]: cleaned
         }
       }, {
-        merge: true
+        // Replace editable maps, including deleted notes, without touching shared comments/presets.
+        mergeFields: Object.keys(cleaned).map(field => new context.FieldPath('drafts', code, field))
       }).then(() => plannerWindow.postMessage({
         type: 'KAISI_ORDER_SAVE_RESULT',
         code,
@@ -191,11 +206,26 @@ export function initialize(context) {
         error: err.code || err.message
       }, '*'));
     }
+    if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_HEADER') {
+      detailBar.querySelector('[data-detail-title]').textContent = String(e.data.title || '').slice(0, 120);
+      detailBar.querySelector('[data-detail-summary]').textContent = String(e.data.summary || '').slice(0, 240);
+      return;
+    }
+    if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_FEEDBACK') {
+      const el = detailBar.querySelector('[data-detail-feedback]');
+      el.textContent = String(e.data.message || '').slice(0, 400);
+      el.className = ['ok', 'bad', 'pending'].includes(e.data.kind) ? e.data.kind : '';
+      const saving = e.data.kind === 'pending';
+      detailBar.querySelectorAll('button').forEach(b => b.disabled = saving);
+      return;
+    }
     if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_VIEW') {
       const frame = document.getElementById('containerTrackerFrame');
       const height = Number(e.data.height);
       if (!frame || !['detail', 'overview'].includes(e.data.view) || !Number.isFinite(height) || height < 760 || height >= 180000) return;
       if (e.data.view === 'detail' && containerReturnScroll === null) containerReturnScroll = window.scrollY;
+      detailBar.hidden = e.data.view !== 'detail';
+      detailBar.querySelector('[data-detail-action="save"]').hidden = !context.isAdmin();
       frame.style.height = height + 'px';
       const target = e.data.view === 'detail' ? window.scrollY + frame.getBoundingClientRect().top - 110 : containerReturnScroll;
       if (e.data.view === 'overview') containerReturnScroll = null;
@@ -210,7 +240,11 @@ export function initialize(context) {
       }
       return;
     }
-    if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_READY') context.sendContainerSnapshot();
+    if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_READY') {
+      detailBar.hidden = true;
+      containerReturnScroll = null;
+      context.sendContainerSnapshot();
+    }
     if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_SAVE') {
       const id = e.data.id,
         data = e.data.data;
