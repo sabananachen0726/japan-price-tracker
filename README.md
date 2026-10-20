@@ -99,3 +99,5 @@ npm run test:e2e
 完整備份的 `backupVersion` 維持 `4.12.0`，因為備份格式未變；應用版本則為 V4.13.0。請勿為了重構而重設資料或重新建立 Firebase 專案。
 
 UI workflow update: the approved HTML/CSS snapshot hashes were refreshed for the shared-data status, submitted-proposal entry and single-scroll container editor. E2E UI-01 through UI-09 cover typing, local/shared deletion, permission denial, failed deletion, navigation and repeated scroll restoration.
+
+Next UI update: note-only items are retained in submitted proposals and Excel; “只看已填寫” includes quantity or notes. Default product order is stable; adopting a suggestion does not rebuild the table. Container details use summaries, collapsible sections, a pinned host toolbar and inline save/retry feedback. Saving keeps the detail page open. UX-01 through UX-07 cover these flows.
