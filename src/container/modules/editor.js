@@ -2,6 +2,9 @@
 export const definition = {
   "id": "editor",
   "owns": [{
+    "name": "updateContainerSummary",
+    "kind": "function"
+  }, {
     "name": "df",
     "kind": "function"
   }, {
@@ -17,10 +20,29 @@ export const definition = {
     "name": "form",
     "kind": "function"
   }],
-  "imports": ["$", "D", "E", "complete", "dateInfo", "esc", "log", "money", "persist", "piStats", "sendContainerHeight", "stage", "today", "uid"],
-  "writes": ["E", "df", "form", "openContainerEditor", "showOps", "syncDraft"]
+  "imports": ["$", "D", "E", "actionIssues", "complete", "dateInfo", "esc", "log", "money", "persist", "piStats", "sendContainerHeight", "setSaveFeedback", "stage", "today", "uid"],
+  "writes": ["E", "df", "form", "openContainerEditor", "showOps", "syncDraft", "updateContainerSummary"]
 };
 export function register(context) {
+  context.updateContainerSummary = function updateContainerSummary() {
+    if (!context.E) return;
+    const c = structuredClone(context.E);
+    for (const key of ['code', 'status', 'portDate', 'unloadDate', 'expectedMonth']) {
+      const input = context.$('f_' + key);
+      if (input) c[key] = input.value;
+    }
+    c.checks ||= {};
+    document.querySelectorAll('[data-check]').forEach(el => c.checks[el.dataset.check] = el.checked);
+    for (const [id,key] of [['f_deposit','depositPaid'],['f_balance','balancePaid'],['f_final','finalListReceived']]) if (context.$(id)) c[key] = context.$(id).checked;
+    const issues = context.actionIssues(c);
+    const todos = (c.todos || []).filter(t => !t.done).length;
+    const dates = context.dateInfo(c);
+    const eta = dates.portDate || (c.expectedMonth ? c.expectedMonth + '（月份待定）' : '待確認');
+    const stage = ['Void','Cancelled'].includes(c.status) ? c.status : context.stage(c);
+    context.$('mt').textContent = c.code || '新增貨櫃';
+    context.$('containerSummary').innerHTML = [['目前階段',stage],['預計到港',eta],['未完成',issues.length + ' 類 · ' + todos + ' 項待辦']].map(([label,value]) => '<div><span>' + context.esc(label) + '</span><strong>' + context.esc(value) + '</strong>' + (label === '未完成' ? '<small>' + context.esc(issues.map(x => ({PI:'PI 待確認',Payment:'付款待完成',Checklist:'檢查清單待完成'}[x] || x)).concat((c.todos || []).filter(t => !t.done).map(t => t.text)).join(' · ') || '目前無待處理事項') + '</small>' : '') + '</div>').join('');
+    window.parent.postMessage({type:'KAISI_CONTAINER_HEADER',title:c.code || '新增貨櫃',summary:stage + ' · 到港 ' + eta + ' · ' + issues.length + ' 類待處理 / ' + todos + ' 項待辦'}, '*');
+  };
   context.openContainerEditor = function openContainerEditor() {
     document.body.classList.add('editing-container');
     context.$('modal').scrollTop = 0;
@@ -53,6 +75,7 @@ export function register(context) {
     return context.E.status === 'Shipping' || context.E.status === 'Completed' || !!context.E.depositPaid || !!context.E.balancePaid || !!context.E.finalListReceived || Object.values(context.E.checks || {}).some(Boolean);
   };
   context.form = function form() {
+    const oldOpen = new Set([...document.querySelectorAll("#form details[open]")].map(el => el.dataset.section));
     const ops = context.showOps();
     context.$("mt").textContent = context.E.code || "新增貨櫃";
     context.$("form").innerHTML = `
@@ -83,10 +106,29 @@ export function register(context) {
  <div class="section"><h3>Quotation / Version Notes</h3><div class="grid3"><div class="field"><label>Date *</label><input id="v_date" type="date" value="${context.today()}"></div><div class="field"><label>Version</label><input id="v_ver" placeholder="V1"></div><div class="field"><label>Amount JPY</label><input id="v_amt" type="number" placeholder="Optional"></div></div><div class="field" style="margin-top:10px"><label>Note</label><input id="v_note" placeholder="Optional"></div><button class="soft" style="margin-top:10px" onclick="addVersion()">＋ 加入紀錄</button>${context.E.versions.map(v => `<div class="hist"><b>${v.date}</b> ${context.esc(v.version || "")} ${v.amount ? context.money(v.amount) : ""} ${context.esc(v.note || "")}</div>`).join("")}</div>
  <div class="section"><h3>Ad hoc To-do</h3><div class="grid3"><div class="field"><label>Task</label><input id="t_text"></div><div class="field"><label>Category</label><select id="t_cat"><option>一般</option><option>付款</option><option>文件</option><option>系統/Checklist</option><option>日期/貨運</option></select></div><div class="field"><label>Due Date</label><input id="t_due" type="date"></div></div><button class="soft" style="margin-top:10px" onclick="addTodo()">＋ 加入 To-do</button>${context.E.todos.map(t => `<label class="check"><input type="checkbox" ${t.done ? "checked" : ""} onchange="editTodo('${t.id}',this.checked)"> ${context.esc(t.text)} <span class="tiny">${context.esc(t.category)} ${t.due || ""}</span></label>`).join("")}</div>
  <div class="section"><h3>Activity History</h3>${context.E.history.map(h => `<div class="hist"><b>${h.date}</b> — ${context.esc(h.text)}</div>`).join("") || '<div class="tiny">尚無紀錄</div>'}</div>`;
+    for (const section of context.$('form').querySelectorAll('.section')) {
+      const heading = section.querySelector('h3');
+      if (!heading || heading.textContent.includes('貨櫃日期')) continue;
+      const title = heading.textContent.trim();
+      const details = document.createElement('details');
+      details.className = 'detail-section';
+      details.dataset.section = title;
+      details.open = oldOpen.has(title);
+      const summary = document.createElement('summary');
+      summary.textContent = title;
+      heading.remove();
+      details.append(summary);
+      while (section.firstChild) details.append(section.firstChild);
+      section.replaceWith(details);
+    }
+    context.$('form').querySelector('.phase-note')?.remove();
     context.$("modal").classList.add("show");
+    context.updateContainerSummary();
   };
 }
 export function initialize(context) {
+  context.$("form").addEventListener("input", context.updateContainerSummary);
+  context.$("form").addEventListener("change", context.updateContainerSummary);
   window.newC = () => {
     context.E = {
       id: context.uid(),
@@ -104,6 +146,8 @@ export function initialize(context) {
       etaHistory: [],
       versions: []
     };
+    context.$("form").replaceChildren();
+    context.setSaveFeedback('');
     context.form();
     context.openContainerEditor();
   };
@@ -116,6 +160,8 @@ export function initialize(context) {
       context.E.unloadDate = dt.unloadDate;
       context.E.unloadConfirmed = dt.unloadConfirmed;
       context.E.status = context.stage(context.E) === 'QUOTATION' ? 'Quotation' : 'Shipping';
+      context.$("form").replaceChildren();
+      context.setSaveFeedback('');
       context.form();
       context.openContainerEditor();
     }
@@ -169,7 +215,8 @@ export function initialize(context) {
       context.log(context.E, (v ? "完成" : "重新開啟") + " To-do：" + t.text);
     }
   };
-  window.saveC = () => {
+  window.saveC = async () => {
+    if (!context.E || context.$("modal").dataset.saving === "true") return;
     context.syncDraft();
     let old = context.D.containers.find(x => x.id === context.E.id),
       before = old ? JSON.parse(JSON.stringify(old)) : null;
@@ -177,8 +224,8 @@ export function initialize(context) {
       let el = context.$("f_" + k);
       if (el) context.E[k] = el.value;
     });
-    if (!context.E.code.trim()) return alert("Container / Internal Code 必填");
-    if (context.E.unloadConfirmed && !context.E.unloadDate) return alert('請先填寫拆櫃日，再確認已拆櫃。');
+    if (!context.E.code.trim()) return context.setSaveFeedback("Container / Internal Code 必填", "bad");
+    if (context.E.unloadConfirmed && !context.E.unloadDate) return context.setSaveFeedback('請先填寫拆櫃日，再確認已拆櫃。', 'bad');
     document.querySelectorAll("[data-check]").forEach(x => context.E.checks[x.dataset.check] = x.checked);
     let dep = context.$("f_deposit"),
       bal = context.$("f_balance"),
@@ -228,8 +275,21 @@ export function initialize(context) {
       context.E.status = 'Completed';
     }
     context.complete(context.E);
-    closeM();
-    context.persist();
-    render();
+    const attempted = context.E;
+    context.$('modal').dataset.saving = 'true';
+    document.querySelectorAll('button[onclick="saveC()"],button[onclick="closeM()"]').forEach(b => b.disabled = true);
+    try {
+      const ok = await context.persist();
+      if (!ok) {
+        const index = context.D.containers.findIndex(c => c.id === attempted.id);
+        if (before && index >= 0) context.D.containers[index] = before;
+        else if (!before && index >= 0) context.D.containers.splice(index, 1);
+      } else context.E = structuredClone(context.D.containers.find(c => c.id === attempted.id) || attempted);
+      context.updateContainerSummary();
+      render();
+    } finally {
+      delete context.$('modal').dataset.saving;
+      document.querySelectorAll('button[onclick="saveC()"],button[onclick="closeM()"]').forEach(b => b.disabled = false);
+    }
   };
 }
