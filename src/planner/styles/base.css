@@ -373,3 +373,6 @@ body.product-management #settings>.panel:first-child>.source-review-panel{margin
 #settings>#managementHeader412{background:#f2f6fb;border:1px solid #dae3ef;border-radius:12px;padding:14px;margin-bottom:14px}
 body.product-management #settings>.panel:first-of-type{margin-bottom:12px}
 
+
+/* Shared data is a quiet status, not an action chip. */
+.catalog-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#526277;max-width:330px;line-height:1.5;text-align:left}.catalog-status:before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:#6487ae}.workspace-status{align-items:center}#viewSubmitted{color:var(--blue);background:white}#deleteWork{justify-self:start;font-size:12px;padding:7px 10px}.workspace-fields .work-delete{background:white;color:#a33139;border-color:#e4c9cd}
