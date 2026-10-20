@@ -1663,6 +1663,8 @@
           "compareContainerIds",
           "currentKey",
           "customerSourceReady",
+          "deferredDrafts",
+          "dirtyDrafts",
           "draft",
           "draftFingerprint",
           "esc",
@@ -2711,6 +2713,7 @@
         "file": "modules/editor.js",
         "owns": [
           "df",
+          "openContainerEditor",
           "syncDraft",
           "showOps",
           "form"
@@ -2726,6 +2729,7 @@
           "money",
           "persist",
           "piStats",
+          "sendContainerHeight",
           "stage",
           "today",
           "uid"
@@ -2734,6 +2738,7 @@
           "E",
           "df",
           "form",
+          "openContainerEditor",
           "showOps",
           "syncDraft"
         ]
