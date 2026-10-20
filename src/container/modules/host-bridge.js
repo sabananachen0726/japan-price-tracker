@@ -2,6 +2,9 @@
 export const definition = {
   "id": "host-bridge",
   "owns": [{
+    "name": "setSaveFeedback",
+    "kind": "function"
+  }, {
     "name": "saveCallbacks",
     "kind": "const"
   }, {
@@ -18,11 +21,20 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["$", "D", "DEF", "PI", "events", "norm"],
-  "writes": ["D", "PI", "lastContainerHeight", "persist", "saveCallbacks", "saveSequence", "sendContainerHeight"]
+  "writes": ["D", "PI", "lastContainerHeight", "persist", "saveCallbacks", "saveSequence", "sendContainerHeight", "setSaveFeedback"]
 };
 export function register(context) {
+  let feedbackTimer;
+  context.setSaveFeedback = function setSaveFeedback(message, kind = '') {
+    clearTimeout(feedbackTimer);
+    const el = document.getElementById('containerSaveFeedback');
+    if (el) {el.textContent = message; el.className = 'save-feedback ' + kind;}
+    window.parent.postMessage({type:'KAISI_CONTAINER_FEEDBACK',message,kind}, '*');
+    if (kind === 'ok') feedbackTimer = setTimeout(() => context.setSaveFeedback(''), 4500);
+  };
   context.persist = async function persist() {
     context.norm();
+    context.setSaveFeedback("儲存中…", "pending");
     context.$("cloud").textContent = "儲存中…";
     const id = ++context.saveSequence;
     return new Promise(resolve => {
@@ -52,6 +64,12 @@ export function initialize(context) {
   context.events.onMessage(event => {
     if (event.source !== window.parent) return;
     const m = event.data || {};
+    if (m.type === 'KAISI_CONTAINER_ACTION') {
+      if (document.getElementById('modal')?.dataset.saving === 'true') return;
+      if (m.action === 'save') window.saveC();
+      if (m.action === 'back') window.closeM();
+      return;
+    }
     if (m.type === 'KAISI_CONTAINER_SNAPSHOT') {
       context.D = m.data || {
         containers: [],
@@ -76,7 +94,7 @@ export function initialize(context) {
       done?.(!!m.ok);
       context.$("cloud").textContent = m.ok ? 'Firebase 已同步' : '儲存失敗';
       context.$("cloud").className = m.ok ? 'status ok' : 'status bad';
-      if (!m.ok) alert('貨櫃儲存失敗：' + (m.error || '未知錯誤'));
+      context.setSaveFeedback(m.ok ? '✓ 已儲存' : '儲存失敗：' + (m.error || '未知錯誤') + '；輸入已保留，請重試。', m.ok ? 'ok' : 'bad');
     } else if (m.type === 'KAISI_CONTAINER_LOCK') {
       context.$("app").classList.add("hide");
       context.$("login").classList.add("hide");
