@@ -177,9 +177,8 @@ export function initialize(context) {
           context.autosaveLabel(m.localOnly ? '✓ TEST 本機草稿已保存' : '✓ 已提交 Firebase，其他帳號可查看', 'ok');
         } else context.autosaveLabel('有提交後的新修改，已留在本機，請再次提交', 'warn');
         context.saveFingerprints.delete(m.code);
-      } else context.autosaveLabel('⚠ Firebase 提交失敗，本機草稿仍保留', 'warn');
+      } else context.autosaveLabel('提交失敗：' + (m.error || '請稍後重試') + '；本機草稿仍保留', 'warn');
       context.storeLocal();
-      if (!m.ok) alert('共享訂貨儲存失敗：' + (m.error || '未知錯誤'));
       context.updateWorkSelect();
       context.renderAll();
       return;
