@@ -38,7 +38,7 @@ export const definition = {
     "name": "cleanCatalogPatch",
     "kind": "function"
   }],
-  "imports": ["auth", "canPlan", "currentDataMode", "db", "doc", "events", "isAdmin", "onSnapshot", "plannerLoaded", "sendSharedOrderDrafts", "setDoc"],
+  "imports": ["auth", "canPlan", "currentDataMode", "db", "doc", "events", "isAdmin", "onSnapshot", "plannerLoaded", "renderInactiveNotices", "sendSharedOrderDrafts", "setDoc"],
   "writes": ["CATALOG_REF", "INVENTORY_REF", "PLANNER_SOURCES_REF", "catalogData", "catalogUnsubscribers", "cleanCatalogPatch", "inventoryData", "plannerSourcesData", "safeCatalogKey", "sendCatalogSources", "startCatalogListeners", "stopCatalogListeners"]
 };
 export function register(context) {
@@ -80,7 +80,7 @@ export function register(context) {
     for (const [ref, type] of [[context.CATALOG_REF, 'catalog'], [context.INVENTORY_REF, 'inventory'], [context.PLANNER_SOURCES_REF, 'sources']]) {
       context.catalogUnsubscribers.push(context.onSnapshot(ref, s => {
         const d = s.exists() ? s.data() : {};
-        if (type === 'catalog') context.catalogData = d;
+        if (type === 'catalog') {context.catalogData = d; context.renderInactiveNotices();}
         if (type === 'inventory') context.inventoryData = d;
         if (type === 'sources') context.plannerSourcesData = d;
         context.sendCatalogSources();
@@ -146,7 +146,7 @@ export function register(context) {
           v[key] = value;
           continue;
         }
-        if (!['monthly', 'safety', 'factor', 'shelfLifeMonths'].includes(key) || value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || key === 'factor' && value === 0 || key === 'shelfLifeMonths' && value !== null && (!Number.isInteger(value) || value < 1 || value > 120))) throw Error('月銷、安全庫存或倍率無效');
+        if (!['monthly', 'maxStock', 'factor', 'shelfLifeMonths'].includes(key) || value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || key === 'factor' && value === 0 || key === 'shelfLifeMonths' && value !== null && (!Number.isInteger(value) || value < 1 || value > 120))) throw Error('月銷、最高庫存或倍率無效');
         v[key] = value;
       }
       clean.overrides[code] = v;
@@ -196,6 +196,13 @@ export function initialize(context) {
       if (action === 'catalog') {
         ref = context.CATALOG_REF;
         data = context.cleanCatalogPatch(payload);
+        for (const [code,item] of Object.entries(data.items || {})) {
+          const previous = context.catalogData?.items?.[code]?.availability || 'active';
+          if (['paused','discontinued','merged'].includes(item.availability) && previous === 'active') {
+            const id = crypto.randomUUID();
+            item.inactiveNotices = {[id]:{id,uid:context.auth.currentUser.uid,by:context.auth.currentUser.email || '',at:new Date().toISOString()}};
+          }
+        }
       } else if (action === 'inventory') {
         ref = context.INVENTORY_REF;
         merge = false;
