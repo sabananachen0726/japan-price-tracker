@@ -192,6 +192,7 @@
         "$",
         "customerSourceReady",
         "dayDiff",
+        "draft",
         "factor",
         "incoming",
         "norm",
@@ -245,6 +246,7 @@
       "id": "planning-view",
       "file": "modules/planning-view.js",
       "owns": [
+        "projectedCell",
         "renderPlan",
         "updateDraftTotal"
       ],
@@ -258,6 +260,7 @@
         "draft",
         "esc",
         "fmt",
+        "factorInfo",
         "getItems",
         "monthlyCell",
         "passesColumnFilters",
@@ -265,13 +268,16 @@
         "plannerRole",
         "renderSalesHeads",
         "renderSortMarks",
+        "projectedCell",
         "salesMonthCells",
         "shelfLife",
         "sortRows",
+        "state",
         "today",
         "updateTableHeader"
       ],
       "writes": [
+        "projectedCell",
         "renderPlan",
         "updateDraftTotal"
       ]
@@ -336,6 +342,7 @@
         "$",
         "allPis",
         "autosaveLabel",
+        "calc",
         "compareContainerIds",
         "currentKey",
         "customerSourceReady",
@@ -438,6 +445,7 @@
         "exportCsv",
         "persist",
         "plannerRole",
+        "people",
         "previousContainerCode",
         "renderAll",
         "renderPlan",
@@ -777,6 +785,7 @@
       "id": "host-bridge",
       "file": "modules/host-bridge.js",
       "owns": [
+        "people",
         "refreshRetryStatus",
         "updateTableHeader",
         "deferredDrafts",
@@ -820,6 +829,7 @@
         "updateWorkSelect"
       ],
       "writes": [
+        "people",
         "catalogReady",
         "customerSourceReady",
         "deferredDrafts",
