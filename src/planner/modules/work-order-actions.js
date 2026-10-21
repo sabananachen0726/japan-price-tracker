@@ -23,7 +23,7 @@ export const definition = {
     "name": "exportPlanButton",
     "kind": "const"
   }],
-  "imports": ["$", "currentKey", "esc", "exportCsv", "persist", "plannerRole", "previousContainerCode", "renderAll", "renderPlan", "saveDraft", "state", "trackerFeed", "updateZoom", "zoomScale"],
+  "imports": ["$", "currentKey", "esc", "exportCsv", "persist", "plannerRole", "people", "previousContainerCode", "renderAll", "renderPlan", "saveDraft", "state", "trackerFeed", "updateZoom", "zoomScale"],
   "writes": ["applyPreparedDefaults", "exportPlanButton", "loadWork", "preparedWorks", "previousContainerCode", "renderNotes", "selectedWorkApplied", "updateWorkSelect", "zoomScale"]
 };
 export function register(context) {
@@ -61,6 +61,7 @@ export function register(context) {
     const code = context.currentKey(),
       d = context.state.drafts[code] || {},
       notes = Array.isArray(d.notes) ? d.notes : [];
+    context.$('noteSection').open = notes.length > 0;
     context.$('notesCount').textContent = notes.length + ' 則';
     context.$('notesList').innerHTML = notes.length ? notes.map((n, index) => ({
       n,
@@ -68,7 +69,7 @@ export function register(context) {
     })).slice(-60).map(({
       n,
       index
-    }) => `<div class="note-entry"><div class="note-meta"><span>${context.esc(n.by || '同事')} · ${context.esc(n.at ? new Date(n.at).toLocaleString('zh-TW', {
+    }) => `<div class="note-entry"><div class="note-meta"><span>${context.esc(context.people?.[n.uid]?.name || Object.values(context.people || {}).find(p => p.email === n.by)?.name || n.by || '同事')} · ${context.esc(n.at ? new Date(n.at).toLocaleString('zh-TW', {
       timeZone: 'Australia/Brisbane'
     }) : '')}</span>${context.plannerRole === 'admin' ? `<button type="button" class="note-delete" data-note-delete="${context.esc(n.id || 'legacy-' + index)}" aria-label="刪除此留言">刪除</button>` : ''}</div><div class="note-text">${context.esc(n.text || '')}</div></div>`).join('') : '<div class="muted">尚無留言，這份工作單的備註會供 Admin 和 Editor 共用。</div>';
     context.$('sendNote').disabled = context.plannerRole === 'viewer' || !code || code.startsWith('__') || context.trackerFeed?.mode === 'test';
@@ -76,6 +77,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  context.$('noteSection').querySelector('summary').addEventListener('click', e => {if ((context.state.drafts[context.currentKey()]?.notes || []).length) e.preventDefault();});
   context.selectedWorkApplied = false;
   context.$('workSelect').addEventListener('change', () => {
     const code = context.$('workSelect').value;
