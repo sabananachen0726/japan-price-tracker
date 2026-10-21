@@ -41,7 +41,7 @@ export const definition = {
     "name": "refreshUsers",
     "kind": "function"
   }],
-  "imports": ["collection", "doc", "getAuth", "getDoc", "getDocsFromServer", "getFirestore", "initializeApp", "setDoc"],
+  "imports": ["ORDER_PLANNER_REF", "people", "currentDataMode", "collection", "doc", "getAuth", "getDoc", "getDocsFromServer", "getFirestore", "initializeApp", "setDoc"],
   "writes": ["BOOTSTRAP_ADMIN_EMAIL", "app", "applyRoleUI", "auth", "canPlan", "currentRole", "db", "escapeHtml", "firebaseConfig", "isAdmin", "loadRole", "refreshUsers", "roleDoc"]
 };
 export function register(context) {
@@ -82,16 +82,32 @@ export function register(context) {
         const x = d.data(),
           row = document.createElement('div');
         row.className = 'border-bottom py-2';
-        row.textContent = (x.email || d.id) + ' ｜ ' + (x.role || 'disabled') + ' ｜ UID ' + d.id;
+        row.innerHTML = '<div>' + context.escapeHtml(x.email || d.id) + ' ｜ ' + context.escapeHtml(x.role || 'disabled') + '</div><div class="d-flex gap-2 mt-1"><input class="form-control form-control-sm" data-profile-uid="' + context.escapeHtml(d.id) + '" data-profile-email="' + context.escapeHtml(x.email || '') + '" aria-label="顯示名字" placeholder="例如 Sabrina、Jimmy" maxlength="50" value="' + context.escapeHtml(context.people?.[d.id]?.name || x.displayName || '') + '"><button class="btn btn-sm btn-outline-primary" data-save-profile="' + context.escapeHtml(d.id) + '">儲存名字</button><button class="btn btn-sm btn-outline-secondary" data-edit-role="' + context.escapeHtml(d.id) + '">編輯權限</button></div>';
+        row.querySelector('[data-edit-role]').onclick = () => {document.getElementById('grantUid').value=d.id;document.getElementById('grantEmail').value=x.email || '';document.getElementById('grantRole').value=x.role || 'disabled';};
         host.appendChild(row);
       });
-      if (snaps.empty) host.textContent = '尚無權限紀錄';
+      if (!host.querySelector('[data-profile-uid="' + context.auth.currentUser.uid + '"]')) {
+        const row = document.createElement('div'); row.className='border-bottom py-2';
+        row.innerHTML='<div>我的名字（Admin）</div><div class="d-flex gap-2"><input class="form-control form-control-sm" data-profile-uid="' + context.escapeHtml(context.auth.currentUser.uid) + '" data-profile-email="' + context.escapeHtml(context.auth.currentUser.email || '') + '" maxlength="50" aria-label="我的顯示名字" value="' + context.escapeHtml(context.people?.[context.auth.currentUser.uid]?.name || '') + '"><button class="btn btn-sm btn-outline-primary" data-save-profile="' + context.escapeHtml(context.auth.currentUser.uid) + '">儲存名字</button></div>';
+        host.prepend(row);
+      }
     } catch (e) {
       host.textContent = '讀取失敗：' + (e.code || e.message);
     }
   };
 }
 export function initialize(context) {
+  document.getElementById('userRows').addEventListener('click',async e => {
+    const uid=e.target.closest('[data-save-profile]')?.dataset.saveProfile;
+    if (!uid || !context.isAdmin()) return;
+    if (context.currentDataMode !== 'live') {document.getElementById('grantStatus').textContent='請切換 LIVE 後修改名字。';return;}
+    const input=[...document.querySelectorAll('[data-profile-uid]')].find(el=>el.dataset.profileUid===uid);
+    const name=input.value.trim(),email=input.dataset.profileEmail;
+    const status=document.getElementById('grantStatus');
+    if(name.length>50){status.textContent='名字最多 50 個字。';return;}
+    try{await context.setDoc(context.ORDER_PLANNER_REF,{people:{[uid]:{name,email}}},{merge:true});status.textContent='名字已儲存，留言會同步更新。';}
+    catch(err){status.textContent='名字儲存失敗，請重試。';}
+  });
   context.firebaseConfig = {
     apiKey: "AIzaSyCPFkJo7MTDpr8AHLC7yI9FTpmJtpNhd80",
     authDomain: "japan-price-tracker.firebaseapp.com",
@@ -122,6 +138,7 @@ export function initialize(context) {
       status.textContent = '請填入正確 UID 和 Email';
       return;
     }
+    if (!['editor','viewer','disabled'].includes(role)) {status.textContent='請選擇有效的權限。';return;}
     if (uid === context.auth.currentUser.uid || email === context.BOOTSTRAP_ADMIN_EMAIL) {
       status.textContent = '不可透過此介面修改首位 Admin';
       return;
