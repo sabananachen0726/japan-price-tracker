@@ -128,6 +128,13 @@ export function register(context) {
     context.salesError = '';
     context.$('salesPreview').classList.add('hidden');
     context.state = context.normalizePlannerState(saved || context.initial());
+    // LIVE inventory must come from the shared snapshot, never bundled or stale local data.
+    if (mode === 'live' && !context.state.sourceDirty.inventory) {
+      context.state.inventory = {};
+      context.state.myobFactorBatchId = '';
+      context.state.myobImportedAt = '';
+      context.state.meta.myob = '尚未取得共享 MYOB 快照';
+    }
     context.hydrateSales(context.state.salesV1 || null);
     context.dirtyDrafts = new Set(context.state.unsavedDrafts || []);
     context.catalogRemote = {
@@ -215,7 +222,7 @@ export function register(context) {
       const inv = context.state.inventory?.[i.code],
         units = context.state.unitMetadata?.[i.code] || context.SEED.inventory?.[i.code] || {};
       i.stock = inv ? inv.stock : null;
-      i.custom = context.state.myobFactorBatchId ? String(inv?.custom ?? '') : inv?.custom || units.custom || i.custom || '';
+      i.custom = context.trackerFeed?.mode === 'live' || context.state.myobFactorBatchId ? String(inv?.custom ?? '') : inv?.custom || units.custom || i.custom || '';
       if (!i.barcode && (inv?.barcode || units.barcode)) i.barcode = String(inv?.barcode || units.barcode);
       // 舊訂貨商品庫僅是設定，不能覆寫新來源的名稱／條碼／分類，也不能新增商品。
       const settings = context.state.catalog?.[i.code] || {};
