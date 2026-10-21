@@ -51,24 +51,9 @@ export function register(context) {
   };
   context.parseMYOBFactor = parseMYOBFactor;
   context.factorInfo = function factorInfo(item) {
-    const batch = String(context.state.myobFactorBatchId || '');
-    const override = context.state.overrides[item.code] || {};
-    const manual = Number(override.factor),
-      hasManual = Number.isFinite(manual) && manual > 0;
-    const raw = batch ? String(context.state.inventory?.[item.code]?.custom ?? '').trim() : String(item.custom || '').trim();
-    if (hasManual && (!batch || String(override.factorBatch || '') === batch)) return {
-      value: manual,
-      source: '手動暫時覆蓋',
-      raw,
-      updatedAt: context.state.myobImportedAt || ''
-    };
-    const auto = context.parseMYOBFactor(raw);
-    return {
-      value: auto,
-      source: auto !== null ? batch ? 'MYOB' : '舊單位資料' : '待確認',
-      raw,
-      updatedAt: context.state.myobImportedAt || ''
-    };
+    const raw = String(context.state.inventory?.[item.code]?.custom || '').trim();
+    const value = context.parseMYOBFactor(raw);
+    return {value, raw, source: value === null ? '缺少 MYOB 採購單位' : 'MYOB', updatedAt: context.state.myobImportedAt || ''};
   };
   context.factor = function factor(item) {
     return context.factorInfo(item).value;
