@@ -214,6 +214,8 @@ export function initialize(context) {
         context.renderPlan();
         return;
       }
+      const existingItem = context.state.items.find(i => i.code === t.dataset.shelf);
+      if (context.shelfLife(existingItem) !== null) return context.renderPlan(true);
       const code = t.dataset.shelf,
         raw = t.value.trim(),
         months = raw === '' ? null : Number(raw);
@@ -232,19 +234,19 @@ export function initialize(context) {
       });
       return;
     }
-    if (t.dataset.safety) {
-      const code = t.dataset.safety;
+    if (t.dataset.maxStock) {
+      const code = t.dataset.maxStock;
       const raw = t.value.trim();
       const n = raw === '' ? null : Number(raw);
       if (n !== null && (!Number.isInteger(n) || n < 0)) {
-        alert('安全庫存必須是非負整數');
+        alert('最高庫存必須是非負整數');
         context.renderPlan();
         return;
       }
-      if (context.val(context.state.items.find(i => i.code === code), 'safety') !== n) context.saveCatalogPatch({
+      if (context.val(context.state.items.find(i => i.code === code), 'maxStock') !== n) context.saveCatalogPatch({
         overrides: {
           [code]: {
-            safety: n
+            maxStock: n
           }
         }
       });
