@@ -62,6 +62,7 @@ export function register(context) {
       },
       inventory: {
         rows: structuredClone(context.state.inventory || {}),
+        resetAt: context.state.inventoryResetAt || '',
         factorBatchId: context.state.myobFactorBatchId || '',
         updatedAt: context.state.myobImportedAt || '',
         label: context.state.meta.myob || ''
@@ -101,6 +102,7 @@ export function register(context) {
     };
     context.state.inventory = structuredClone(d.inventory?.rows || {});
     context.state.myobFactorBatchId = d.inventory?.factorBatchId || '';
+    context.state.inventoryResetAt = d.inventory?.resetAt || ''; 
     context.state.myobImportedAt = d.inventory?.updatedAt || '';
     context.state.meta.myob = d.inventory?.label || '';
     context.state.pis = structuredClone(d.sources?.pis || []);
