@@ -53,8 +53,8 @@ export function register(context) {
         return c.monthly;
       case 'pi':
         return c.available;
-      case 'safety':
-        return c.safety;
+      case 'maxStock':
+        return c.maxStock;
       case 'shelf':
         return context.shelfLife(i);
       case 'suggest':
@@ -156,7 +156,7 @@ export function initialize(context) {
     purchase: '採購庫存',
     monthly: '月銷',
     pi: '在途可用庫存',
-    safety: '安全庫存',
+    maxStock: '最高庫存',
     shelf: '保存期限（月）',
     suggest: '建議',
     qty: '本櫃訂量'
