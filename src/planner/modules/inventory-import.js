@@ -120,6 +120,7 @@ export function register(context) {
   context.previewPastedInventory = function previewPastedInventory(text) {
     if (!['admin', 'editor'].includes(context.plannerRole)) throw Error('Viewer 無法更新 MYOB 資料');
     if (!context.trackerFeed || !context.catalogReady) throw Error('商品主檔與共享設定尚未同步完成，請稍候');
+    text = String(text || '').replace(/\r\n?/g, '\n');
     const result = context.parseInventoryPaste(text),
       matched = context.state.items.filter(i => Object.hasOwn(result.rows, i.code)).length;
     context.pendingInventoryImport = {
@@ -158,7 +159,8 @@ export function register(context) {
     context.sourceSave('inventory', {
       rows,
       label: context.state.meta.myob,
-      factorBatchId: context.state.myobFactorBatchId
+      factorBatchId: context.state.myobFactorBatchId,
+      resetAt: context.state.inventoryResetAt || ''
     });
     context.renderAll();
     context.$('inventoryPasteResult').textContent = `已套用本機快照：${Object.keys(rows).length} 品號，配對 ${matched}，未配對 ${missing}。${result.hasUnitColumn ? '本次 MYOB Factor 已生效，舊手動設定已失效。' : '只更新庫存，未改 Factor。'}${context.trackerFeed.mode === 'test' ? ' TEST 模式僅本機保存。' : ' 正在儲存至 Firebase，請確認共享同步狀態。'}`;
@@ -167,6 +169,18 @@ export function register(context) {
 }
 export function initialize(context) {
   context.pendingInventoryImport = null;
+  context.$('resetMYOBStock').onclick = () => {
+    if (context.plannerRole !== 'admin' || !context.catalogReady) return alert('僅 Admin 可重設庫存');
+    if (!confirm('清空全部 MYOB 庫存數值？採購單位保留，庫存將顯示未取得。請先匯出完整備份。')) return;
+    const rows = Object.fromEntries(Object.entries(context.state.inventory || {}).map(([code,row]) => [code,{...row,stock:null}]));
+    context.state.inventory = rows;
+    context.state.inventoryResetAt = new Date().toISOString();
+    context.state.myobImportedAt = context.state.inventoryResetAt;
+    context.state.meta.myob = 'MYOB 庫存已清空，等待重新匯入';
+    context.pendingInventoryImport = null;
+    context.sourceSave('inventory',{rows,label:context.state.meta.myob,factorBatchId:context.state.myobFactorBatchId || '',resetAt:context.state.inventoryResetAt});
+    context.rebuildCatalog();context.renderAll();
+  };
   context.$('importMYOB').onclick = () => {
     context.pendingInventoryImport = null;
     context.$('inventoryPaste').value = '';
@@ -185,7 +199,7 @@ export function initialize(context) {
     e.preventDefault();
     context.$('inventoryPaste').value = text;
     try {
-      context.previewPastedInventory(text);
+      context.previewPastedInventory(context.$('inventoryPaste').value);
     } catch (err) {
       context.pendingInventoryImport = null;
       context.$('applyInventoryPaste').disabled = true;
