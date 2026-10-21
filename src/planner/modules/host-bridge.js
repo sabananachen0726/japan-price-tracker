@@ -206,11 +206,11 @@ export function initialize(context) {
       context.applyCatalogSnapshot(m.data);
       return;
     }
-    if (m.type === 'KAISI_INVENTORY_SNAPSHOT' && m.data?.rows && !context.state.sourceDirty.inventory) {
-      context.state.inventory = m.data.rows;
+    if (m.type === 'KAISI_INVENTORY_SNAPSHOT' && m.data && !context.state.sourceDirty.inventory) {
+      context.state.inventory = m.data.rows || {};
       context.state.myobFactorBatchId = String(m.data.factorBatchId || '');
       context.state.myobImportedAt = String(m.data.updatedAt || '');
-      context.state.meta.myob = m.data.label || '共享 MYOB';
+      context.state.meta.myob = m.data.label || (Object.keys(context.state.inventory).length ? '共享 MYOB' : '尚未匯入共享 MYOB 快照');
       context.rebuildCatalog();
       context.renderAll();
       return;
