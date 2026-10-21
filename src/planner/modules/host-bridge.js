@@ -2,6 +2,9 @@
 export const definition = {
   "id": "host-bridge",
   "owns": [{
+    "name": "people",
+    "kind": "let"
+  }, {
     "name": "refreshRetryStatus",
     "kind": "function"
   }, {
@@ -24,7 +27,7 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect"],
-  "writes": ["catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
+  "writes": ["people", "catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
 };
 export function register(context) {
   context.refreshRetryStatus = function refreshRetryStatus() {
@@ -58,6 +61,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  context.people = {};
   context.deferredDrafts = {};
   context.customerSourceReady = false;
   context.events.onMessage(event => {
@@ -151,6 +155,7 @@ export function initialize(context) {
       return;
     }
     if (m.type === 'KAISI_ORDER_DRAFTS') {
+      context.people = m.people || {};
       context.deferredDrafts = m.drafts || {};
       if (context.trackerFeed?.mode === 'live') {
         for (const code of Object.keys(context.state.drafts)) if (code !== '__未命名草稿__' && !context.dirtyDrafts.has(code) && !Object.hasOwn(context.deferredDrafts, code)) delete context.state.drafts[code];
