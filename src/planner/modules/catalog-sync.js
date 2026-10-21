@@ -161,7 +161,7 @@ export function register(context) {
         custom: '',
         barcode: '',
         monthly: null,
-        safety: null,
+        maxStock: null,
         imgUrl: '',
         sources: [],
         history: [],
@@ -173,7 +173,7 @@ export function register(context) {
       if (['dry', 'frozen'].includes(record?.kind)) existing.kind = record.kind;
       if (!existing.primarySource || context.ELIGIBLE_SOURCE_ORDER.indexOf(source) >= context.ELIGIBLE_SOURCE_ORDER.indexOf(existing.primarySource)) existing.primarySource = source;
       if (source === '整理 Excel') {
-        for (const field of ['monthly', 'safety', 'custom']) if (existing[field] == null || existing[field] === '') existing[field] = record?.[field] ?? existing[field];
+        for (const field of ['monthly', 'maxStock', 'custom']) if (existing[field] == null || existing[field] === '') existing[field] = record?.[field] ?? existing[field];
       }
       map.set(key, existing);
       return existing;
@@ -246,7 +246,7 @@ export function register(context) {
   };
   context.discoverCatalog = function discoverCatalog() {
     // V4.7.8: 禁止把舊資料／舊快取自動寫回 Firebase 訂貨商品庫。
-    // 僅使用者手動修改 Active、Safety Stock、Factor 等才儲存該變更。
+    // 僅使用者手動修改 Active、Max Stock、Factor 等才儲存該變更。
   };
   context.mergePatch = function mergePatch(a, b) {
     for (const section of ['items', 'overrides']) {
