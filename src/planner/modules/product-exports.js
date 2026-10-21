@@ -34,7 +34,7 @@ export function register(context) {
       '狀態': context.sourceStatus(i),
       '優先採用來源': i.primarySource || '',
       '全部來源': i.sources.join('、'),
-      '安全庫存': context.val(i, 'safety') ?? '',
+      '最高庫存': context.val(i, 'maxStock') ?? '',
       '月銷': context.val(i, 'monthly') ?? '',
       'Monthly Source': context.monthlyInfo(i).manual ? 'Manual' : 'Auto'
     }));
@@ -50,7 +50,7 @@ export function register(context) {
     }
     const book = XLSX.utils.book_new();
     for (const [name, rows] of sheets) {
-      const keys = ['Item Code', 'Barcode / JAN', 'Product Name', 'Shelf Life (Months)', '貨別', '狀態', '優先採用來源', '全部來源', '安全庫存', '月銷', 'Monthly Source'];
+      const keys = ['Item Code', 'Barcode / JAN', 'Product Name', 'Shelf Life (Months)', '貨別', '狀態', '優先採用來源', '全部來源', '最高庫存', '月銷', 'Monthly Source'];
       const safe = rows.map(row => Object.fromEntries(keys.map(k => [k, k === 'Barcode / JAN' ? String(row[k] || '') : typeof row[k] === 'string' ? context.safeExcelText(row[k]) : row[k]])));
       const sheet = XLSX.utils.json_to_sheet(safe, {
         header: keys
