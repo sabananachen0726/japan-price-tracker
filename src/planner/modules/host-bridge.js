@@ -206,7 +206,12 @@ export function initialize(context) {
       context.applyCatalogSnapshot(m.data);
       return;
     }
-    if (m.type === 'KAISI_INVENTORY_SNAPSHOT' && m.data && !context.state.sourceDirty.inventory) {
+    if (m.type === 'KAISI_INVENTORY_SNAPSHOT' && m.data) {
+      if (m.data.resetAt && m.data.resetAt !== context.state.inventoryResetAt) {
+        delete context.state.sourceDirty.inventory;
+        context.state.inventoryResetAt = m.data.resetAt;
+      }
+      if (context.state.sourceDirty.inventory) return;
       context.state.inventory = m.data.rows || {};
       context.state.myobFactorBatchId = String(m.data.factorBatchId || '');
       context.state.myobImportedAt = String(m.data.updatedAt || '');
