@@ -36,11 +36,11 @@ export function register(context) {
   context.salesMonthCells = function salesMonthCells(item) {
     const m = context.monthlyInfo(item);
     return Array.from({
-      length: 6
+      length: 4
     }, (_, i) => {
-      const covered = context.salesSummary?.coverage[i],
-        net = m.row?.net[i] || 0,
-        gross = m.row?.gross[i] || 0,
+      const covered = context.salesSummary?.coverage[i + 2],
+        net = m.row?.net[i + 2] || 0,
+        gross = m.row?.gross[i + 2] || 0,
         value = covered && m.f ? net / m.f : null;
       const title = !covered ? '該月份無來源資料' : !m.f ? '缺少 Factor，無法換算' : `原始淨銷量 ${context.fmt(net)} ÷ Factor ${context.fmt(m.f)}${gross > 0 ? '；有出貨，計入平均' : '；無正數出貨，排除月份（負數仍扣回總量）'}`;
       return `<td class="sales-month ${gross > 0 ? '' : 'sales-zero'} ${net < 0 ? 'sales-negative' : ''}" title="${context.esc(title)}">${value === null ? '—' : context.fmt(value)}${covered && gross <= 0 ? '<span class="sales-source">排除月份</span>' : ''}</td>`;
@@ -50,11 +50,15 @@ export function register(context) {
     const row = context.$('plan').querySelector('.product-table thead tr');
     row.querySelectorAll('.sales-month').forEach(el => el.remove());
     const months = context.salesSummary?.months || context.SalesCore.range(context.SalesCore.monthShift(context.today().slice(0, 7), -1));
-    for (const m of months) {
+    const anchor = row.querySelector('[data-column="pi"]');
+    let previous = anchor;
+    for (const m of months.slice(-4)) {
       const th = document.createElement('th');
       th.className = 'sales-month';
-      th.textContent = m + '\n銷量';
-      row.appendChild(th);
+      th.textContent = m.slice(5) + '月';
+      th.title = m + ' 銷量（箱）';
+      previous.after(th);
+      previous = th;
     }
   };
   context.refreshSalesUI = function refreshSalesUI() {
