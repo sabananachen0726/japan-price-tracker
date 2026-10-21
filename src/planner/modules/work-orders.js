@@ -106,6 +106,7 @@ export function register(context) {
     context.$('deleteWork').hidden = context.plannerRole !== 'admin' || !Object.hasOwn(context.state.drafts, context.currentKey()) || context.currentKey().startsWith('__');
     context.renderNotes();
     context.renderCatalogSources();
+    context.$('resetMYOBStock').hidden = context.plannerRole !== 'admin';
     const inventoryStatus = context.$('inventorySnapshotStatus');
     if (inventoryStatus) {
       const count = Object.keys(context.state.inventory || {}).length;
