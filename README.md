@@ -101,3 +101,5 @@ npm run test:e2e
 UI workflow update: the approved HTML/CSS snapshot hashes were refreshed for the shared-data status, submitted-proposal entry and single-scroll container editor. E2E UI-01 through UI-09 cover typing, local/shared deletion, permission denial, failed deletion, navigation and repeated scroll restoration.
 
 Next UI update: note-only items are retained in submitted proposals and Excel; “只看已填寫” includes quantity or notes. Default product order is stable; adopting a suggestion does not rebuild the table. Container details use summaries, collapsible sections, a pinned host toolbar and inline save/retry feedback. Saving keeps the detail page open. UX-01 through UX-07 cover these flows.
+
+2026-10-21 procurement update: four optional sales columns (six-month averages unchanged), a separate maxStock in sales units, nearest whole-box suggestions capped by that limit, MYOB-only unit conversion, projected sales-unit stock, import-overridable shelf locks, Admin unread inactive notifications, editable display names for old/new comments, and per-product PI search rows. Legacy safety values are not reused as limits.
