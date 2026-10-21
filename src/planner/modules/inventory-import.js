@@ -139,7 +139,7 @@ export function register(context) {
     if (!['admin', 'editor'].includes(context.plannerRole) || !context.trackerFeed || !context.catalogReady) return alert('權限或連線狀態已改變，請重新預覽');
     const result = pending.result;
     const explanation = result.hasUnitColumn ? '本次會以最新 Custom List 3 重算 Factor；之前的手動 Factor 暫時覆蓋將失效。' : '本次為兩欄模式，只更新 On Hand，不更動 Factor。';
-    if (!confirm(`確定將 ${Object.keys(result.rows).length} 筆 MYOB 資料設為最新快照？\n\n${explanation}\n未列出的品號庫存將變成待確認；不會更改月銷／安全庫存。`)) return;
+    if (!confirm(`確定將 ${Object.keys(result.rows).length} 筆 MYOB 資料設為最新快照？\n\n${explanation}\n未列出的品號庫存將變成待確認；不會更改月銷／最高庫存。`)) return;
     const rows = result.rows;
     // For stock-only legacy pastes, keep the previously known unit but do not create
     // a new Factor batch. A complete Custom List 3 paste is authoritative.
