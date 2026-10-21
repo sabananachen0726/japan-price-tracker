@@ -106,6 +106,11 @@ export function register(context) {
     context.$('deleteWork').hidden = context.plannerRole !== 'admin' || !Object.hasOwn(context.state.drafts, context.currentKey()) || context.currentKey().startsWith('__');
     context.renderNotes();
     context.renderCatalogSources();
+    const inventoryStatus = context.$('inventorySnapshotStatus');
+    if (inventoryStatus) {
+      const count = Object.keys(context.state.inventory || {}).length;
+      inventoryStatus.textContent = count ? `${context.state.meta.myob || 'MYOB 快照'} · ${count} 個品號${context.state.myobImportedAt ? ' · 更新於 ' + new Date(context.state.myobImportedAt).toLocaleString('zh-TW', {timeZone:'Australia/Brisbane'}) : ''}${context.state.sourceDirty.inventory ? ' · 尚未同步雲端' : ''}` : '尚未取得共享 MYOB 快照。庫存顯示「未取得」，不會使用內附舊資料。';
+    }
     context.renderPending();
     context.refreshRetryStatus();
     context.$('sourceBadge').textContent = context.trackerFeed ? `商品庫 ${context.state.items.length} 款 · ${context.trackerFeed.mode.toUpperCase()} · ${context.trackerFeed.mode === 'test' ? '本機客訂' : context.customerSourceReady ? '客訂已讀取' : '客訂待連線'}` : '等待資料連動';
