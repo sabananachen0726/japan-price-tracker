@@ -206,6 +206,9 @@ export function initialize(context) {
       } else if (action === 'inventory') {
         ref = context.INVENTORY_REF;
         merge = false;
+        if (payload.resetAt && !Number.isFinite(Date.parse(payload.resetAt))) throw Error('庫存重設時間無效');
+        if (payload.resetAt && payload.resetAt !== context.inventoryData?.resetAt && !context.isAdmin()) throw Error('僅 Admin 可重設庫存');
+        if (context.inventoryData?.resetAt && (!payload.resetAt || payload.resetAt < context.inventoryData.resetAt)) throw Error('庫存已重設，請重新載入後再匯入，避免舊資料覆蓋');
         const rows = {};
         for (const [code, r] of Object.entries(payload.rows || {})) {
           if (!code || code.length > 80 || ['__proto__', 'constructor', 'prototype'].includes(code.toLowerCase())) throw Error('MYOB 品號無效');
@@ -220,7 +223,8 @@ export function initialize(context) {
         data = {
           rows,
           label: String(payload.label || ''),
-          factorBatchId: String(payload.factorBatchId || '').slice(0, 100)
+          factorBatchId: String(payload.factorBatchId || '').slice(0, 100),
+          resetAt: String(payload.resetAt || '')
         };
       } else if (action === 'sales') {
         if (!context.isAdmin()) throw Error('只有 Admin 可匯入銷售資料');
