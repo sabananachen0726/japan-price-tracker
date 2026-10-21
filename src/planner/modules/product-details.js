@@ -137,7 +137,7 @@ export function register(context) {
     let i = context.state.items.find(x => x.code === code),
       c = context.calc(i);
     context.$('dialogTitle').textContent = `${code} · 建議量拆解`;
-    context.$('dialogBody').innerHTML = `<p>${context.esc(i.name)}</p><table style="min-width:0"><tbody><tr><td>MYOB 庫存</td><td>${context.fmt(i.stock)} ÷ ${context.fmt(c.f)} = ${context.fmt(c.stock)} 採購單位</td></tr><tr><td>到倉前需求</td><td>${context.fmt(c.monthly)} × ${context.fmt(c.months)} = ${context.fmt(c.before)}</td></tr><tr><td>到倉後備貨</td><td>${context.fmt(c.monthly)} × ${context.fmt(+context.$('coverage').value || 0)} = ${context.fmt(c.after)}</td></tr><tr><td>安全庫存</td><td>${context.fmt(c.safety)}</td></tr><tr><td>在途 PI 來貨</td><td>${context.fmt(c.pi.sum)} 箱</td></tr><tr><td>尚未履行客訂</td><td>− ${context.fmt(c.ord.total)} 箱 (${c.ord.count} 筆)</td></tr><tr><td>在途可用庫存</td><td>${context.fmt(c.available)} 箱（已扣客訂一次）</td></tr><tr><td>建議整箱／捆</td><td><strong>${context.fmt(c.suggest)}</strong></td></tr></tbody></table><p class="warn">${context.esc(c.issues.join('、') || '資料已齊全')}。缺少安全庫存時，暫以 0 試算；請設定後再決定訂量。</p>`;
+    context.$('dialogBody').innerHTML = '<p>' + context.esc(i.name) + '</p><p>建議箱數＝到貨前後需求－現有庫存－在途可用庫存，取最接近的整箱。</p><p>若有最高庫存，建議箱數不會超過上限。</p><p>預計到倉庫存＝MYOB 庫存＋（在途可用箱數＋本櫃訂量）× 每箱銷售單位。</p><p>目前預計：' + (c.projected === null ? '資料不足，無法計算' : context.fmt(c.projected)) + '；最高庫存：' + context.fmt(c.maxStock) + '。</p><p class="warn">' + context.esc(c.issues.join('、')) + '</p>';
     context.openPlannerDialog(context.$('infoDialog'));
   };
 }
