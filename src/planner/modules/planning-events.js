@@ -131,7 +131,7 @@ export function initialize(context) {
       context.persist();
       const input = [...context.$('productRows').querySelectorAll('[data-qty]')].find(el => el.dataset.qty === i.code);
       if (input) input.value = q;
-      context.updateDraftTotal();
+      context.updateDraftTotal(i.code);
     }
   });
   context.$('productRows').addEventListener('mouseover', e => {
@@ -198,7 +198,7 @@ export function initialize(context) {
         d.rows[t.dataset.qty] = n;
         context.state.drafts[context.currentKey()] = d;
         context.stageLocalDraft();
-        context.updateDraftTotal();
+        context.updateDraftTotal(t.dataset.qty);
       } else context.autosaveLabel('⚠ 請輸入非負整數後才會暫存這個數量', 'warn');
     }
   });
@@ -266,6 +266,6 @@ export function initialize(context) {
     context.stageLocalDraft();
     context.flushRecovery();
     context.persist();
-    context.updateDraftTotal();
+    context.updateDraftTotal(t.dataset.qty);
   });
 }
