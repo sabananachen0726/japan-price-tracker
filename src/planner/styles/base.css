@@ -107,15 +107,15 @@ main{padding:10px 12px 32px} .tabs{margin:0 0 12px;gap:8px} .tabs button{padding
 #plan .product-table th,#plan .product-table td{min-width:0;overflow-wrap:anywhere;vertical-align:middle;}
 #plan .product-table th{font-size:12px;padding:10px 4px;line-height:1.3;white-space:normal;}
 #plan .product-table td{font-size:14px;padding:9px 5px;}
-#plan .product-table th:nth-child(1){width:28%}
-#plan .product-table th:nth-child(2){width:7%}
-#plan .product-table th:nth-child(3){width:8%}
-#plan .product-table th:nth-child(4){width:7%}
-#plan .product-table th:nth-child(5){width:9%}
-#plan .product-table th:nth-child(6){width:9%}
-#plan .product-table th:nth-child(7){width:8%}
-#plan .product-table th:nth-child(8){width:8%}
-#plan .product-table th:nth-child(9){width:16%}
+
+
+
+
+
+
+
+
+
 #plan .product-table .name{min-width:0;max-width:none;}
 #plan .product-table .product-flex{min-width:0;gap:9px;align-items:center;}
 #plan .product-table .product-flex > div:last-child{min-width:0;overflow-wrap:anywhere;}
@@ -205,16 +205,16 @@ main{padding:10px 12px 32px} .tabs{margin:0 0 12px;gap:8px} .tabs button{padding
 #plan .product-table th,#plan .product-table td{padding:7px 4px;vertical-align:middle;}
 #plan .product-table th{font-size:12px;line-height:1.3;}
 #plan .product-table td{font-size:14px;}
-#plan .product-table th:nth-child(1){width:27%}
-#plan .product-table th:nth-child(2){width:6.5%}
-#plan .product-table th:nth-child(3){width:7%}
-#plan .product-table th:nth-child(4){width:7%}
-#plan .product-table th:nth-child(5){width:8%}
-#plan .product-table th:nth-child(6){width:8%}
-#plan .product-table th:nth-child(7){width:8%}
-#plan .product-table th:nth-child(8){width:8%}
-#plan .product-table th:nth-child(9){width:7%}
-#plan .product-table th:nth-child(10){width:13.5%}
+
+
+
+
+
+
+
+
+
+
 #plan .product-table .photo-wrap{width:65px!important;height:80px!important;min-width:65px!important;flex:0 0 65px!important;}
 #plan .product-table .product-flex{gap:9px;}
 #plan .product-table .code{font-size:14px;}
@@ -297,15 +297,15 @@ body.hub-import-only #imports>.panel:first-child{padding-top:0;}
 /* V4.8.5: one combined transit column; a native parent-pinned top row replaces moving iframe transforms. */
 #plan .product-table thead{transform:none!important;will-change:auto!important;position:static!important;}
 #plan .product-table thead th{position:static!important;box-shadow:none!important;}
-#plan .product-table th:nth-child(1){width:28%}
-#plan .product-table th:nth-child(2){width:7%}
-#plan .product-table th:nth-child(3){width:8%}
-#plan .product-table th:nth-child(4){width:7%}
-#plan .product-table th:nth-child(5){width:12%}
-#plan .product-table th:nth-child(6){width:8%}
-#plan .product-table th:nth-child(7){width:8%}
-#plan .product-table th:nth-child(8){width:8%}
-#plan .product-table th:nth-child(9){width:14%}
+
+
+
+
+
+
+
+
+
 #plan .product-table .pi-link{font-size:13px;white-space:normal;overflow-wrap:normal}
 .pi-hover-tip{width:min(430px,calc(100vw - 20px));max-height:min(75vh,650px);}
 .pi-hover-tip table th{white-space:nowrap;}
@@ -339,15 +339,15 @@ body.hub-import-only #imports>.panel:first-child{padding-top:0;}
 #plan.sales-expanded .product-table .sales-month{display:table-cell;width:94px!important;min-width:94px;text-align:right;white-space:normal}
 #plan.sales-expanded .product-scroll table.product-table{min-width:2050px!important;table-layout:fixed}
 #plan .scroll.product-scroll{overflow-x:auto!important;overflow-y:visible!important;max-height:none!important}
-#plan.sales-expanded .product-table th:nth-child(1){width:360px}
-#plan.sales-expanded .product-table th:nth-child(2){width:105px}
-#plan.sales-expanded .product-table th:nth-child(3){width:105px}
-#plan.sales-expanded .product-table th:nth-child(4){width:135px}
-#plan.sales-expanded .product-table th:nth-child(5){width:140px}
-#plan.sales-expanded .product-table th:nth-child(6){width:105px}
-#plan.sales-expanded .product-table th:nth-child(7){width:110px}
-#plan.sales-expanded .product-table th:nth-child(8){width:100px}
-#plan.sales-expanded .product-table th:nth-child(9){width:180px}
+
+
+
+
+
+
+
+
+
 #plan .sales-zero{color:#7b8797;background:#f2f4f7}
 #plan .sales-negative{color:#a12626}
 #salesPlanSummary{font-size:12px;color:#52677d;white-space:normal;margin:7px 0}
@@ -381,3 +381,10 @@ body.product-management #settings>.panel:first-of-type{margin-bottom:12px}
 button{border-radius:7px}button:focus-visible,summary:focus-visible{outline:2px solid #83aae2;outline-offset:2px}#reviewWritten[aria-pressed="true"]{background:#e9f1fd;border-color:#7196ca;color:#174b91}#reviewWritten{white-space:nowrap}#autosaveStatus{min-height:32px}#containerCards [data-delete]{margin-left:22px}#containerCards .panel{padding:14px 10px;border-bottom:1px solid var(--line)}
 
 button.primary,.preset-button{background:#255ba6;border-color:#255ba6;color:white}.tag{border-radius:6px}#autosaveStatus.ok{animation:saved-feedback 4.5s ease-out}@keyframes saved-feedback{from{color:#187359}to{color:#516d84}}
+
+/* Compact procurement grid; optional sales block has a quiet grey background. */
+#plan .product-table{table-layout:fixed!important;display:table!important}#plan:not(.sales-expanded) .product-table{min-width:1280px!important}#plan.sales-expanded .product-table{min-width:1510px!important}#plan .product-table thead{display:table-header-group!important}#plan .product-table tbody{display:table-row-group!important}#plan .product-table tr{display:table-row!important}#plan .product-table td{display:table-cell!important;grid-column:auto!important}#plan .product-table td:before{display:none!important}#plan .product-table th,#plan .product-table td{padding:6px 4px!important}#plan .product-table th{font-size:11px!important;line-height:1.25}#plan .product-table th[data-column=product]{width:240px!important}#plan .product-table th[data-column=myob],#plan .product-table th[data-column=purchase]{width:85px!important}#plan .product-table th[data-column=unit]{width:105px!important}#plan .product-table th[data-column=monthly]{width:95px!important}#plan .product-table th[data-column=pi]{width:100px!important}#plan .product-table th[data-column=maxStock],#plan .product-table th[data-column=shelf]{width:85px!important}#plan .product-table th[data-column=suggest]{width:95px!important}#plan .product-table th[data-column=qty]{width:125px!important}#plan .product-table th[data-column=projected]{width:130px!important}#plan.sales-expanded .product-table .sales-month{display:table-cell!important;width:58px!important;min-width:58px!important;text-align:right;background:#f0f1f3!important;border-left:1px solid #e5e7eb;font-size:21px!important;font-weight:650;font-variant-numeric:tabular-nums}#plan.sales-expanded .product-table th.sales-month{font-size:12px!important;text-align:center}#plan .sales-month .sales-source{display:none}#plan .product-table .purchase-unit{font-size:12px!important;color:#526174;overflow-wrap:anywhere}#plan .product-table td:not(:first-child){font-size:20px!important}#plan .product-table .maxStock-field{width:76px;min-width:0;padding:6px 2px;text-align:center}#plan .product-table .missing-data{display:block;font-size:12px;color:#7b8797;line-height:1.4}.over-limit{display:block;font-size:12px;color:#9a570a;background:#fff4df;padding:3px 4px;border-radius:4px;line-height:1.4}#plan .product-table input:disabled{background:#f5f6f8;color:#465368;border-color:transparent;opacity:1}#plan .product-table .photo-wrap{width:56px!important;height:68px!important;min-width:56px!important;flex-basis:56px!important}.sales-toggle{background:#f3f4f6;padding:6px 8px;border-radius:6px;font-size:12px}#noteSection[open]>summary{cursor:default}
+
+#plan .product-table tbody tr td:nth-child(n){display:table-cell!important}#plan:not(.sales-expanded) .product-table tbody tr td.sales-month{display:none!important}#plan .product-table td.purchase-unit{font-size:12px!important;line-height:1.3;word-break:normal}#plan.sales-expanded .product-table tbody tr td.sales-month{display:table-cell!important}
+
+#plan.sales-expanded .product-scroll table.product-table{min-width:1462px!important;width:100%!important}#plan:not(.sales-expanded) .product-scroll table.product-table{min-width:1280px!important;width:100%!important}
