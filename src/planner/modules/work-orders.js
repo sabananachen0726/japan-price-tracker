@@ -20,7 +20,7 @@ export const definition = {
     "name": "renderAll",
     "kind": "function"
   }],
-  "imports": ["$", "allPis", "autosaveLabel", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed"],
+  "imports": ["$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed"],
   "writes": ["csvCell", "download", "exportCsv", "renderAll", "renderContainers", "saveDraft"]
 };
 export function register(context) {
@@ -72,6 +72,8 @@ export function register(context) {
       alert('請填寫貨櫃號碼');
       return false;
     }
+    const over = context.state.items.filter(i => Number(context.draft().rows?.[i.code]) > 0).map(i => ({i,c:context.calc(i)})).filter(x => x.c.excess > 0);
+    if (over.length && !confirm(over.map(({i,c}) => i.code + '：預計庫存 ' + context.fmt(c.projected) + '，超過上限 ' + context.fmt(c.maxStock) + '，多出 ' + context.fmt(c.excess)).join('\n') + '\n仍要提交？')) return false;
     let d = context.draft();
     d.kind = context.$('kind').value;
     d.arrival = context.$('arrival').value;
