@@ -35,7 +35,6 @@ export function register(context) {
     if (!context.state.inventory[i.code]) a.push('MYOB 未配對');
     if (!context.factor(i)) a.push('換算待確認');
     if (context.val(i, 'monthly') == null) a.push('月銷待設定');
-    if (context.val(i, 'safety') == null) a.push('安全庫存待設定');
     if (!context.photo(i)) a.push('缺少圖片');
     return a;
   };
@@ -57,10 +56,8 @@ export function register(context) {
       status = context.$('manageStatus').value,
       list = context.state.items.filter(i => (kind === 'all' || i.kind === kind) && (status === 'all' || i.availability === status) && (!q || `${i.code} ${i.name} ${i.barcode}`.toLowerCase().includes(q)));
     context.$('manageShown').textContent = `顯示 ${list.length} / ${context.state.items.length} 筆`;
-    context.$('factorAdminSummary').textContent = `Factor 來源僅在資料管理顯示｜最近完整 MYOB：${context.state.myobFactorBatchId ? context.state.myobImportedAt ? new Date(context.state.myobImportedAt).toLocaleString('zh-TW', {
-      timeZone: 'Australia/Brisbane'
-    }) : '已匯入' : '尚無本版本完整 MYOB 匯入'}｜最新 MYOB 單位優先，手動設定到下次完整匯入為止。`;
-    context.$('manageRows').innerHTML = list.map(i => `<tr><td class="name"><b>${i.code.startsWith('__') ? '待補 Item Code' : context.esc(i.code)}</b><br>${context.esc(i.name)}<br><span class="detail">${context.esc(i.barcode || '缺少 Barcode')}</span></td><td>${context.kindSelect(i)}</td><td>${context.statusSelect(i)}</td><td>${context.fmt(i.stock)}<br><span class="detail">${context.esc(i.custom || 'MYOB 未配對')}</span></td><td><input type="number" min="0.001" step="any" data-edit="factor" data-code="${context.esc(i.code)}" value="${context.factor(i) ?? ''}" placeholder="待確認" ${context.plannerRole === 'viewer' ? 'disabled' : ''}><br><span class="detail">${context.esc(context.factorInfo(i).source)}${context.factorInfo(i).source === 'MYOB' ? ' · ' + context.esc(context.factorInfo(i).raw) : ''}</span></td><td>${context.monthlyManagement(i)}</td><td><input type="number" min="0" step="any" data-edit="safety" data-code="${context.esc(i.code)}" value="${context.val(i, 'safety') ?? ''}" placeholder="待設定"></td><td><input type="number" min="1" max="120" step="1" data-edit="shelfLifeMonths" data-code="${context.esc(i.code)}" value="${context.shelfLife(i) ?? ''}" placeholder="未設定" ${context.plannerRole === 'viewer' ? 'disabled' : ''}></td><td class="mini warn">${context.esc(context.itemIssues(i).join('、') || '資料完整')}</td></tr>`).join('');
+    context.$('factorAdminSummary').textContent = '採購單位固定使用最新 MYOB 的 Custom List 3。更新請重新匯入 MYOB。';
+    context.$('manageRows').innerHTML = list.map(i => `<tr><td class="name"><b>${i.code.startsWith('__') ? '待補 Item Code' : context.esc(i.code)}</b><br>${context.esc(i.name)}<br><span class="detail">${context.esc(i.barcode || '缺少 Barcode')}</span></td><td>${context.kindSelect(i)}</td><td>${context.statusSelect(i)}</td><td>${context.fmt(i.stock)}<br><span class="detail">${context.esc(i.custom || 'MYOB 未配對')}</span></td><td><input type="number" min="0.001" step="any" data-edit="factor" data-code="${context.esc(i.code)}" value="${context.factor(i) ?? ''}" placeholder="待確認" disabled><br><span class="detail">${context.esc(context.factorInfo(i).source)}${context.factorInfo(i).source === 'MYOB' ? ' · ' + context.esc(context.factorInfo(i).raw) : ''}</span></td><td>${context.monthlyManagement(i)}</td><td><input type="number" min="0" step="any" data-edit="maxStock" data-code="${context.esc(i.code)}" value="${context.val(i, 'maxStock') ?? ''}" placeholder="待設定"></td><td><input type="number" min="1" max="120" step="1" data-edit="shelfLifeMonths" data-code="${context.esc(i.code)}" value="${context.shelfLife(i) ?? ''}" placeholder="未設定" ${context.plannerRole === 'viewer' || context.shelfLife(i) !== null ? 'disabled' : ''}></td><td class="mini warn">${context.esc(context.itemIssues(i).join('、') || '資料完整')}</td></tr>`).join('');
   };
   context.renderPending = function renderPending() {
     const pending = context.state.items.filter(i => context.itemIssues(i).length);
@@ -71,7 +68,7 @@ export function register(context) {
     context.$('pendingShown').textContent = `顯示 ${list.length} / ${pending.length} 筆待補商品`;
     context.$('migrationList').innerHTML = context.migrationConflicts.length ? `<div class="hint"><b>找到 ${context.migrationConflicts.length} 個本機舊設定與共享值不同，兩份都已保留。</b>${context.migrationConflicts.map((c, n) => `<div>${context.esc(c.code)} · ${context.esc({
       monthly: '月銷',
-      safety: '安全庫存',
+      maxStock: '最高庫存',
       factor: '倍率'
     }[c.field] || c.field)}：本機 ${context.fmt(c.local)}／共享 ${context.fmt(c.remote)} <button data-migration="${n}" data-choice="local">採用本機值</button> <button data-migration="${n}" data-choice="remote">採用共享值</button></div>`).join('')}</div>` : '';
     if (context.$('pending').classList.contains('hidden')) return;
@@ -82,7 +79,7 @@ export function register(context) {
       count = s => context.state.items.filter(i => i.sources.includes(s)).length;
     const active = context.state.items.filter(i => i.availability === 'active').length;
     context.$('catalogSummary').textContent = `三來源候選商品 ${n} 款 · Active ${active} · Inactive ${n - active}；來源：商品主檔 ${count('商品主檔')}、Final PI ${count('Final PI')}、整理 Excel ${count('整理 Excel')}（可重疊）`;
-    context.$('sourceInfo').innerHTML = `准入來源只有：① 已整理 Excel（內建 1,266 款）② 已標記 Final 的 PI ③ 商品主檔；優先權：商品主檔 ＞ Final PI ＞ 整理 Excel。<br>舊訂貨表、歷史 Excel 訂貨紀錄、非 Final PI、MYOB 庫存、客訂、舊共享商品庫都不新增可訂商品。<br>MYOB：${context.esc(context.state.meta.myob || '提供的庫存快照')}<br>客訂：${context.esc(context.state.meta.orders || '24 小時快取')}<br>安全庫存、月銷與 Inactive：共享商品設定。`;
+    context.$('sourceInfo').innerHTML = `准入來源只有：① 已整理 Excel（內建 1,266 款）② 已標記 Final 的 PI ③ 商品主檔；優先權：商品主檔 ＞ Final PI ＞ 整理 Excel。<br>舊訂貨表、歷史 Excel 訂貨紀錄、非 Final PI、MYOB 庫存、客訂、舊共享商品庫都不新增可訂商品。<br>MYOB：${context.esc(context.state.meta.myob || '提供的庫存快照')}<br>客訂：${context.esc(context.state.meta.orders || '24 小時快取')}<br>最高庫存、月銷與 Inactive：共享商品設定。`;
   };
 }
 export function initialize(context) {
@@ -108,6 +105,8 @@ export function initialize(context) {
         });
       }
       if (t.dataset.edit) {
+        const item = context.state.items.find(i => i.code === code);
+        if (t.dataset.edit === 'factor' || t.dataset.edit === 'shelfLifeMonths' && context.shelfLife(item) !== null) { context.renderManagement(); return; }
         const field = t.dataset.edit,
           v = t.value.trim() === '' ? null : Number(t.value);
         if (v !== null && (!Number.isFinite(v) || v < 0 || field === 'factor' && v === 0 || field === 'shelfLifeMonths' && (!Number.isInteger(v) || v < 1 || v > 120))) {
