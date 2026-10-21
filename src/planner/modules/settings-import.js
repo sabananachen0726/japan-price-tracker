@@ -41,7 +41,7 @@ export function register(context) {
       const idx = names.findIndex(n => aliases.has(n));
       if (idx >= 0) mapping[key] = idx;
     }
-    if (!Object.keys(mapping).length) throw Error('找不到 Monthly Sales／Safety Stock／Factor／Shelf Life (Months)／Status 任一欄位');
+    if (!Object.keys(mapping).length) throw Error('找不到 Monthly Sales／Max Stock／Shelf Life (Months)／Status 任一欄位');
     return raw.slice(heading + 1).map((r, i) => ({
       code: context.norm(r[codeCol]),
       line: heading + 2 + i,
@@ -175,8 +175,7 @@ export function initialize(context) {
   context.UNIFIED_FIELDS = {
     monthly: new Set(['monthlysales', 'monthly', '月銷', '月均銷量']),
     monthlySource: new Set(['monthlysource', '月銷來源']),
-    safety: new Set(['safetystock', 'safety', '安全庫存']),
-    factor: new Set(['factor', '倍率', '換算倍率', '出貨單位／採購單位', '出貨單位採購單位']),
+    maxStock: new Set(['maxstock', 'maximumstock', '最高庫存']),
     shelfLifeMonths: new Set(['shelflifemonths', 'shelflife', '保存期限', '固定保存期限']),
     availability: new Set(['status', 'availability', 'activeinactive', '狀態', '商品狀態', '訂貨狀態', '是否訂購'])
   };
