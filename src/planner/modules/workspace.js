@@ -50,7 +50,7 @@ export function register(context) {
     });
   };
   context.exportSettings412 = function exportSettings412() {
-    const rows = [['Item Code', 'Monthly Sales', 'Monthly Source', 'Safety Stock', 'Factor', 'Shelf Life (Months)', 'Status'], ...context.state.items.filter(i => !i.code.startsWith('__')).map(i => [i.code, context.val(i, 'monthly') ?? '', context.monthlyInfo(i).manual ? 'Manual' : 'Auto', context.val(i, 'safety') ?? '', context.factor(i) ?? '', context.shelfLife(i) ?? '', i.availability === 'active' ? 'Active' : 'Inactive'])];
+    const rows = [['Item Code', 'Monthly Sales', 'Monthly Source', 'Max Stock', '採購單位（MYOB）', 'Shelf Life (Months)', 'Status'], ...context.state.items.filter(i => !i.code.startsWith('__')).map(i => [i.code, context.val(i, 'monthly') ?? '', context.monthlyInfo(i).manual ? 'Manual' : 'Auto', context.val(i, 'maxStock') ?? '', context.state.inventory?.[i.code]?.custom || '', context.shelfLife(i) ?? '', i.availability === 'active' ? 'Active' : 'Inactive'])];
     context.download('Kaisi_Order_Settings.csv', '\ufeff' + rows.map(row => row.map(context.csvCell).join(',')).join('\r\n'), 'text/csv');
   };
   context.snapshotPlanner412 = function snapshotPlanner412() {
@@ -158,7 +158,7 @@ export function initialize(context) {
   // A single export path and a compact advanced source review.
   context.managementHead = document.createElement('div');
   context.managementHead.id = 'managementHeader412';
-  context.managementHead.innerHTML = '<strong>商品訂貨設定</strong><p class="mini muted">狀態、換算、月銷、安全庫存及保存期限集中維護；自動月銷可手動覆蓋或恢復自動。</p><div class="toolbar"><button type="button" id="settingsExport412">匯出商品與來源 Excel</button><button type="button" id="settingsTemplate412">匯出可重新匯入的設定範本</button><button type="button" id="settingsImport412">前往資料匯入中心</button></div>';
+  context.managementHead.innerHTML = '<strong>商品訂貨設定</strong><p class="mini muted">狀態、換算、月銷、最高庫存及保存期限集中維護；自動月銷可手動覆蓋或恢復自動。</p><div class="toolbar"><button type="button" id="settingsExport412">匯出商品與來源 Excel</button><button type="button" id="settingsTemplate412">匯出可重新匯入的設定範本</button><button type="button" id="settingsImport412">前往資料匯入中心</button></div>';
   context.$('settings').prepend(context.managementHead);
   context.$('settingsExport412').onclick = () => context.$('exportSourceAll').click();
   context.$('settingsTemplate412').onclick = context.exportSettings412;
