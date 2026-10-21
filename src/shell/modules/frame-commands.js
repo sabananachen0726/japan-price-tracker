@@ -87,6 +87,7 @@ export function initialize(context) {
       const note = {
         id: crypto.randomUUID(),
         by: context.auth.currentUser.email || '',
+        uid: context.auth.currentUser.uid,
         at: new Date().toISOString(),
         text: noteText
       };
