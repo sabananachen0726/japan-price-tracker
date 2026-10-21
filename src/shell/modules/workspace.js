@@ -58,6 +58,9 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  // Overlapping Bootstrap fade callbacks can leave the active tab's pane hidden.
+  // Switch immediately so rapid navigation and iframe routing stay in agreement.
+  document.querySelectorAll('#protectedApp .tab-pane.fade').forEach(pane => pane.classList.remove('fade'));
   context.events.onMessage(e => {
     if (e.source !== document.getElementById('plannerFrame')?.contentWindow) return;
     const m = e.data || {};
