@@ -15,8 +15,7 @@ export const definition = {
   "writes": ["projectedCell", "renderPlan", "updateDraftTotal"]
 };
 export function register(context) {
-  context.projectedCell = function projectedCell(item) {
-    const c = context.calc(item);
+  context.projectedCell = function projectedCell(item, c = context.calc(item)) {
     return c.projected === null ? '<span class="missing-data">資料不足，無法計算</span>' : '<strong>' + context.fmt(c.projected) + '</strong>' + (c.excess > 0 ? '<span class="over-limit">超過上限 ' + context.fmt(c.excess) + '</span>' : '');
   };
   context.renderPlan = function renderPlan(preserveInputs = false) {
@@ -65,7 +64,7 @@ export function register(context) {
  <td><input class="shelf-field" type="number" min="1" max="120" step="1" data-shelf="${context.esc(i.code)}" value="${context.shelfLife(i) ?? ''}" placeholder="未設" aria-label="${context.esc(i.code)} 固定保存期限（月）" ${context.plannerRole === 'viewer' || context.shelfLife(i) !== null ? 'disabled' : ''}></td>
  <td><strong>${c.suggest === null ? '<span class="missing-data">資料不足，無法計算</span>' : context.fmt(c.suggest)}</strong>${c.issues.length ? `<div><button class="mini" data-explain="${context.esc(i.code)}" title="查看計算原因">計算說明</button></div>` : ''}</td>
  <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${i.code.startsWith('__') || i.kind === 'unknown' ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div></td>
- <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i)}</td></tr>`).join('') || '<tr><td colspan="15" class="empty">沒有符合的商品</td></tr>';
+ <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="15" class="empty">沒有符合的商品</td></tr>';
     const body = context.$('productRows');
     if (preserveInputs) {
       // Blur from the code field may be focusing an existing quantity input.
@@ -92,10 +91,15 @@ export function register(context) {
     context.$('timeline').textContent = `預計到倉 ${arrive} · 從今天起約 ${context.fmt(context.dayDiff(context.today(), arrive) / 30.44)} 個月需求 · 到倉後再備 ${context.$('coverage').value || 0} 個月 · 最高庫存以銷售單位計算，超過時會提醒。`;
     context.updateTableHeader();
   };
-  context.updateDraftTotal = function updateDraftTotal() {
+  context.updateDraftTotal = function updateDraftTotal(changedCode) {
     const values = Object.values(context.draft().rows || {}).filter(x => Number(x) > 0);
     context.$('draftTotal').textContent = `目前 ${values.length} 款 · ${values.reduce((sum, x) => sum + Number(x), 0).toLocaleString()} 箱`;
-    context.$('productRows').querySelectorAll('[data-projected]').forEach(el => {const item = context.state.items.find(i => i.code === el.dataset.projected); if (item) el.innerHTML = context.projectedCell(item);});
+    const items = new Map(context.state.items.map(i => [i.code, i]));
+    context.$('productRows').querySelectorAll('[data-projected]').forEach(el => {
+      if (changedCode && el.dataset.projected !== changedCode) return;
+      const item = items.get(el.dataset.projected);
+      if (item) el.innerHTML = context.projectedCell(item);
+    });
   };
 }
 export function initialize(context) {}
