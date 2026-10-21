@@ -2,6 +2,15 @@
 export const definition = {
   "id": "work-orders",
   "owns": [{
+    "name": "people",
+    "kind": "let"
+  }, {
+    "name": "noticeReads",
+    "kind": "let"
+  }, {
+    "name": "renderInactiveNotices",
+    "kind": "function"
+  }, {
     "name": "renderSharedOrderDrafts",
     "kind": "function"
   }, {
@@ -20,10 +29,20 @@ export const definition = {
     "name": "sendContainerSnapshot",
     "kind": "function"
   }],
-  "imports": ["ORDER_PLANNER_REF", "auth", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
-  "writes": ["deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "startSharedOrderListener", "unsubscribeOrderPlanner"]
+  "imports": ["ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
+  "writes": ["people", "noticeReads", "renderInactiveNotices", "deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "startSharedOrderListener", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
+  context.renderInactiveNotices = function renderInactiveNotices() {
+    const button = document.getElementById('inactiveNoticeButton');
+    if (!button) return;
+    button.hidden = !context.isAdmin();
+    const entries = Object.entries(context.catalogData?.items || {}).flatMap(([code,item]) => Object.values(item.inactiveNotices || {}).map(n => ({...n,code,name:item.name || window.appData.products?.[window.appData.itemToBarcode?.[code]]?.name || code}))).sort((a,b) => String(b.at).localeCompare(String(a.at)));
+    const read = context.noticeReads?.[context.auth.currentUser?.uid] || {};
+    const unread = entries.filter(n => !read[n.id]);
+    button.textContent = '停用通知' + (unread.length ? ' · ' + unread.length + ' 未讀' : '');
+    document.getElementById('inactiveNoticeRows').innerHTML = entries.map(n => '<article class="notice-entry ' + (read[n.id] ? '' : 'unread') + '"><strong>' + context.escapeFinalPiText(n.code + ' · ' + n.name) + '</strong><div>' + context.escapeFinalPiText(context.people?.[n.uid]?.name || n.by || '同事') + ' 設為 Inactive · ' + context.escapeFinalPiText(new Date(n.at).toLocaleString('zh-TW',{timeZone:'Australia/Brisbane'})) + '</div>' + (!read[n.id] ? '<button class="btn btn-sm btn-outline-primary" data-read-notice="' + context.escapeFinalPiText(n.id) + '">標為已讀</button>' : '<small>已讀</small>') + '</article>').join('') || '<p class="text-muted">目前沒有停用通知。</p>';
+  };
   context.renderSharedOrderDrafts = function renderSharedOrderDrafts() {
     const host = document.getElementById('sharedOrderList'),
       badge = document.getElementById('sharedOrderStatus');
@@ -109,6 +128,7 @@ export function register(context) {
     if (context.plannerLoaded && frame?.contentWindow && context.auth.currentUser && context.currentDataMode === 'live') frame.contentWindow.postMessage({
       type: 'KAISI_ORDER_DRAFTS',
       mode: 'live',
+      people: context.people,
       drafts: context.sharedOrderDrafts
     }, '*');
   };
@@ -116,6 +136,9 @@ export function register(context) {
     if (context.unsubscribeOrderPlanner) context.unsubscribeOrderPlanner();
     context.unsubscribeOrderPlanner = context.onSnapshot(context.ORDER_PLANNER_REF, s => {
       const next = s.exists() ? s.data().drafts || {} : {};
+      context.people = s.exists() ? s.data().people || {} : {};
+      context.noticeReads = s.exists() ? s.data().noticeReads || {} : {};
+      context.renderInactiveNotices();
       if (context.proposalListenerInitialized && context.isAdmin()) {
         const changed = Object.keys(next).filter(code => Object.values(next[code]?.rows || {}).some(q => Number(q) > 0) && (!Object.hasOwn(context.sharedOrderDrafts, code) || next[code]?.updatedAt !== context.sharedOrderDrafts[code]?.updatedAt));
         if (changed.length) context.showAppToast('收到 ' + changed.length + ' 份新提交／更新的採購建議', 'info');
@@ -146,6 +169,24 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  context.people = {};
+  context.noticeReads = {};
+  const button = document.createElement('button');
+  button.id = 'inactiveNoticeButton'; button.hidden = true; button.className = 'btn btn-sm btn-outline-secondary';
+  document.getElementById('btnUsers').before(button);
+  const dialog = document.createElement('dialog'); dialog.id = 'inactiveNoticeDialog';
+  dialog.innerHTML = '<div class="d-flex justify-content-between"><h3>商品停用通知</h3><button type="button" class="btn btn-outline-secondary" data-close-notices>關閉</button></div><div id="inactiveNoticeRows"></div><div id="inactiveNoticeStatus" role="status"></div>';
+  document.body.append(dialog);
+  button.onclick = () => {context.renderInactiveNotices(); dialog.showModal();};
+  dialog.querySelector('[data-close-notices]').onclick = () => dialog.close();
+  dialog.addEventListener('click', async e => {
+    const id = e.target.closest('[data-read-notice]')?.dataset.readNotice;
+    if (!id || !context.isAdmin()) return;
+    if (context.currentDataMode !== 'live') {document.getElementById('inactiveNoticeStatus').textContent='請切換 LIVE 後標為已讀。';return;}
+    const status = document.getElementById('inactiveNoticeStatus');
+    try {await context.setDoc(context.ORDER_PLANNER_REF,{noticeReads:{[context.auth.currentUser.uid]:{[id]:true}}},{merge:true}); status.textContent='';}
+    catch(err){status.textContent='儲存失敗，請重試。';}
+  });
   document.getElementById('sharedOrderList')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-proposal-export],[data-proposal-delete]');
     if (!btn || !context.isAdmin()) return;
