@@ -54,7 +54,7 @@ export function register(context) {
       chosen
     }) => `<tr>
  <td class="name"><div class="product-flex"><div class="photo-wrap" ${context.photo(i) ? `role="button" tabindex="0" data-zoom="${context.esc(i.code)}" title="移入預覽大圖，點擊開啟縮放"` : ''}>${context.photo(i) ? `<img src="${context.esc(context.photo(i))}" loading="lazy" alt="${context.esc(i.name)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>無圖</span>` : '<span>無圖</span>'}</div><div><div class="code">${context.esc(i.code)} <span class="tag">${i.kind === 'dry' ? '乾' : i.kind === 'frozen' ? '凍' : '待分類'}</span></div><div>${context.esc(i.name)}</div>${context.plannerRole !== 'viewer' ? `<button type="button" class="inactive-action" data-inactive="${context.esc(i.code)}" title="在所有訂貨工作單中隱藏此商品；可在資料管理恢復">設為 Inactive</button>` : ''}${context.plannerRole === 'viewer' ? d.itemNotes?.[i.code] ? `<div class="item-note-readonly">備註：${context.esc(d.itemNotes[i.code])}</div>` : '' : `<input class="item-note-inline" type="text" data-item-note="${context.esc(i.code)}" maxlength="250" value="${context.esc(d.itemNotes?.[i.code] || '')}" aria-label="${context.esc(i.code)} 本櫃備註" placeholder="單品備註（只存這份工作單）" autocomplete="off" title="留缺貨、採購重點等備註給 Admin">`}</div></div></td>
- <td><strong>${context.fmt(i.stock)}</strong></td>
+ <td><strong>${i.stock == null ? '未取得' : context.fmt(i.stock)}</strong></td>
  <td class="purchase-unit">${context.esc(context.factorInfo(i).raw || '未匯入')}</td>
  <td><strong>${context.fmt(c.stock)}</strong></td>
  <td>${context.monthlyCell(i)}</td>
