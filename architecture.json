@@ -1548,6 +1548,7 @@
           "calc",
           "currentKey",
           "draft",
+          "currentPiQuantities",
           "getItems"
         ],
         "imports": [
@@ -1566,6 +1567,7 @@
           "val"
         ],
         "writes": [
+          "currentPiQuantities",
           "calc",
           "currentKey",
           "draft",
@@ -1613,6 +1615,7 @@
           "updateDraftTotal"
         ],
         "imports": [
+          "currentPiQuantities",
           "$",
           "calc",
           "closeColumnFilter",
