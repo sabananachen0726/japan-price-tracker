@@ -101,3 +101,5 @@ body:not([data-role="admin"]) #systemBackup412,body:not([data-role="admin"]) #sy
 #sharedOrderList [data-proposal-delete]{margin-left:auto}
 
 #inactiveNoticeDialog{width:min(680px,94vw);max-height:85vh;overflow:auto;border:1px solid #dce4ee;border-radius:12px;padding:20px}#inactiveNoticeDialog::backdrop{background:#18263c66}.notice-entry{padding:14px 10px;border-bottom:1px solid #e4e8ef}.notice-entry.unread{background:#f1f5fc;border-left:3px solid #527eb8}.notice-entry>div{font-size:12px;color:#64748b;margin:5px 0}.pi-search-table{min-width:650px}.pi-search-table td{white-space:normal}.pi-search-table th{font-size:12px;color:#64748b}.pi-search-table td:first-child{width:100px}
+
+.eta-source-panel{background:#f4f8ff;border:1px solid #c9d9ee;border-radius:10px;padding:16px;margin:16px 0}.eta-source-panel summary{font-weight:600;color:#244d83;cursor:pointer}
