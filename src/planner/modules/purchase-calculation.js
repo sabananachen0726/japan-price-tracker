@@ -1,3 +1,4 @@
+import {createPiQuantityLookup, applyPiQuantityDefaults} from '../pi-quantity-defaults.js';
 // planner: purchase-calculation. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "purchase-calculation",
@@ -11,13 +12,19 @@ export const definition = {
     "name": "draft",
     "kind": "function"
   }, {
+    "name": "currentPiQuantities", "kind": "function"
+  }, {
     "name": "getItems",
     "kind": "function"
   }],
   "imports": ["$", "customerSourceReady", "dayDiff", "draft", "factor", "incoming", "norm", "orderNeed", "round", "state", "today", "trackerFeed", "val"],
-  "writes": ["calc", "currentKey", "draft", "getItems"]
+  "writes": ["currentPiQuantities", "calc", "currentKey", "draft", "getItems"]
 };
 export function register(context) {
+  const lookupPiQuantities = createPiQuantityLookup();
+  context.currentPiQuantities = function currentPiQuantities() {
+    return lookupPiQuantities(Array.isArray(context.trackerFeed?.pis) ? context.trackerFeed.pis : context.state.pis || [], context.currentKey());
+  };
   context.calc = function calc(item) {
     let f = context.factor(item),
       stock = typeof item.stock === 'number' && f ? item.stock / f : null,
@@ -61,12 +68,13 @@ export function register(context) {
     return context.norm(context.$('container').value) || '__未命名草稿__';
   };
   context.draft = function draft() {
-    return context.state.drafts[context.currentKey()] || {
+    const saved = context.state.drafts[context.currentKey()] || {
       kind: context.$('kind').value,
       arrival: context.$('arrival').value,
       coverage: +context.$('coverage').value,
       rows: {}
     };
+    return applyPiQuantityDefaults(saved, context.currentPiQuantities());
   };
   context.getItems = function getItems() {
     return context.state.items.filter(i => i.availability === 'active' && i.kind === context.$('kind').value);
