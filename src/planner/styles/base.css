@@ -316,7 +316,7 @@ body.hub-import-only #imports>.panel:first-child{padding-top:0;}
 .pi-hover-tip .pi-grand-total{background:#e9f3ff;color:#16487d;font-weight:800;}
 .pi-hover-tip .pi-tip-warning{padding-top:7px;color:#9a5b12;font-size:11px;}
 @media(max-width:1050px){
- #plan .product-table tbody tr td:nth-child(5)::before{content:'在途可用庫存';}
+ #plan .product-table tbody tr td:nth-child(5)::before{content:'在途可用箱數';}
  #plan .product-table tbody tr td:nth-child(6)::before{content:'安全庫存';}
  #plan .product-table tbody tr td:nth-child(7)::before{content:'保存期限（月）';}
  #plan .product-table tbody tr td:nth-child(8)::before{content:'建議';}
