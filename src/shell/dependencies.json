@@ -339,6 +339,7 @@
         "tryCustomerLogin"
       ],
       "imports": [
+        "renderFinalPiSearch",
         "auth",
         "browserLocalPersistence",
         "browserSessionPersistence",
@@ -814,6 +815,11 @@
         "renderFinalPiSearch"
       ],
       "imports": [
+        "auth",
+        "currentDataMode",
+        "customerRows",
+        "customerFetchedAt",
+        "customerStatus",
         "cleanBarcode",
         "compareContainerNo",
         "findPiShelfColumn",
