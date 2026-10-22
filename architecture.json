@@ -189,6 +189,8 @@
         "file": "modules/frame-commands.js",
         "owns": [],
         "imports": [
+          "runTransaction",
+          "db",
           "CONTAINER_TRACKER_REF",
           "FieldPath",
           "ORDER_PLANNER_REF",
