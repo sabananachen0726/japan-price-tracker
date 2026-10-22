@@ -2,7 +2,7 @@
 export const definition = {
   "id": "frame-commands",
   "owns": [],
-  "imports": ["CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
+  "imports": ["runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
   "writes": ["frozenSignature"]
 };
 export function register(context) {}
@@ -80,10 +80,15 @@ export function initialize(context) {
       const reply = (ok, error = '') => plannerWindow.postMessage({
         type: 'KAISI_ORDER_NOTE_RESULT',
         code,
+        text: noteText,
         ok,
         error
       }, '*');
-      if (!context.canPlan() || context.currentDataMode !== 'live' || !Object.hasOwn(context.sharedOrderDrafts, code) || !noteText || noteText.length > 1000) return reply(false, '工作單不存在、權限不足或留言超過 1000 字');
+      if (!context.canPlan()) return reply(false, '目前帳號沒有留言權限，請使用 Admin 或 Editor 帳號。');
+      if (context.currentDataMode !== 'live') return reply(false, 'TEST 模式不會送出共享留言，請切換 LIVE。');
+      if (!code || code.startsWith('__')) return reply(false, '請先選擇或儲存工作單，再留言。');
+      if (!noteText) return reply(false, '請輸入留言內容。');
+      if (noteText.length > 1000) return reply(false, '留言最多 1000 個字，目前 ' + noteText.length + ' 字。');
       const note = {
         id: crypto.randomUUID(),
         by: context.auth.currentUser.email || '',
@@ -91,7 +96,13 @@ export function initialize(context) {
         at: new Date().toISOString(),
         text: noteText
       };
-      context.updateDoc(context.ORDER_PLANNER_REF, new context.FieldPath('drafts', code, 'notes'), context.arrayUnion(note)).then(() => reply(true)).catch(err => reply(false, err.code || err.message));
+      context.runTransaction(context.db, async transaction => {
+        const snapshot = await transaction.get(context.ORDER_PLANNER_REF);
+        const drafts = snapshot.exists() ? snapshot.data().drafts || {} : {};
+        if (!Object.hasOwn(drafts, code)) throw Error('這張工作單尚未儲存到雲端或已刪除。請先儲存工作單，再留言。');
+        const notes = Array.isArray(drafts[code].notes) ? drafts[code].notes : [];
+        transaction.set(context.ORDER_PLANNER_REF, {drafts:{[code]:{notes:[...notes, note]}}}, {mergeFields:[new context.FieldPath('drafts', code, 'notes')]});
+      }).then(() => reply(true)).catch(err => reply(false, err.code === 'permission-denied' ? '雲端拒絕留言寫入，請確認帳號權限；留言內容已保留。' : err.message || err.code));
       return;
     }
     if (e.source === plannerWindow && e.data?.type === 'KAISI_ORDER_NOTE_DELETE') {
