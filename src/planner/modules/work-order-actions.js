@@ -74,6 +74,8 @@ export function register(context) {
     }) : '')}</span>${context.plannerRole === 'admin' ? `<button type="button" class="note-delete" data-note-delete="${context.esc(n.id || 'legacy-' + index)}" aria-label="刪除此留言">刪除</button>` : ''}</div><div class="note-text">${context.esc(n.text || '')}</div></div>`).join('') : '<div class="muted">尚無留言，這份工作單的備註會供 Admin 和 Editor 共用。</div>';
     context.$('sendNote').disabled = context.plannerRole === 'viewer' || !code || code.startsWith('__') || context.trackerFeed?.mode === 'test';
     context.$('noteStatus').textContent = context.trackerFeed?.mode === 'test' ? 'TEST 模式不會送出共享留言' : !context.state.drafts[code] ? '請先由 Admin 儲存工作設定，或先儲存這份採購工作單，再留言。' : '留言只在送出時寫入 Firebase，無需另外手動同步。';
+    const status = context.$('noteStatus');
+    if (status.dataset.errorCode === code) {status.textContent = status.dataset.errorText;status.classList.add('warn');context.$('noteSection').open = true;} else status.classList.remove('warn');
   };
 }
 export function initialize(context) {
@@ -137,6 +139,8 @@ export function initialize(context) {
     if (text.length > 1000) return alert('留言最多 1000 個字');
     if (!code || code.startsWith('__') || !context.state.drafts[code]) return alert('請先儲存工作單，才能留言');
     context.$('sendNote').disabled = true;
+    const status = context.$('noteStatus');
+    delete status.dataset.errorCode;delete status.dataset.errorText;status.classList.remove('warn');status.textContent = '正在送出留言…';
     window.parent.postMessage({
       type: 'KAISI_ORDER_NOTE_ADD',
       code,
