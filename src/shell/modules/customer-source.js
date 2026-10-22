@@ -66,7 +66,7 @@ export const definition = {
     "name": "tryCustomerLogin",
     "kind": "function"
   }],
-  "imports": ["auth", "browserLocalPersistence", "browserSessionPersistence", "collection", "currentDataMode", "events", "getAuth", "getDocsFromServer", "getFirestore", "initializeApp", "onAuthStateChanged", "plannerLoaded", "setPersistence", "signInWithEmailAndPassword", "signOut"],
+  "imports": ["renderFinalPiSearch", "auth", "browserLocalPersistence", "browserSessionPersistence", "collection", "currentDataMode", "events", "getAuth", "getDocsFromServer", "getFirestore", "initializeApp", "onAuthStateChanged", "plannerLoaded", "setPersistence", "signInWithEmailAndPassword", "signOut"],
   "writes": ["CUSTOMER_CACHE_MS", "CUSTOMER_STAFF", "customerAllowed", "customerApp", "customerAuth", "customerBusy", "customerDB", "customerFetchedAt", "customerGeneration", "customerIdentity", "customerKey", "customerRetryAt", "customerRows", "customerStatus", "customerVisible", "mapCustomerDocs", "prepareCustomerIdentity", "refreshCustomerSource", "resetCustomerSource", "sendCustomerSource", "tryCustomerLogin"]
 };
 export function register(context) {
@@ -80,6 +80,7 @@ export function register(context) {
     return !!context.customerAuth.currentUser && context.CUSTOMER_STAFF.has(context.customerAuth.currentUser.uid);
   };
   context.sendCustomerSource = function sendCustomerSource() {
+    context.renderFinalPiSearch();
     const frame = document.getElementById('plannerFrame');
     document.getElementById('customerSourceStatus').textContent = context.currentDataMode === 'test' ? 'TEST：使用本機示範客訂，不讀正式客訂' : context.customerStatus + (context.customerFetchedAt ? ' · 最後取得 ' + new Date(context.customerFetchedAt).toLocaleString('zh-TW', {
       timeZone: 'Australia/Brisbane'
