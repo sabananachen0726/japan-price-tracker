@@ -105,3 +105,12 @@ body:not([data-role="admin"]) #systemBackup412,body:not([data-role="admin"]) #sy
 .eta-source-panel{background:#f4f8ff;border:1px solid #c9d9ee;border-radius:10px;padding:16px;margin:16px 0}.eta-source-panel summary{font-weight:600;color:#244d83;cursor:pointer}
 
 #kaisiFrozenPlannerHead .frozen-column{position:relative;padding-right:9px}#kaisiFrozenPlannerHead .frozen-resizer{position:absolute;right:0;top:0;bottom:0;width:9px;cursor:col-resize;touch-action:none;border-right:2px solid #b7c8df;z-index:5}#kaisiFrozenPlannerHead .frozen-resizer:hover,#kaisiFrozenPlannerHead .frozen-resizer:focus{background:#729bdb;outline:2px solid #3768b1}body.resizing-column{cursor:col-resize!important;user-select:none}
+
+/* Fixed PI columns keep separate container cards aligned. */
+.pi-search-table{table-layout:fixed;width:100%;min-width:650px}
+.pi-search-table td{overflow-wrap:anywhere;vertical-align:middle}
+.pi-search-table th:nth-child(3),.pi-search-table td:nth-child(3),.pi-search-table th:nth-child(5),.pi-search-table td:nth-child(5){text-align:right}
+.customer-demand-panel{background:#f0f6ff;border-color:#c7d9f1!important}
+.customer-demand-panel summary{cursor:pointer;font-weight:600;color:#294c87}
+.customer-demand-table{min-width:720px}
+.customer-demand-table td{overflow-wrap:anywhere;white-space:pre-wrap}
