@@ -77,6 +77,15 @@ export function register(context) {
           filter.textContent = filters[i] ? '▼' : '▽';
           filter.title = '篩選這個欄位';
           div.appendChild(filter);
+          const resize = document.createElement('span');
+          resize.className = 'frozen-resizer';
+          resize.dataset.resizeColumn = key;
+          resize.tabIndex = 0;
+          resize.setAttribute('role','separator');
+          resize.setAttribute('aria-orientation','vertical');
+          resize.setAttribute('aria-label','調整'+labels[i]+'欄寬');
+          resize.title = '拖曳調整欄寬；方向鍵微調';
+          div.appendChild(resize);
           return div;
         }));
       }
@@ -92,7 +101,24 @@ export function initialize(context) {
   context.frozenHeader = document.getElementById('kaisiFrozenPlannerHead');
   context.frozenScheduled = false;
   context.frozenSignature = '';
+  context.frozenHeader.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('[data-resize-column]');
+    if (!handle) return;
+    e.preventDefault(); e.stopPropagation();
+    const column = handle.dataset.resizeColumn, x = e.clientX, width = handle.parentElement.getBoundingClientRect().width;
+    const frame = document.getElementById('plannerFrame');
+    document.body.classList.add('resizing-column');
+    const move = event => frame?.contentWindow?.postMessage({type:'KAISI_COLUMN_RESIZE',column,width:width+event.clientX-x},'*');
+    const finish = () => {window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',finish,true);window.removeEventListener('pointercancel',finish,true);document.body.classList.remove('resizing-column');context.updateFrozenHeader()};
+    window.addEventListener('pointermove',move,true);window.addEventListener('pointerup',finish,true);window.addEventListener('pointercancel',finish,true);
+  });
+  context.frozenHeader.addEventListener('keydown', e => {
+    const handle=e.target.closest('[data-resize-column]');if(!handle||!['ArrowLeft','ArrowRight'].includes(e.key))return;
+    e.preventDefault();e.stopPropagation();
+    document.getElementById('plannerFrame')?.contentWindow?.postMessage({type:'KAISI_COLUMN_RESIZE',column:handle.dataset.resizeColumn,width:handle.parentElement.getBoundingClientRect().width+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?30:10)},'*');
+  });
   context.frozenHeader.addEventListener('click', e => {
+    if(e.target.closest('[data-resize-column]')){e.preventDefault();e.stopPropagation();return;}
     const target = e.target.closest('[data-frozen-sort],[data-frozen-filter]');
     if (!target) return;
     const frame = document.getElementById('plannerFrame'),
