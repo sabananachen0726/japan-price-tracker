@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+module.exports=({test})=>{
+ test('NOTE-01','工作留言','尚未共用或已刪除的工作單不重建，失敗保留輸入並說明原因',async s=>{
+  const {frame}=await s.planner();await frame.locator('#container').fill('JXX27B0201');await frame.locator('[data-qty="ACE005"]').fill('2');await frame.locator('#noteSection > summary').click();await frame.locator('#noteText').fill('Keep this reminder');await frame.locator('#sendNote').click();await frame.locator('#noteStatus').filter({hasText:'尚未儲存到雲端或已刪除'}).waitFor();
+  assert.equal(await frame.locator('#noteText').inputValue(),'Keep this reminder');assert.equal(await s.page.evaluate(()=>window.__store['app_data/order_planner_v1']?.drafts?.JXX27B0201),undefined);assert(!s.dialogs.some(x=>x.includes('1000')));
+  await frame.locator('#savePreset').click();await s.page.waitForFunction(()=>!!window.__store['app_data/order_planner_v1']?.drafts?.JXX27B0201?.preparedAt);await frame.locator('#sendNote').click();await frame.locator('#notesList .note-entry').waitFor();assert.equal(await frame.locator('#noteText').inputValue(),'');const draft=await s.page.evaluate(()=>window.__store['app_data/order_planner_v1'].drafts.JXX27B0201);assert.equal(draft.notes[0].text,'Keep this reminder');assert.equal(draft.rows,undefined,'留言不能自動提交採購數量');
+ });
+ test('NOTE-02','工作留言','雲端寫入失敗保留留言，重試成功保留既有設定與數量',async s=>{
+  const {frame}=await s.planner();await frame.locator('#container').fill('NOTE-RETRY');await frame.locator('#savePreset').click();await s.page.waitForFunction(()=>!!window.__store['app_data/order_planner_v1']?.drafts?.['NOTE-RETRY']?.preparedAt);await frame.locator('#noteSection > summary').click();await frame.locator('#noteText').fill('Retry reminder');await s.page.evaluate(()=>window.__failWrites=true);await frame.locator('#sendNote').click();await frame.locator('#noteStatus').filter({hasText:'留言未送出'}).waitFor();assert.equal(await frame.locator('#noteText').inputValue(),'Retry reminder');assert.equal(await frame.locator('#sendNote').isDisabled(),false);await s.page.evaluate(()=>window.__failWrites=false);await frame.locator('#sendNote').click();await frame.locator('#notesList .note-entry').waitFor();assert.equal(await s.page.evaluate(()=>window.__store['app_data/order_planner_v1'].drafts['NOTE-RETRY'].notes.length),1);
+ });
+ test('NOTE-03','工作留言','送出後切換工作單不會清除另一張的留言輸入',async s=>{
+  const {frame,handle}=await s.planner();await frame.locator('#container').fill('OTHER');await frame.locator('#noteSection > summary').click();await frame.locator('#noteText').fill('Other draft text');await handle.evaluate(()=>window.dispatchEvent(new MessageEvent('message',{source:window.parent,data:{type:'KAISI_ORDER_NOTE_RESULT',code:'EARLIER',text:'Earlier text',ok:true}})));assert.equal(await frame.locator('#noteText').inputValue(),'Other draft text');
+ });
+};
