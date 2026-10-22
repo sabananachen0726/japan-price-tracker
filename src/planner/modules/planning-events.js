@@ -1,3 +1,4 @@
+import {installColumnResize} from '../column-resize.js';
 // planner: planning-events. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "planning-events",
@@ -18,6 +19,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  installColumnResize();
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
     ['plan', 'containers', 'settings', 'imports', 'pending'].forEach(id => context.$(id).classList.toggle('hidden', id !== b.dataset.tab));
