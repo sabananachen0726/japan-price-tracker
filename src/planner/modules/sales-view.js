@@ -50,11 +50,12 @@ export function register(context) {
     const row = context.$('plan').querySelector('.product-table thead tr');
     row.querySelectorAll('.sales-month').forEach(el => el.remove());
     const months = context.salesSummary?.months || context.SalesCore.range(context.SalesCore.monthShift(context.today().slice(0, 7), -1));
-    const anchor = row.querySelector('[data-column="pi"]');
+    const anchor = row.querySelector('[data-column="shelf"]');
     let previous = anchor;
     for (const m of months.slice(-4)) {
       const th = document.createElement('th');
       th.className = 'sales-month';
+      th.dataset.column = 'sales-' + m;
       th.textContent = m.slice(5) + '月';
       th.title = m + ' 銷量（箱）';
       previous.after(th);
