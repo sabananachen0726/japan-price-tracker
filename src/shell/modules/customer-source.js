@@ -1,3 +1,4 @@
+import {dueDaily} from '../../shared/daily-cycle.js';
 // shell: customer-source. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "customer-source",
@@ -70,7 +71,7 @@ export const definition = {
 };
 export function register(context) {
   context.customerVisible = function customerVisible() {
-    return !!context.auth.currentUser && context.currentDataMode === 'live' && document.getElementById('planner-tab')?.classList.contains('active');
+    return !!context.auth.currentUser && context.currentDataMode === 'live';
   };
   context.customerKey = function customerKey() {
     return 'kaisi_planner_customer_read_v1:' + context.auth.currentUser?.uid + ':' + context.customerAuth.currentUser?.uid;
@@ -152,8 +153,8 @@ export function register(context) {
       context.sendCustomerSource();
       return;
     }
-    if (context.customerRows !== null && now - context.customerFetchedAt < (force ? 30000 : context.CUSTOMER_CACHE_MS)) {
-      context.customerStatus = force ? '已是最近 30 秒取得的客訂，避免重複讀取' : '客訂使用 24 小時內快取';
+    if (context.customerRows !== null && (force ? now - context.customerFetchedAt < 30000 : !dueDaily(context.customerFetchedAt,now))) {
+      context.customerStatus = force ? '已是最近 30 秒取得的客訂，避免重複讀取' : '客訂已是本次 08:30 更新週期';
       context.sendCustomerSource();
       return;
     }
@@ -213,6 +214,8 @@ export function initialize(context) {
   context.customerGeneration = 0;
   context.customerIdentity = '';
   context.customerRetryAt = 0;
+  setInterval(() => context.refreshCustomerSource(),60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)context.refreshCustomerSource()});
   context.CUSTOMER_CACHE_MS = 24 * 60 * 60 * 1000;
   document.getElementById('customerSourceLogin').addEventListener('submit', async e => {
     e.preventDefault();
