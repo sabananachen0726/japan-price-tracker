@@ -11,7 +11,7 @@ export const definition = {
     "name": "updateDraftTotal",
     "kind": "function"
   }],
-  "imports": ["$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
+  "imports": ["currentPiQuantities", "$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
   "writes": ["projectedCell", "renderPlan", "updateDraftTotal"]
 };
 export function register(context) {
@@ -89,6 +89,9 @@ export function register(context) {
     context.$('draftTotal').textContent = `目前 ${allChosen.length} 款 · ${allChosen.reduce((n, x) => n + Number(x), 0).toLocaleString()} 箱`;
     const arrive = context.$('arrival').value || '未設定';
     context.$('timeline').textContent = `預計到倉 ${arrive} · 從今天起約 ${context.fmt(context.dayDiff(context.today(), arrive) / 30.44)} 個月需求 · 到倉後再備 ${context.$('coverage').value || 0} 個月 · 最高庫存以銷售單位計算，超過時會提醒。`;
+    const source = context.$('piQuantitySource');
+    source.hidden = !Object.keys(context.currentPiQuantities()).length;
+    source.textContent = '本櫃訂量已帶入本櫃 PI；已填寫的數量優先保留。按提交才會共用。';
     context.updateTableHeader();
   };
   context.updateDraftTotal = function updateDraftTotal(changedCode) {
