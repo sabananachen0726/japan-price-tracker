@@ -93,7 +93,7 @@ export function register(context) {
  </div></div>
  <div class="section"><h3>🚢 貨櫃日期</h3><div class="grid3">
  <div class="field"><label>Expected Month</label><input id="f_expectedMonth" type="month" value="${context.esc(context.E.expectedMonth || "")}"><span class="tiny">若到港日與拆櫃日都空白，當月 15 日作為推估參考</span></div>
- <div class="field"><label>到港日</label><input id="f_portDate" type="date" value="${context.esc(context.E.portDate || "")}"></div>
+ <div class="field"><label><input type="checkbox" id="f_etaLocked" ${context.E.etaLocked ? 'checked' : ''}> 鎖定到港日（不自動更新）</label></div><div class="field"><label>到港日</label><input id="f_portDate" type="date" value="${context.esc(context.E.portDate || "")}"></div>
  <div class="field"><label>拆櫃日</label><input id="f_unloadDate" type="date" value="${context.esc(context.E.unloadDate || "")}"><label class="check" style="margin-top:8px;border:0"><input id="f_unloadConfirmed" type="checkbox" ${context.E.unloadConfirmed ? 'checked' : ''}> 已拆櫃確認</label><span class="tiny">拆櫃日可預先填寫；只有勾選且日期已到，才視為已拆櫃並移出在途 PI。</span></div>
  </div></div>
  ${ops ? `<div class="section"><h3>Japan Price Tracker / Final PI</h3>${(() => {
@@ -255,6 +255,7 @@ export function initialize(context) {
     }
     if (before && !!context.dateInfo(before).unloadConfirmed !== !!context.E.unloadConfirmed) context.log(context.E, context.E.unloadConfirmed ? '已確認拆櫃' : '取消已拆櫃確認');
     context.E.dateSchemaV2 = true;
+    context.E.etaLocked = !!context.$('f_etaLocked')?.checked;
     if (before && context.dateInfo(before).portDate !== context.E.portDate) {
       context.E.etaHistory.unshift({
         date: context.today(),
