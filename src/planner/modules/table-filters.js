@@ -155,7 +155,7 @@ export function initialize(context) {
     myob: 'MYOB 庫存',
     purchase: '採購庫存',
     monthly: '月銷',
-    pi: '在途可用庫存',
+    pi: '在途可用箱數',
     maxStock: '最高庫存',
     shelf: '保存期限（月）',
     suggest: '建議',
