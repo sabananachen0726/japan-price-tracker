@@ -1051,6 +1051,25 @@
         "masterCurrentPage",
         "masterSearchTerm"
       ]
+    },
+    {
+      "id": "eta-sync",
+      "file": "modules/eta-sync.js",
+      "owns": [
+        "refreshEtaSource"
+      ],
+      "imports": [
+        "auth",
+        "currentDataMode",
+        "isAdmin",
+        "db",
+        "CONTAINER_TRACKER_REF",
+        "runTransaction",
+        "onAuthStateChanged"
+      ],
+      "writes": [
+        "refreshEtaSource"
+      ]
     }
   ]
 }
