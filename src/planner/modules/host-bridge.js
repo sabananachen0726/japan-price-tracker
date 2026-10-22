@@ -148,9 +148,20 @@ export function initialize(context) {
     }
     if (m.type === 'KAISI_ORDER_NOTE_RESULT') {
       context.$('sendNote').disabled = false;
-      if (!m.ok) alert('留言失敗：' + (m.error || '未知錯誤'));else {
-        context.$('noteText').value = '';
-        context.$('noteStatus').textContent = '留言已送出';
+      if (m.code !== context.currentKey()) return;
+      const status = context.$('noteStatus');
+      if (!m.ok) {
+        status.dataset.errorCode = m.code;
+        status.dataset.errorText = '留言未送出：' + (m.error || '暫時無法儲存，請重試。');
+        status.textContent = status.dataset.errorText;
+        status.classList.add('warn');
+        context.$('noteSection').open = true;
+      } else {
+        delete status.dataset.errorCode;
+        delete status.dataset.errorText;
+        status.classList.remove('warn');
+        if (m.text === undefined || context.$('noteText').value.trim() === m.text) context.$('noteText').value = '';
+        status.textContent = '留言已送出';
       }
       return;
     }
