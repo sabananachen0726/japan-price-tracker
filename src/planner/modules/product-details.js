@@ -62,7 +62,7 @@ export function register(context) {
       tip = context.$('piHoverTip');
     const lines = pi.details.map(p => `<tr><td>${context.esc(p.container)}</td><td class="right" title="${context.esc(p.etaEstimated ? 'Expected Month 15 日推估' : '系統到港日')}">${context.esc(context.formatTransitEta(p.eta, p.etaEstimated))}</td><td class="right"><strong>${context.fmt(p.qty)}</strong></td></tr>${p.reserved > 0 ? `<tr class="pi-order-line"><td colspan="2">客訂</td><td class="right">−${context.fmt(p.reserved)}</td></tr>` : ''}`).join('');
     const rest = (pi.unallocated > 0 ? `<tr class="pi-order-line"><td colspan="2">未分配客訂</td><td class="right">−${context.fmt(pi.unallocated)}</td></tr>` : '') + (pi.unmatched > 0 ? `<tr class="pi-order-line"><td colspan="2">其他貨櫃客訂／未配對 PI</td><td class="right">−${context.fmt(pi.unmatched)}</td></tr>` : '');
-    tip.innerHTML = `<div class="pi-tip-heading">${context.esc(code)} · 在途可用 ${context.fmt(c.available)} 箱</div><div class="muted" style="margin-bottom:6px;font-size:12px">${context.esc(i.name)}</div><table><thead><tr><th>PI／貨櫃</th><th class="right">ETA</th><th class="right">箱數</th></tr></thead><tbody>${lines}${rest}<tr class="pi-total-line"><td colspan="2">PI 合計</td><td class="right">${context.fmt(c.pi.sum)}</td></tr><tr class="pi-total-line"><td colspan="2">客訂合計</td><td class="right">−${context.fmt(c.ord.total)}</td></tr><tr class="pi-grand-total"><td colspan="2">在途可用</td><td class="right">${context.fmt(c.available)}</td></tr></tbody></table>${c.ord.unknown ? `<div class="pi-tip-warning">另有 ${c.ord.unknown} 筆客訂單位／數量待確認，未計入扣除。</div>` : ''}`;
+    tip.innerHTML = `<div class="pi-tip-heading">${context.esc(code)} · 在途可用箱數 ${context.fmt(c.available)} 箱</div><div class="muted" style="margin-bottom:6px;font-size:12px">${context.esc(i.name)}</div><table><thead><tr><th>PI／貨櫃</th><th class="right">ETA</th><th class="right">箱數</th></tr></thead><tbody>${lines}${rest}<tr class="pi-total-line"><td colspan="2">未到貨箱數</td><td class="right">${context.fmt(c.pi.sum)}</td></tr><tr class="pi-total-line"><td colspan="2">未履行客訂</td><td class="right">−${context.fmt(c.ord.total)}</td></tr><tr class="pi-grand-total"><td colspan="2">在途可用箱數</td><td class="right">${context.fmt(c.available)}</td></tr></tbody></table>${c.ord.unknown ? `<div class="pi-tip-warning">另有 ${c.ord.unknown} 筆客訂單位／數量待確認，未計入扣除。</div>` : ''}`;
     context.currentPiTipTrigger = trigger;
     tip.classList.add('visible');
     tip.setAttribute('aria-hidden', 'false');
@@ -137,7 +137,7 @@ export function register(context) {
     let i = context.state.items.find(x => x.code === code),
       c = context.calc(i);
     context.$('dialogTitle').textContent = `${code} · 建議量拆解`;
-    context.$('dialogBody').innerHTML = '<p>' + context.esc(i.name) + '</p><p>建議箱數＝到貨前後需求－現有庫存－在途可用庫存，取最接近的整箱。</p><p>若有最高庫存，建議箱數不會超過上限。</p><p>預計到倉庫存＝MYOB 庫存＋（在途可用箱數＋本櫃訂量）× 每箱銷售單位。</p><p>目前預計：' + (c.projected === null ? '資料不足，無法計算' : context.fmt(c.projected)) + '；最高庫存：' + context.fmt(c.maxStock) + '。</p><p class="warn">' + context.esc(c.issues.join('、')) + '</p>';
+    context.$('dialogBody').innerHTML = '<p>' + context.esc(i.name) + '</p><p>建議箱數＝到貨前後需求－現有庫存－在途可用箱數，取最接近的整箱。</p><p>若有最高庫存，建議箱數不會超過上限。</p><p>預計到倉庫存＝MYOB 庫存＋（在途可用箱數＋本櫃訂量）× 每箱銷售單位。</p><p>目前預計：' + (c.projected === null ? '資料不足，無法計算' : context.fmt(c.projected)) + '；最高庫存：' + context.fmt(c.maxStock) + '。</p><p class="warn">' + context.esc(c.issues.join('、')) + '</p>';
     context.openPlannerDialog(context.$('infoDialog'));
   };
 }
