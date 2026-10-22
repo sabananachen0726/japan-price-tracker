@@ -1,3 +1,4 @@
+import {renderCustomerDemand} from '../customer-demand-view.js';
 // shell: pi-query. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-query",
@@ -44,7 +45,7 @@ export const definition = {
     "name": "renderFinalPiSearch",
     "kind": "function"
   }],
-  "imports": ["cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
+  "imports": ["auth", "currentDataMode", "customerRows", "customerFetchedAt", "customerStatus", "cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
   "writes": ["escapeFinalPiText", "finalPiContainerSort", "finalPiLogistics", "finalPiWorkflowStatus", "getFinalPiProduct", "getFinalPiToday", "isFinalPiConfirmed", "isFinalPiReceived", "normalizeFinalPiDate", "parseFinalPiLine", "parseFinalPiPaste", "renderFinalPiContainerList", "renderFinalPiSearch", "updateFinalPiPendingBadge"]
 };
 export function register(context) {
@@ -276,7 +277,13 @@ export function register(context) {
         p
       });
     }));
-    if (!matches.length) {
+    const matchedCodes = new Set(matches.map(x => String(x.r.itemCode || x.p.itemCode || '').trim().toUpperCase()).filter(Boolean));
+    Object.values(window.appData.products || {}).forEach(p => {
+      if ([p.itemCode, p.name, p.sourceBarcode].some(v => String(v || '').toLowerCase().includes(q))) matchedCodes.add(String(p.itemCode || '').trim().toUpperCase());
+    });
+    const customerRows = context.auth.currentUser && context.currentDataMode === 'live' ? context.customerRows : null;
+    (customerRows || []).forEach(o => {if (String(o.code || '').toLowerCase().includes(q)) matchedCodes.add(String(o.code).trim().toUpperCase());});
+    if (!matches.length && !matchedCodes.size) {
       host.innerHTML = '<div class="alert alert-light border text-center mb-0">找不到任何 Final PI 貨櫃紀錄。</div>';
       return;
     }
@@ -303,10 +310,10 @@ export function register(context) {
     const renderGroup = g => {
       const qty = g.rows.reduce((n, x) => n + (Number(x.r.qty) || 0), 0);
       const wf = context.finalPiWorkflowStatus(g.c);
-      const details = '<div class="table-responsive mt-2"><table class="table table-sm pi-search-table"><thead><tr><th>品號</th><th>商品名稱</th><th class="text-end">箱數</th><th>效期</th><th class="text-end">單價</th></tr></thead><tbody>' + g.rows.map(x => '<tr><td><strong>' + context.escapeFinalPiText(x.r.itemCode || x.p.itemCode || x.r.barcode || '—') + '</strong></td><td>' + context.escapeFinalPiText(x.p.name || x.r.itemCode || '未命名商品') + '</td><td class="text-end fw-bold">' + Number(x.r.qty).toLocaleString() + '</td><td>' + context.escapeFinalPiText(x.r.expiryDate || '未填') + '</td><td class="text-end">' + (x.r.unitPrice === null || x.r.unitPrice === undefined || x.r.unitPrice === '' ? '—' : '¥' + Number(x.r.unitPrice).toLocaleString()) + '</td></tr>').join('') + '</tbody></table></div>';
+      const details = '<div class="table-responsive mt-2"><table class="table table-sm pi-search-table"><colgroup><col style="width:110px"><col><col style="width:80px"><col style="width:120px"><col style="width:100px"></colgroup><thead><tr><th>品號</th><th>商品名稱</th><th class="text-end">箱數</th><th>效期</th><th class="text-end">單價</th></tr></thead><tbody>' + g.rows.map(x => '<tr><td><strong>' + context.escapeFinalPiText(x.r.itemCode || x.p.itemCode || x.r.barcode || '—') + '</strong></td><td>' + context.escapeFinalPiText(x.p.name || x.r.itemCode || '未命名商品') + '</td><td class="text-end fw-bold">' + Number(x.r.qty).toLocaleString() + '</td><td>' + context.escapeFinalPiText(x.r.expiryDate || '未填') + '</td><td class="text-end">' + (x.r.unitPrice === null || x.r.unitPrice === undefined || x.r.unitPrice === '' ? '—' : '¥' + Number(x.r.unitPrice).toLocaleString()) + '</td></tr>').join('') + '</tbody></table></div>';
       return `<div class="border rounded p-3 mb-2"><div class="d-flex justify-content-between gap-2"><div><div class="fw-bold fs-5">📦 ${context.escapeFinalPiText(g.c.container)} ${context.frozenBadgeHtml(g.c.container)}</div><div class="small text-muted">${context.escapeFinalPiText(g.c.supplier || '-')}｜<span class="badge ${wf.cls}">${wf.label}</span>｜${context.isFinalPiReceived(g.c) ? '已拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).actualReceived) : '待拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).unloadDate || '—')}</div></div><div class="text-end"><div class="fw-bold fs-4 text-primary">${qty.toLocaleString()} CTN<div class="small fw-normal text-muted">符合搜尋條件</div></div></div></div>${details}</div>`;
     };
-    host.innerHTML = `<div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">找到 ${codes.length || names.length} 項商品 · ${arr.length} 個貨櫃</div><div class="mt-2"><span class="badge bg-warning text-dark me-2">🚢 未來 ${futureQty.toLocaleString()} CTN / ${future.length} Containers</span><span class="badge bg-primary me-2">✓ Final ${finalFutureQty.toLocaleString()} CTN</span><span class="badge bg-danger me-2">⚠ 未 Final ${pendingFutureQty.toLocaleString()} CTN</span><span class="badge bg-secondary">🏭 已到倉 ${receivedQty.toLocaleString()} CTN / ${received.length} Containers</span></div></div><h5 class="text-warning-emphasis">🚢 未到貨 / 未來貨櫃</h5>${future.length ? future.map(renderGroup).join('') : '<div class="text-muted mb-3">目前沒有未到貨貨櫃。</div>'}<details class="mt-3" ${future.length ? '' : 'open'}><summary class="fw-bold text-secondary" style="cursor:pointer">🏭 查看已到倉紀錄（${received.length} 條貨櫃 / ${receivedQty.toLocaleString()} CTN）</summary><div class="mt-2">${received.length ? received.map(renderGroup).join('') : '<div class="text-muted">沒有已到倉紀錄。</div>'}</div></details>`;
+    host.innerHTML = `<div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">找到 ${matchedCodes.size} 項商品 · ${arr.length} 個貨櫃</div><div class="mt-2"><span class="badge bg-warning text-dark me-2">🚢 未到貨箱數 ${futureQty.toLocaleString()} 箱 / ${future.length} 櫃</span><span class="badge bg-primary me-2">✓ Final ${finalFutureQty.toLocaleString()} CTN</span><span class="badge bg-danger me-2">⚠ 未 Final ${pendingFutureQty.toLocaleString()} CTN</span><span class="badge bg-secondary">🏭 已到倉 ${receivedQty.toLocaleString()} CTN / ${received.length} Containers</span></div></div>${renderCustomerDemand({rows:customerRows,codes:matchedCodes,incoming:futureQty,fetchedAt:context.currentDataMode === 'live' ? context.customerFetchedAt : 0,status:context.currentDataMode === 'live' ? context.customerStatus : 'TEST：不讀正式客訂',containers:future.map(g=>g.c.container)})}<h5 class="text-warning-emphasis">🚢 未到貨貨櫃</h5>${future.length ? future.map(renderGroup).join('') : '<div class="text-muted mb-3">目前沒有未到貨貨櫃。</div>'}<details class="mt-3" ${future.length ? '' : 'open'}><summary class="fw-bold text-secondary" style="cursor:pointer">🏭 查看已到倉紀錄（${received.length} 條貨櫃 / ${receivedQty.toLocaleString()} CTN）</summary><div class="mt-2">${received.length ? received.map(renderGroup).join('') : '<div class="text-muted">沒有已到倉紀錄。</div>'}</div></details>`;
   };
 }
 export function initialize(context) {}
