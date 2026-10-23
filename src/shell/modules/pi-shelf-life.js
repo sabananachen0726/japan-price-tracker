@@ -1,3 +1,4 @@
+import {createProductResolver} from '../../shared/product-identity.js';
 // shell: pi-shelf-life. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-shelf-life",
@@ -46,6 +47,7 @@ export function register(context) {
       if (!byBarcode.has(bc)) byBarcode.set(bc, new Set());
       byBarcode.get(bc).add(code);
     }
+    const resolve = createProductResolver(window.appData);
     const known = storedOverrides || context.catalogData?.overrides || {};
     for (const g of groups) for (const r of g.rows || []) {
       if (r.shelfLifeMonths == null) continue;
@@ -57,25 +59,9 @@ export function register(context) {
         issues.push(code + '：品號無效，保存期限略過');
         continue;
       }
-      if (!code) {
-        const matches = byBarcode.get(bc);
-        if (matches?.size !== 1) {
-          issues.push(bc + '：無法唯一配對 Item Code，保存期限略過');
-          continue;
-        }
-        code = [...matches][0];
-      }
-      const product = byCode.get(code);
-      if (product) {
-        const actual = String(product.sourceBarcode || window.appData.itemToBarcode?.[code] || '').replace(/[\s-]/g, '');
-        if (actual && bc && actual !== bc) {
-          const aliases = window.appData.mappings?.[window.appData.itemToBarcode?.[code]] || [];
-          if (!aliases.includes(bc)) {
-            issues.push(code + '：條碼與商品主檔不同，保存期限略過');
-            continue;
-          }
-        }
-      }
+      const identity = resolve(r);
+      if (!identity.code || identity.ambiguous) {issues.push(bc+'：未配對品號，保存期限暫不套用');continue;}
+      code = identity.code;
       const old = known[code]?.shelfLifeMonths ?? null;
       if (changes.has(code) && changes.get(code).next !== n) {
         changes.get(code).conflict = true;
@@ -101,8 +87,12 @@ export function register(context) {
     if (!context.isAdmin()) return false;
     try {
       const patch = {
+        items: {},
         overrides: {}
       };
+      for(const code of plan.review?.reactivate || []) patch.items[code]={availability:'active'};
+      const hasPatch = plan.changes.length || Object.keys(patch.items).length;
+      window.appData.piProductLinks = {...(window.appData.piProductLinks || {}),...(plan.review?.links || {})};
       for (const x of plan.changes) patch.overrides[x.code] = {
         shelfLifeMonths: x.next
       };
@@ -111,22 +101,24 @@ export function register(context) {
         localStorage.setItem(context.TEST_LOCAL_KEY, JSON.stringify(window.appData));
         document.getElementById('plannerFrame')?.contentWindow?.postMessage({
           type: 'KAISI_PI_SHELF_TEST',
+          items: patch.items,
           overrides: patch.overrides
         }, '*');
         context.refreshUI();
         return true;
       }
-      if (plan.changes.length && context.catalogData === null) throw Error('訂貨設定尚未同步完成，請稍後再匯入');
+      if (hasPatch && context.catalogData === null) throw Error('訂貨設定尚未同步完成，請稍後再匯入');
       const candidate = structuredClone(context.catalogData || {});
+      for (const [code,fields] of Object.entries(patch.items)) Object.assign(((candidate.items ||= {})[code] ||= {}),fields);
       for (const x of plan.changes) ((candidate.overrides ||= {})[x.code] ||= {}).shelfLifeMonths = x.next;
       for (const d of [candidate, window.appData]) if (new TextEncoder().encode(JSON.stringify(d)).length > (d === window.appData ? 950000 : 900000)) throw Error('共享資料容量不足，未套用 PI 或保存期限');
       const batch = context.writeBatch(context.db);
       batch.set(context.PROD_DOC_REF, window.appData);
-      if (plan.changes.length) batch.set(context.CATALOG_REF, patch, {
+      if (hasPatch) batch.set(context.CATALOG_REF, patch, {
         merge: true
       });
       await batch.commit();
-      if (plan.changes.length) context.catalogData = candidate;
+      if (hasPatch) context.catalogData = candidate;
       context.searchCache.valid = false;
       context.refreshUI();
       context.sendCatalogSources();
