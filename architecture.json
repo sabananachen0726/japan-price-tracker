@@ -146,6 +146,9 @@
           "loadEmbeddedOrderPlanner"
         ],
         "imports": [
+          "getDoc",
+          "doc",
+          "db",
           "auth",
           "containerTrackerData",
           "currentDataMode",
@@ -436,6 +439,9 @@
           "startDataListener"
         ],
         "imports": [
+          "getDoc",
+          "doc",
+          "db",
           "CONTAINER_TRACKER_REF",
           "PROD_DOC_REF",
           "TEST_LOCAL_KEY",
@@ -496,6 +502,9 @@
           "saveFirebaseData"
         ],
         "imports": [
+          "writeBatch",
+          "db",
+          "doc",
           "containerTrackerFrameLoaded",
           "plannerLoaded",
           "refreshUI",
@@ -607,6 +616,7 @@
           "restoreCompleteBackup412"
         ],
         "imports": [
+          "doc",
           "CATALOG_REF",
           "CONTAINER_TRACKER_REF",
           "INVENTORY_REF",
