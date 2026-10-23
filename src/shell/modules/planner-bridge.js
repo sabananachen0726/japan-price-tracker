@@ -102,6 +102,7 @@ export function register(context) {
         });
         return {
           code: identity.key,
+          temporary: identity.temporary, imgUrl: identity.imgUrl,
           pending: identity.pending, ambiguous: identity.ambiguous, candidates: identity.candidates,
           unitPrice: r.unitPrice ?? null, expiryDate: r.expiryDate || '',
           barcode,
@@ -158,7 +159,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261023-v4160';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261023-v4161';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
