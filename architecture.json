@@ -189,6 +189,8 @@
         "file": "modules/frame-commands.js",
         "owns": [],
         "imports": [
+          "saveFirebaseData",
+          "refreshUI",
           "catalogData",
           "savePiAndShelf",
           "runTransaction",
