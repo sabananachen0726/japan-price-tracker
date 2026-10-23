@@ -53,7 +53,7 @@ export function register(context) {
       c,
       chosen
     }) => `<tr>
- <td class="name"><div class="product-flex"><div class="photo-wrap" ${context.photo(i) ? `role="button" tabindex="0" data-zoom="${context.esc(i.code)}" title="移入預覽大圖，點擊開啟縮放"` : ''}>${context.photo(i) ? `<img src="${context.esc(context.photo(i))}" loading="lazy" alt="${context.esc(i.name)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>無圖</span>` : '<span>無圖</span>'}</div><div><div class="code">${context.esc(i.code)} <span class="tag">${i.kind === 'dry' ? '乾' : i.kind === 'frozen' ? '凍' : '待分類'}</span></div><div class="product-title">${context.esc(i.name)}</div>${context.plannerRole !== 'viewer' ? `<button type="button" class="inactive-action" data-inactive="${context.esc(i.code)}" title="在所有訂貨工作單中隱藏此商品；可在資料管理恢復">設為 Inactive</button>` : ''}</div></div></td>
+ <td class="name"><div class="product-flex"><div class="photo-wrap" ${context.photo(i) ? `role="button" tabindex="0" data-zoom="${context.esc(i.code)}" title="移入預覽大圖，點擊開啟縮放"` : ''}>${context.photo(i) ? `<img src="${context.esc(context.photo(i))}" loading="lazy" alt="${context.esc(i.name)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>無圖</span>` : '<span>無圖</span>'}</div><div><div class="code">${context.esc(i.code.startsWith('__JAN_') ? i.barcode : i.code)} <span class="tag">${i.kind === 'dry' ? '乾' : i.kind === 'frozen' ? '凍' : '待分類'}</span></div><div class="product-title">${context.esc(i.name)}</div>${i.pending ? `<div class="mini">${i.ambiguous ? '條碼有多個品號，請確認配對' : '新品／待補主檔'}</div>` : ''}${i.ambiguous && context.plannerRole === 'admin' ? `<button type="button" data-match-pi="${context.esc(i.barcode)}">選擇對應商品</button>` : ''}${i.availability !== 'active' ? '<span class="tag">Inactive · 本櫃 PI 保留</span>' : ''}${context.plannerRole !== 'viewer' && i.availability === 'active' && !i.pending ? `<button type="button" class="inactive-action" data-inactive="${context.esc(i.code)}" title="在所有訂貨工作單中隱藏此商品；可在資料管理恢復">設為 Inactive</button>` : ''}</div></div></td>
  <td><strong>${i.stock == null ? '未取得' : context.fmt(i.stock)}</strong></td>
  <td class="purchase-unit"><div class="unit-value">${context.esc(context.factorInfo(i).raw || '未匯入')}</div><div class="unit-note">${context.plannerRole === 'viewer' ? d.itemNotes?.[i.code] ? `<div class="item-note-readonly">備註：${context.esc(d.itemNotes[i.code])}</div>` : '' : `<input class="item-note-inline" type="text" data-item-note="${context.esc(i.code)}" maxlength="250" value="${context.esc(d.itemNotes?.[i.code] || '')}" aria-label="${context.esc(i.code)} 本櫃備註" placeholder="單品備註" autocomplete="off" title="留缺貨、採購重點等備註給 Admin">`}</div></td>
  <td><strong>${context.fmt(c.stock)}</strong></td>
@@ -63,7 +63,7 @@ export function register(context) {
  ${context.salesMonthCells(i)}
  <td><input class="maxStock-field" type="number" min="0" step="1" data-max-stock="${context.esc(i.code)}" value="${c.maxStock ?? ''}" placeholder="未設" aria-label="${context.esc(i.code)} 最高庫存" ${context.plannerRole === 'viewer' ? 'disabled' : ''}></td>
  <td><strong>${c.suggest === null ? '<span class="missing-data">資料不足，無法計算</span>' : context.fmt(c.suggest)}</strong>${c.issues.length ? `<div><button class="mini" data-explain="${context.esc(i.code)}" title="查看計算原因">計算說明</button></div>` : ''}</td>
- <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${i.code.startsWith('__') || i.kind === 'unknown' ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div></td>
+ <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div></td>
  <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="15" class="empty">沒有符合的商品</td></tr>';
     const body = context.$('productRows');
     if (preserveInputs) {
@@ -91,7 +91,7 @@ export function register(context) {
     context.$('timeline').textContent = `預計到倉 ${arrive} · 從今天起約 ${context.fmt(context.dayDiff(context.today(), arrive) / 30.44)} 個月需求 · 到倉後再備 ${context.$('coverage').value || 0} 個月 · 最高庫存以銷售單位計算，超過時會提醒。`;
     const source = context.$('piQuantitySource');
     source.hidden = !Object.keys(context.currentPiQuantities()).length;
-    source.textContent = '本櫃訂量已帶入本櫃 PI；已填寫的數量優先保留。按提交才會共用。';
+    source.textContent = '本櫃 PI 商品完整保留（含新品、Inactive 與未分類）；已填數量優先。搜尋與篩選仍可縮小顯示範圍。按提交才會共用。';
     context.updateTableHeader();
   };
   context.updateDraftTotal = function updateDraftTotal(changedCode) {
