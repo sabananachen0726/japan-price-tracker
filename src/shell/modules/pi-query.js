@@ -153,7 +153,7 @@ export function register(context) {
   };
   context.getFinalPiProduct = function getFinalPiProduct(row) {
     const identity = createProductResolver(window.appData)(row);
-    return {...identity.product, itemCode:identity.code, name:identity.name + (identity.ambiguous ? '（條碼對到多個品號，待確認）' : ''), piIdentity:identity};
+    return {...identity.product, imgUrl:identity.imgUrl, itemCode:identity.code, name:identity.name + (identity.ambiguous ? '（條碼對到多個品號，待確認）' : ''), piIdentity:identity};
   };
   context.getFinalPiToday = function getFinalPiToday() {
     const d = new Date();
