@@ -1,3 +1,4 @@
+import {reviewPiProducts} from '../pi-review.js';
 // shell: pi-import. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-import",
@@ -161,6 +162,9 @@ export function register(context) {
     const shelfPlan = context.planPiShelf(parsed.groups, shelfContext);
     msg += context.piShelfPreviewText(shelfPlan);
     if (!confirm(msg + '\n\n確定繼續？')) return;
+    const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,parsed.groups || [{container,rows:parsed.rows}]);
+    if (!review) return;
+    shelfPlan.review = review;
     const previousPiData = structuredClone(window.appData);
     window.appData.finalPiContainers ||= {};
     parsed.groups.forEach(g => {
@@ -217,6 +221,9 @@ export function register(context) {
     }], shelfContext);
     msg += context.piShelfPreviewText(shelfPlan);
     if (!confirm(msg + '\n\n確定繼續？')) return;
+    const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,[{container,rows:parsed.rows}]);
+    if (!review) return;
+    shelfPlan.review = review;
     const previousPiData = structuredClone(window.appData);
     window.appData.finalPiContainers ||= {};
     window.appData.finalPiContainers[container] = {
