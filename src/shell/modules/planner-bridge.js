@@ -1,3 +1,4 @@
+import {withTemporaryImages,loadTemporaryImages} from '../temporary-image-store.js';
 import {createProductResolver, validItemCode} from '../../shared/product-identity.js';
 // shell: planner-bridge. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -18,7 +19,7 @@ export const definition = {
     "name": "loadEmbeddedOrderPlanner",
     "kind": "function"
   }],
-  "imports": ["auth", "containerTrackerData", "currentDataMode", "currentRole", "getContainerDates", "legacySafeDate", "normalizeContainerNo", "sendCatalogSources", "sendCustomerSource"],
+  "imports": ["getDoc", "doc", "db", "auth", "containerTrackerData", "currentDataMode", "currentRole", "getContainerDates", "legacySafeDate", "normalizeContainerNo", "sendCatalogSources", "sendCustomerSource"],
   "writes": ["ORDER_PLANNER_URL", "chooseImportView", "loadEmbeddedOrderPlanner", "plannerLoaded", "sendPlannerSnapshot"]
 };
 export function register(context) {
@@ -28,7 +29,11 @@ export function register(context) {
     const products = {},
       itemMap = window.appData.itemToBarcode || {},
       historyRows = [];
-    const resolve = createProductResolver(window.appData);
+    const resolve = createProductResolver(withTemporaryImages(window.appData,context.currentDataMode));
+    if(context.currentDataMode==='live'){
+      const data=window.appData,uid=context.auth.currentUser.uid;
+      void loadTemporaryImages(data,{getDoc:context.getDoc,doc:context.doc,db:context.db}).then(changed=>{if(changed&&context.currentDataMode==='live'&&context.auth.currentUser?.uid===uid&&window.appData===data)context.sendPlannerSnapshot()}).catch(()=>{});
+    }
     Object.entries(window.appData.products || {}).forEach(([barcode, p]) => {
       const code = String(validItemCode(p.itemCode) ? p.itemCode : '').trim().toUpperCase(),
         key = code || '__JAN_' + String(barcode).replace(/[^A-Z0-9_-]/gi, '');
@@ -159,7 +164,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261023-v4161';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261023-v4162';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
