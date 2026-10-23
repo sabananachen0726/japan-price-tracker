@@ -1,3 +1,4 @@
+import {clearResolvedTemporaryProducts} from '../../shared/product-identity.js';
 // shell: session. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "session",
@@ -41,6 +42,7 @@ export function register(context) {
       alert("僅 Admin 可儲存此區資料。");
       return false;
     }
+    clearResolvedTemporaryProducts(window.appData);
     const pendingData = structuredClone(window.appData);
     context.searchCache.valid = false;
     const statusBadge = document.getElementById("cloudStatus");
