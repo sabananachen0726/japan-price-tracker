@@ -14,7 +14,7 @@ export function createPiQuantityLookup() {
         for (const row of pi.received ? [] : pi.rows || []) {
           const code = normalize(row.code);
           const qty = Number(row.qty);
-          if (!code || code.startsWith('__') || !Number.isFinite(qty) || qty <= 0) continue;
+          if (!code || !Number.isFinite(qty) || qty <= 0) continue;
           rows[code] = (rows[code] || 0) + qty;
         }
         byContainer.set(key, rows);
