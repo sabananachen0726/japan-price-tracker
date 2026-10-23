@@ -20,9 +20,10 @@ export function createProductResolver(data = {}) {
     const selected=upper(data.piProductLinks?.[barcode]);
     const code=byCode.has(explicit)?explicit:codes.has(selected)?selected:codes.size===1?[...codes][0]:'';
     const product=byCode.get(code)||{};
+    const temporary = !code ? data.piTemporaryProducts?.[barcode] || {} : {};
     const key=code || (validItemCode(explicit) && !candidates.length ? explicit : '__JAN_'+barcode.replace(/[^A-Z0-9_-]/gi,''));
     return {key,code:code||(!candidates.length&&validItemCode(explicit)?explicit:''),barcode,product,candidates,
-      pending:!code,ambiguous:!code&&candidates.length>1,name:product.name||row.name||('待補商品資料 · '+barcode)};
+      pending:!code,ambiguous:!code&&candidates.length>1,temporary:!code&&!!(temporary.name||temporary.imgUrl),imgUrl:code ? product.imgUrl || '' : temporary.imgUrl || '',name:product.name||temporary.name||row.name||('待補商品資料 · '+barcode)};
   };
 }
 // Remap only uniquely resolved identities. An explicit canonical quantity (even 0)
@@ -34,4 +35,23 @@ export function remapPiWork(work, piRows) {
   for(const [old,code] of links){if(Object.hasOwn(rows,old)){if(!Object.hasOwn(rows,code))rows[code]=rows[old];delete rows[old]}
     if(itemNotes[old]){itemNotes[code]=[itemNotes[code],itemNotes[old]].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' / ');delete itemNotes[old]}}
   return {...work,rows,itemNotes};
+}
+
+// Called in the same save as a master import: temporary fields are removed only
+// after a unique formal match. No inventory, PI rows or work notes are touched.
+export function clearResolvedTemporaryProducts(data) {
+  const resolve=createProductResolver(data);
+  for(const barcode of Object.keys(data.piTemporaryProducts || {})) {
+    const identity=resolve({barcode});
+    if(!identity.pending && identity.candidates.length===1)delete data.piTemporaryProducts[barcode];
+  }
+  return data;
+}
+export function validateTemporaryProduct(value) {
+  const name=String(value.name||'').trim(), imgUrl=String(value.imgUrl||'').trim();
+  if(name.length>200)throw Error('名稱最多 200 字');
+  if(imgUrl.length>2048)throw Error('圖片網址過長');
+  if(imgUrl){let url;try{url=new URL(imgUrl)}catch{throw Error('請填寫完整的 https 圖片網址')}
+    if(url.protocol!=='https:'||url.username||url.password)throw Error('請使用 https 圖片網址');}
+  return {name,imgUrl};
 }
