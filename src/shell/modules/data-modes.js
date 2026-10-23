@@ -1,3 +1,4 @@
+import {exportTemporaryImages} from '../temporary-image-store.js';
 // shell: data-modes. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "data-modes",
@@ -35,7 +36,7 @@ export const definition = {
     "name": "startDataListener",
     "kind": "function"
   }],
-  "imports": ["CONTAINER_TRACKER_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "containerTrackerData", "currentDataMode", "customerGeneration", "normalizeContainerNo", "onSnapshot", "refreshCustomerSource", "refreshUI", "renderContainerIntegrationCheck", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderSharedOrderDrafts", "searchCache", "sendContainerSnapshot", "sendCustomerSource", "sendPlannerSnapshot", "showAppToast", "unsubscribeContainerTracker", "unsubscribeData"],
+  "imports": ["getDoc", "doc", "db", "CONTAINER_TRACKER_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "containerTrackerData", "currentDataMode", "customerGeneration", "normalizeContainerNo", "onSnapshot", "refreshCustomerSource", "refreshUI", "renderContainerIntegrationCheck", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderSharedOrderDrafts", "searchCache", "sendContainerSnapshot", "sendCustomerSource", "sendPlannerSnapshot", "showAppToast", "unsubscribeContainerTracker", "unsubscribeData"],
   "writes": ["savedAppData", "containerTrackerData", "copyLiveToTest", "currentDataMode", "customerGeneration", "linkedTrackerContainer", "normalizeAppData", "readLiveSnapshotOnce", "setModeUI", "startContainerTrackerLink", "startDataListener", "startLiveListener", "startTestMode", "switchDataMode", "unsubscribeContainerTracker", "unsubscribeData", "updateTestDataInfo"]
 };
 export function register(context) {
@@ -105,6 +106,8 @@ export function register(context) {
         statusBadge.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>正在從 LIVE 複製...';
       }
       const liveData = await context.readLiveSnapshotOnce();
+      const images=await exportTemporaryImages(liveData,{getDoc:context.getDoc,doc:context.doc,db:context.db});
+      for(const [bc,image] of Object.entries(images))liveData.piTemporaryProducts[bc].imageData=image.dataUrl;
       window.appData = context.normalizeAppData(JSON.parse(JSON.stringify(liveData)));
       localStorage.setItem(context.TEST_LOCAL_KEY, JSON.stringify(window.appData));
       localStorage.setItem(context.TEST_LOCAL_KEY + '_copied_at', new Date().toISOString());
