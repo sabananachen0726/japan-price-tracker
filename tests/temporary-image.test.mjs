@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {isUploadedImage,validateImageRecord} from '../src/shared/temporary-image.js';
+import {removedTemporaryImages,withTemporaryImages,cacheTemporaryImage} from '../src/shell/temporary-image-store.js';
+const dataUrl='data:image/webp;base64,AAAA';
+test('uploaded images accept bounded raster data only, never SVG or scripts',()=>{assert(isUploadedImage(dataUrl));assert(!isUploadedImage('data:image/svg+xml;base64,AAAA'));assert(!isUploadedImage('javascript:alert(1)'));assert(!isUploadedImage('data:image/png;base64,'+'A'.repeat(90000)));assert.throws(()=>validateImageRecord('123',{barcode:'123',dataUrl,updatedAt:'v1'}));});
+test('image cache stays out of shared main metadata and only referenced images are removed',()=>{const before={piTemporaryProducts:{4909999999991:{name:'N',imageRevision:'v1'}}};cacheTemporaryImage('4909999999991',before.piTemporaryProducts[4909999999991],dataUrl);assert.equal(withTemporaryImages(before,'live').piTemporaryProducts[4909999999991].imageData,dataUrl);assert(!before.piTemporaryProducts[4909999999991].imageData);assert.deepEqual(removedTemporaryImages(before,{piTemporaryProducts:{}}),['4909999999991']);assert.deepEqual(removedTemporaryImages(before,before),[])});
