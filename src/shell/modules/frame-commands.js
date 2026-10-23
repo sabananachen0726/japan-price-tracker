@@ -1,3 +1,5 @@
+import {withTemporaryImages} from '../temporary-image-store.js';
+import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {editTemporaryProduct} from '../pi-temporary-editor.js';
 import {reviewPiProducts} from '../pi-review.js';
 import {createProductResolver} from '../../shared/product-identity.js';
@@ -31,13 +33,18 @@ export function initialize(context) {
       const exists=Object.values(window.appData.finalPiContainers||{}).some(p=>(p.rows||[]).some(r=>String(r.barcode)===barcode));
       if(!exists || !createProductResolver(window.appData)({barcode}).pending)return;
       const mode=context.currentDataMode;
-      editTemporaryProduct({barcode,value:window.appData.piTemporaryProducts?.[barcode],save:async next=>{
+      editTemporaryProduct({barcode,value:withTemporaryImages(window.appData,mode).piTemporaryProducts?.[barcode],save:async next=>{
         if(!context.isAdmin() || mode!==context.currentDataMode)throw Error('帳號或資料模式已變更，請關閉後重新開啟');
         if(!createProductResolver(window.appData)({barcode}).pending)throw Error('此商品已配對主檔，請關閉後查看正式資料');
         window.appData.piTemporaryProducts ||= {};
-        if(next.name || next.imgUrl)window.appData.piTemporaryProducts[barcode]={...next,updatedAt:new Date().toISOString()};
+        const old=window.appData.piTemporaryProducts[barcode] || {}, now=new Date().toISOString();
+        const record={name:next.name,imgUrl:next.imgUrl,updatedAt:now};
+        let image;
+        if(next.replaceImage && next.imageData){if(!validImageBarcode(barcode)||!isUploadedImage(next.imageData))throw Error('圖片資料無效');if(mode==='live'){record.imageRevision=now;image={barcode,dataUrl:next.imageData}}else record.imageData=next.imageData}
+        else if(!next.replaceImage){if(old.imageRevision)record.imageRevision=old.imageRevision;if(mode==='test'&&old.imageData)record.imageData=old.imageData}
+        if(record.name||record.imgUrl||record.imageRevision||record.imageData)window.appData.piTemporaryProducts[barcode]=record;
         else delete window.appData.piTemporaryProducts[barcode];
-        const ok=await context.saveFirebaseData();
+        const ok=await context.saveFirebaseData({temporaryImage:image});
         if(ok){context.refreshUI();context.sendPlannerSnapshot();}
         return ok;
       }});
