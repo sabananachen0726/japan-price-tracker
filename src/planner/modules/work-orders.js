@@ -20,7 +20,7 @@ export const definition = {
     "name": "renderAll",
     "kind": "function"
   }],
-  "imports": ["$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed"],
+  "imports": ["getItems", "currentPiQuantities", "$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed"],
   "writes": ["csvCell", "download", "exportCsv", "renderAll", "renderContainers", "saveDraft"]
 };
 export function register(context) {
@@ -63,7 +63,7 @@ export function register(context) {
       alert('唯讀帳號無法儲存');
       return false;
     }
-    if (Object.entries(context.draft().rows || {}).some(([code, q]) => q > 0 && (code.startsWith('__') || !context.state.items.some(i => i.code === code && i.kind !== 'unknown')))) {
+    if (Object.entries(context.draft().rows || {}).some(([code, q]) => q > 0 && !Object.hasOwn(context.currentPiQuantities(),code) && (code.startsWith('__') || !context.state.items.some(i => i.code === code && i.kind !== 'unknown')))) {
       alert('本櫃有品號或貨別尚未確認的商品，請先補資料');
       return false;
     }
