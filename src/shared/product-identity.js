@@ -1,3 +1,4 @@
+import {isUploadedImage} from './temporary-image.js';
 const upper = v => String(v ?? '').trim().toUpperCase();
 export const barcodeKey = v => String(v ?? '').trim().replace(/[\s-]/g, '');
 export const validItemCode = v => /^(?=.*[A-Z])[A-Z0-9][A-Z0-9_-]*$/.test(upper(v)) && !/^(?:PENDING_ITEM|__)/.test(upper(v));
@@ -23,7 +24,7 @@ export function createProductResolver(data = {}) {
     const temporary = !code ? data.piTemporaryProducts?.[barcode] || {} : {};
     const key=code || (validItemCode(explicit) && !candidates.length ? explicit : '__JAN_'+barcode.replace(/[^A-Z0-9_-]/gi,''));
     return {key,code:code||(!candidates.length&&validItemCode(explicit)?explicit:''),barcode,product,candidates,
-      pending:!code,ambiguous:!code&&candidates.length>1,temporary:!code&&!!(temporary.name||temporary.imgUrl),imgUrl:code ? product.imgUrl || '' : temporary.imgUrl || '',name:product.name||temporary.name||row.name||('待補商品資料 · '+barcode)};
+      pending:!code,ambiguous:!code&&candidates.length>1,temporary:!code&&!!(temporary.name||temporary.imgUrl||temporary.imageRevision||temporary.imageData),imgUrl:code ? product.imgUrl || '' : (isUploadedImage(temporary.imageData) ? temporary.imageData : temporary.imgUrl || ''),name:product.name||temporary.name||row.name||('待補商品資料 · '+barcode)};
   };
 }
 // Remap only uniquely resolved identities. An explicit canonical quantity (even 0)
