@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createPiQuantityLookup, applyPiQuantityDefaults} from '../src/planner/pi-quantity-defaults.js';
 test('current container PI quantities sum exact item codes and match container exactly',()=>{
  const lookup=createPiQuantityLookup();const source=[{container:'JSR27B0102',rows:[{code:'ORI010',qty:20},{code:'ori010',qty:40},{code:'__JAN_123',qty:10},{code:'BAD',qty:-5}]}];
- assert.deepEqual(lookup(source,' jsr27b0102 '),{ORI010:60});assert.deepEqual(lookup(source,'JSR27B010'),{});
+ assert.deepEqual(lookup(source,' jsr27b0102 '),{ORI010:60,__JAN_123:10});assert.deepEqual(lookup(source,'JSR27B010'),{});
  const replaced=[...source,{container:'JSR27B0102',rows:[{code:'ORI010',qty:80}]}];assert.deepEqual(lookup(replaced,'JSR27B0102'),{ORI010:80});
  assert.deepEqual(lookup([{container:'JSR27B0102',received:true,rows:[{code:'ORI010',qty:60}]}],'JSR27B0102'),{},'已到倉 PI 不自動加回未到倉訂量');
 });
