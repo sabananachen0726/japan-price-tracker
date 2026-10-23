@@ -1,3 +1,4 @@
+import {isUploadedImage} from '../../shared/temporary-image.js';
 import { parseMYOBFactor } from "../domain/units.js";
 // planner: units. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -81,6 +82,6 @@ export function initialize(context) {
   context.trackedItem = i => context.trackerFeed?.products?.[i.code] || null;
   context.photo = i => {
     let u = context.trackedItem(i)?.imgUrl || i.imgUrl || context.IMAGE_MAP[i.code] || '';
-    return /^https:\/\//i.test(u) ? u : '';
+    return /^https:\/\//i.test(u) || (i.pending && isUploadedImage(u)) ? u : '';
   };
 }
