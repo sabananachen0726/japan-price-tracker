@@ -93,7 +93,7 @@ export function register(context) {
   context.stageLocalDraft = function stageLocalDraft() {
     if (context.plannerRole === 'viewer') return;
     const code = context.currentKey(),
-      d = context.state.drafts[code] || context.draft();
+      d = context.draft();
     d.rows ||= {};
     d.kind = context.$('kind').value;
     d.arrival = context.$('arrival').value;
