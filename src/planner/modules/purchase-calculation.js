@@ -81,8 +81,8 @@ export function register(context) {
   context.getItems = function getItems() {
     const pi = (context.trackerFeed?.pis || []).find(p => context.norm(p.container) === context.currentKey() && !p.received);
     const selected = new Map((pi?.rows || []).map(r => [r.code,r]));
-    const items = context.state.items.filter(i => selected.has(i.code) || !i.piOnly && i.availability === 'active' && i.kind === context.$('kind').value).map(i => ({...i,...(selected.has(i.code)?{pending:selected.get(i.code).pending,ambiguous:selected.get(i.code).ambiguous,candidates:selected.get(i.code).candidates}:{}),piItem:selected.has(i.code)}));
-    for(const [code,row] of selected) if(!items.some(i=>i.code===code))items.push({...row,code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:'',availability:'active',sources:[],history:[],piItem:true});
+    const items = context.state.items.filter(i => selected.has(i.code) || !i.piOnly && i.availability === 'active' && i.kind === context.$('kind').value).map(i => ({...i,...(selected.has(i.code)?{name:selected.get(i.code).name,imgUrl:selected.get(i.code).imgUrl || i.imgUrl,temporary:selected.get(i.code).temporary,pending:selected.get(i.code).pending,ambiguous:selected.get(i.code).ambiguous,candidates:selected.get(i.code).candidates}:{}),piItem:selected.has(i.code)}));
+    for(const [code,row] of selected) if(!items.some(i=>i.code===code))items.push({...row,code,stock:null,custom:'',monthly:null,maxStock:null,availability:'active',sources:[],history:[],piItem:true});
     return items;
   };
 }
