@@ -206,7 +206,8 @@ export function register(context) {
     for (const [code, product] of Object.entries(context.trackerFeed?.products || {})) addSource(code, product, '商品主檔');
     // 相同條碼的 __JAN_ 待補商品可被正式 Item Code 對應，避免重複顯示。
     for (const [key, i] of [...map]) if (key.startsWith('__JAN_') && i.barcode) {
-      const found = [...map.values()].find(j => j !== i && !j.code.startsWith('__') && j.barcode === i.barcode);
+      const matches = [...map.values()].filter(j => j !== i && !j.code.startsWith('__') && j.barcode === i.barcode);
+      const found = matches.length === 1 ? matches[0] : null;
       if (found) {
         for (const source of i.sources) if (!found.sources.includes(source)) found.sources.push(source);
         found.history.push(...i.history);
@@ -218,6 +219,8 @@ export function register(context) {
         map.delete(key);
       }
     }
+    // A PI-only candidate is local presentation, never a master/catalog write.
+    for(const pi of context.trackerFeed?.pis || []) for(const row of pi.rows || []) if(!map.has(row.code))map.set(row.code,{...row,code:row.code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:'',sources:[],history:[],piOnly:true});
     for (const i of map.values()) {
       const inv = context.state.inventory?.[i.code],
         units = context.state.unitMetadata?.[i.code] || context.SEED.inventory?.[i.code] || {};
