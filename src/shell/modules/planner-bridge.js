@@ -1,3 +1,4 @@
+import {createProductResolver, validItemCode} from '../../shared/product-identity.js';
 // shell: planner-bridge. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "planner-bridge",
@@ -27,10 +28,11 @@ export function register(context) {
     const products = {},
       itemMap = window.appData.itemToBarcode || {},
       historyRows = [];
-    const reverseCodes = new Map(Object.entries(itemMap).map(([code, bc]) => [String(bc), String(code).trim().toUpperCase()]));
+    const resolve = createProductResolver(window.appData);
     Object.entries(window.appData.products || {}).forEach(([barcode, p]) => {
-      const code = String(p.itemCode || reverseCodes.get(String(barcode)) || '').trim().toUpperCase(),
+      const code = String(validItemCode(p.itemCode) ? p.itemCode : '').trim().toUpperCase(),
         key = code || '__JAN_' + String(barcode).replace(/[^A-Z0-9_-]/gi, '');
+      if (!code) return;
       products[key] = {
         code,
         barcode: String(p.sourceBarcode || barcode),
@@ -72,7 +74,6 @@ export function register(context) {
       supplier: q.supplier,
       price: q.price
     }));
-    const barcodeToCode = new Map(Object.entries(window.appData.products || {}).map(([bc, p]) => [String(bc).replace(/[^0-9]/g, ''), String(p.itemCode || '').trim().toUpperCase()]));
     const trackerByCode = new Map((context.containerTrackerData.containers || []).map(c => [context.normalizeContainerNo(c.code), c]));
     const pis = Object.values(window.appData.finalPiContainers || {}).map(p => {
       const code = context.normalizeContainerNo(p.container),
@@ -87,10 +88,8 @@ export function register(context) {
       const eta = dates.eta,
         etaEstimated = dates.etaEstimated;
       const rows = (p.rows || []).map(r => {
-        const barcode = String(r.barcode || '').replace(/[^0-9]/g, ''),
-          mapped = itemMap[String(r.itemCode || '').trim().toUpperCase()] || itemMap[String(r.itemCode || '').trim()] || '';
-        const product = window.appData.products?.[barcode] || window.appData.products?.[mapped] || {};
-        const itemCode = String(r.itemCode || product.itemCode || barcodeToCode.get(barcode) || '').trim().toUpperCase();
+        const identity = resolve(r), barcode = identity.barcode, product = identity.product;
+        const itemCode = identity.code;
         historyRows.push({
           code: itemCode,
           barcode,
@@ -102,9 +101,11 @@ export function register(context) {
           version: p.importedAt || ''
         });
         return {
-          code: itemCode || '__JAN_' + barcode,
+          code: identity.key,
+          pending: identity.pending, ambiguous: identity.ambiguous, candidates: identity.candidates,
+          unitPrice: r.unitPrice ?? null, expiryDate: r.expiryDate || '',
           barcode,
-          name: r.name || product.name || '',
+          name: identity.name,
           kind: track?.type === 'Frozen' ? 'frozen' : track?.type === 'Dry' ? 'dry' : 'unknown',
           qty: +r.qty || 0
         };
@@ -157,7 +158,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261022-v4152';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261023-v4160';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
