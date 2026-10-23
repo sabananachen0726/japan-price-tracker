@@ -153,6 +153,7 @@ export function initialize(context) {
       data: context.snapshotPlanner412()
     }, '*');
     if (m.type === 'KAISI_PI_SHELF_TEST' && context.trackerFeed?.mode === 'test' && context.plannerRole === 'admin') context.saveCatalogPatch({
+      items: m.items || {},
       overrides: m.overrides || {}
     });
     if (m.type === 'KAISI_RESTORE_PLANNER' && m.mode === context.trackerFeed?.mode) context.restorePlanner412(m.data);
