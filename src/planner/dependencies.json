@@ -342,6 +342,8 @@
         "renderAll"
       ],
       "imports": [
+        "getItems",
+        "currentPiQuantities",
         "$",
         "allPis",
         "autosaveLabel",
