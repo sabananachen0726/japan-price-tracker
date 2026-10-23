@@ -1,10 +1,11 @@
+import {editTemporaryProduct} from '../pi-temporary-editor.js';
 import {reviewPiProducts} from '../pi-review.js';
 import {createProductResolver} from '../../shared/product-identity.js';
 // shell: frame-commands. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "frame-commands",
   "owns": [],
-  "imports": ["catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
+  "imports": ["saveFirebaseData", "refreshUI", "catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
   "writes": ["frozenSignature"]
 };
 export function register(context) {}
@@ -24,6 +25,24 @@ export function initialize(context) {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
     const containerWindow = document.getElementById('containerTrackerFrame')?.contentWindow;
+    if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_TEMP_EDIT') {
+      if(!context.isAdmin() || document.querySelector('.pi-temporary-dialog'))return;
+      const barcode=String(e.data.barcode||'');
+      const exists=Object.values(window.appData.finalPiContainers||{}).some(p=>(p.rows||[]).some(r=>String(r.barcode)===barcode));
+      if(!exists || !createProductResolver(window.appData)({barcode}).pending)return;
+      const mode=context.currentDataMode;
+      editTemporaryProduct({barcode,value:window.appData.piTemporaryProducts?.[barcode],save:async next=>{
+        if(!context.isAdmin() || mode!==context.currentDataMode)throw Error('帳號或資料模式已變更，請關閉後重新開啟');
+        if(!createProductResolver(window.appData)({barcode}).pending)throw Error('此商品已配對主檔，請關閉後查看正式資料');
+        window.appData.piTemporaryProducts ||= {};
+        if(next.name || next.imgUrl)window.appData.piTemporaryProducts[barcode]={...next,updatedAt:new Date().toISOString()};
+        else delete window.appData.piTemporaryProducts[barcode];
+        const ok=await context.saveFirebaseData();
+        if(ok){context.refreshUI();context.sendPlannerSnapshot();}
+        return ok;
+      }});
+      return;
+    }
     if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_MATCH') {
       if(!context.isAdmin())return;
       const barcode=String(e.data.barcode||'');
