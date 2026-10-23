@@ -1,3 +1,4 @@
+import {remapPiWork} from '../../shared/product-identity.js';
 import {createPiQuantityLookup, applyPiQuantityDefaults} from '../pi-quantity-defaults.js';
 // planner: purchase-calculation. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -74,10 +75,15 @@ export function register(context) {
       coverage: +context.$('coverage').value,
       rows: {}
     };
-    return applyPiQuantityDefaults(saved, context.currentPiQuantities());
+    const pi = (context.trackerFeed?.pis || []).find(p => context.norm(p.container) === context.currentKey());
+    return applyPiQuantityDefaults(remapPiWork(saved,pi?.rows), context.currentPiQuantities());
   };
   context.getItems = function getItems() {
-    return context.state.items.filter(i => i.availability === 'active' && i.kind === context.$('kind').value);
+    const pi = (context.trackerFeed?.pis || []).find(p => context.norm(p.container) === context.currentKey() && !p.received);
+    const selected = new Map((pi?.rows || []).map(r => [r.code,r]));
+    const items = context.state.items.filter(i => selected.has(i.code) || !i.piOnly && i.availability === 'active' && i.kind === context.$('kind').value).map(i => ({...i,...(selected.has(i.code)?{pending:selected.get(i.code).pending,ambiguous:selected.get(i.code).ambiguous,candidates:selected.get(i.code).candidates}:{}),piItem:selected.has(i.code)}));
+    for(const [code,row] of selected) if(!items.some(i=>i.code===code))items.push({...row,code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:'',availability:'active',sources:[],history:[],piItem:true});
+    return items;
   };
 }
 export function initialize(context) {}
