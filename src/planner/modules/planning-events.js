@@ -20,6 +20,7 @@ export function register(context) {
 }
 export function initialize(context) {
   installColumnResize();
+  context.$('productRows').addEventListener('click',e=>{const bc=e.target.closest('[data-temp-pi]')?.dataset.tempPi;if(bc)window.parent.postMessage({type:'KAISI_PI_TEMP_EDIT',barcode:bc},'*')});
   context.$('productRows').addEventListener('click', e => {const bc=e.target.closest('[data-match-pi]')?.dataset.matchPi;if(bc)window.parent.postMessage({type:'KAISI_PI_MATCH',barcode:bc},'*')});
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
