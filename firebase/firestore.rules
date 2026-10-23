@@ -1,0 +1,130 @@
+rules_version = '2';
+
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+
+    function role() {
+      return signedIn()
+        ? get(
+            /databases/$(database)/documents/user_roles/$(request.auth.uid)
+          ).data.get('role', 'disabled')
+        : 'disabled';
+    }
+
+
+    function allowed() {
+      return role() in ['admin', 'editor', 'viewer'];
+    }
+
+
+    function admin() {
+      return role() == 'admin';
+    }
+
+
+    function plannerEdit() {
+      return role() in ['admin', 'editor'];
+    }
+
+
+    // 帳號權限管理
+    match /user_roles/{uid} {
+
+
+      // 使用者可讀取自己的權限，Admin 可讀取全部
+      allow get: if signedIn()
+        && (request.auth.uid == uid || admin());
+
+
+      allow list: if admin();
+
+
+      // 只有 Admin 可以新增或修改帳號角色
+      allow create, update: if admin()
+        && request.resource.data.keys().hasOnly([
+          'email', 'role', 'updatedAt'
+        ])
+        && request.resource.data.role in [
+          'admin', 'editor', 'viewer', 'disabled'
+        ]
+        && (
+          uid != request.auth.uid ||
+          request.resource.data.role == 'admin'
+        );
+
+
+      allow delete: if false;
+    }
+
+
+    // Japan Price Tracker
+    match /app_data/main_config {
+      allow read: if allowed();
+      allow write: if admin();
+    }
+
+
+    // Container Tracker
+    match /app_data/container_tracker_v1 {
+      allow read: if allowed();
+      allow write: if admin();
+    }
+
+
+    // Order Planner
+    match /app_data/order_planner_v1 {
+      allow read: if allowed();
+      allow create, update: if plannerEdit();
+      allow delete: if admin();
+    }
+
+
+    match /app_data/order_catalog_v1 {
+      allow read: if allowed();
+      allow create, update: if plannerEdit();
+      allow delete: if admin();
+    }
+
+
+    match /app_data/order_inventory_v1 {
+      allow read: if allowed();
+      allow create, update: if plannerEdit();
+      allow delete: if admin();
+    }
+
+
+    match /app_data/order_planner_sources_v1 {
+      allow read: if allowed();
+      allow create, update: if plannerEdit();
+      allow delete: if admin();
+    }
+
+
+    // Temporary product thumbnails: same approved users; uploads are Admin only.
+    match /pi_temporary_images/{barcode} {
+      allow get: if allowed();
+      allow list: if false;
+      allow create, update: if admin()
+        && barcode.matches('[0-9]{8,14}')
+        && request.resource.data.keys().hasOnly(['barcode', 'dataUrl', 'updatedAt'])
+        && request.resource.data.barcode == barcode
+        && request.resource.data.updatedAt is string
+        && request.resource.data.dataUrl is string
+        && request.resource.data.dataUrl.size() <= 90000
+        && request.resource.data.dataUrl.matches('data:image/(jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}');
+      allow delete: if admin();
+    }
+
+    // 其他資料禁止存取
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
