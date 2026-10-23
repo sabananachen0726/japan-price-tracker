@@ -1,8 +1,10 @@
+import {reviewPiProducts} from '../pi-review.js';
+import {createProductResolver} from '../../shared/product-identity.js';
 // shell: frame-commands. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "frame-commands",
   "owns": [],
-  "imports": ["runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
+  "imports": ["catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
   "writes": ["frozenSignature"]
 };
 export function register(context) {}
@@ -22,6 +24,16 @@ export function initialize(context) {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
     const containerWindow = document.getElementById('containerTrackerFrame')?.contentWindow;
+    if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_MATCH') {
+      if(!context.isAdmin())return;
+      const barcode=String(e.data.barcode||'');
+      const found=Object.values(window.appData.finalPiContainers||{}).some(p=>(p.rows||[]).some(r=>String(r.barcode)===barcode));
+      if(!found)return;
+      void (async()=>{const review=await reviewPiProducts(window.appData,context.catalogData,[{rows:[{barcode}]}],{chooseOnly:true});if(!review||!Object.keys(review.links).length)return;
+        const previous=structuredClone(window.appData);
+        if(await context.savePiAndShelf({changes:[],issues:[],review},previous))context.sendPlannerSnapshot();})();
+      return;
+    }
     if (e.source === plannerWindow && e.data?.type === 'KAISI_PLANNER_HEIGHT') {
       const h = Number(e.data.height);
       if (Number.isFinite(h) && h >= 760 && h <= 400000) {
@@ -175,10 +187,12 @@ export function initialize(context) {
       Object.entries(draft.rows).forEach(([item, q]) => {
         if (context.safeCatalogKey(item) && Number.isInteger(Number(q)) && Number(q) >= 0) {
           cleaned.rows[item.toUpperCase()] = Number(q);
-          const barcode = window.appData.itemToBarcode?.[item] || '';
+          const identity = createProductResolver(window.appData)({itemCode:item,barcode:item.startsWith('__JAN_')?item.slice(6):window.appData.itemToBarcode?.[item]||''});
+          const barcode = identity.barcode || identity.product.primaryBarcode || '';
+          const piRow = Object.values(window.appData.finalPiContainers||{}).flatMap(p=>p.rows||[]).find(r=>createProductResolver(window.appData)(r).key===item);
           cleaned.snapshot[item.toUpperCase()] = {
             barcode,
-            name: window.appData.products?.[barcode]?.name || item
+            name: identity.product.name || piRow?.name || (item.startsWith('__JAN_') ? '待補商品資料 · '+barcode : item)
           };
         }
       });
