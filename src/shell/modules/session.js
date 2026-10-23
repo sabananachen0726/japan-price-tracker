@@ -1,3 +1,5 @@
+import {removedTemporaryImages,cacheTemporaryImage} from '../temporary-image-store.js';
+import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {clearResolvedTemporaryProducts} from '../../shared/product-identity.js';
 // shell: session. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -33,15 +35,16 @@ export const definition = {
     "name": "saveFirebaseData",
     "kind": "function"
   }],
-  "imports": ["containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
+  "imports": ["writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
   "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
-  context.saveFirebaseData = async function saveFirebaseData() {
+  context.saveFirebaseData = async function saveFirebaseData(options = {}) {
     if (!context.auth.currentUser || !context.isAdmin()) {
       alert("僅 Admin 可儲存此區資料。");
       return false;
     }
+    const before=structuredClone(context.savedAppData || window.appData);
     clearResolvedTemporaryProducts(window.appData);
     const pendingData = structuredClone(window.appData);
     context.searchCache.valid = false;
@@ -61,7 +64,13 @@ export function register(context) {
         statusBadge.className = "badge bg-secondary";
         statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 儲存中...';
       }
-      await context.setDoc(context.PROD_DOC_REF, pendingData);
+      const image=options.temporaryImage, removed=removedTemporaryImages(before,pendingData);
+      if(image || removed.length){
+        const batch=context.writeBatch(context.db);batch.set(context.PROD_DOC_REF,pendingData);
+        if(image){const meta=pendingData.piTemporaryProducts?.[image.barcode];if(!validImageBarcode(image.barcode)||!meta?.imageRevision||!isUploadedImage(image.dataUrl))throw Error('圖片資料無效');batch.set(context.doc(context.db,'pi_temporary_images',image.barcode),{barcode:image.barcode,dataUrl:image.dataUrl,updatedAt:meta.imageRevision})}
+        for(const bc of removed)batch.delete(context.doc(context.db,'pi_temporary_images',bc));
+        await batch.commit();if(image)cacheTemporaryImage(image.barcode,pendingData.piTemporaryProducts[image.barcode],image.dataUrl);
+      }else await context.setDoc(context.PROD_DOC_REF, pendingData);
       context.savedAppData = structuredClone(pendingData);
       if (statusBadge) {
         statusBadge.className = "badge bg-success";
