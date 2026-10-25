@@ -164,7 +164,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261026-v4163';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261026-v4164';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
