@@ -26,7 +26,7 @@ export const definition = {
     "name": "sendPlannerHeight",
     "kind": "function"
   }],
-  "imports": ["$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect"],
+  "imports": ["renderInventorySync", "$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect"],
   "writes": ["people", "catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
 };
 export function register(context) {
@@ -204,6 +204,7 @@ export function initialize(context) {
       return;
     }
     if (m.type === 'KAISI_CATALOG_ERROR') {
+      if(m.source==='inventory'){context.state.meta.inventorySyncError=m.error||'連線失敗';context.renderInventorySync();}
       context.$('catalogSync').textContent = '共享資料連線失敗：' + m.error + '；本機資料保留';
       return;
     }
@@ -223,6 +224,7 @@ export function initialize(context) {
         context.state.inventoryResetAt = m.data.resetAt;
       }
       if (context.state.sourceDirty.inventory) return;
+      context.state.inventoryCloudSeen=true;context.state.meta.inventoryCloudAt=String(m.data.updatedAt||'');context.state.meta.inventorySyncError='';
       context.state.inventory = m.data.rows || {};
       context.state.myobFactorBatchId = String(m.data.factorBatchId || '');
       context.state.myobImportedAt = String(m.data.updatedAt || '');
