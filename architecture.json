@@ -1718,6 +1718,7 @@
           "renderAll"
         ],
         "imports": [
+          "renderInventorySync",
           "getItems",
           "currentPiQuantities",
           "$",
@@ -1890,6 +1891,7 @@
           "sourceSave"
         ],
         "imports": [
+          "renderInventorySync",
           "$",
           "ELIGIBLE_SOURCE_ORDER",
           "KEY",
@@ -2135,12 +2137,14 @@
         "id": "inventory-import",
         "file": "modules/inventory-import.js",
         "owns": [
+          "renderInventorySync",
           "parseInventoryPaste",
           "pendingInventoryImport",
           "previewPastedInventory",
           "commitPastedInventory"
         ],
         "imports": [
+          "cloudJobs",
           "$",
           "catalogReady",
           "discoverCatalog",
@@ -2156,6 +2160,7 @@
           "trackerFeed"
         ],
         "writes": [
+          "renderInventorySync",
           "commitPastedInventory",
           "parseInventoryPaste",
           "pendingInventoryImport",
@@ -2176,6 +2181,7 @@
           "sendPlannerHeight"
         ],
         "imports": [
+          "renderInventorySync",
           "$",
           "applyCatalogSnapshot",
           "applyPreparedDefaults",
