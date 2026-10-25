@@ -217,10 +217,13 @@ export function initialize(context) {
           if (r.stock !== null && (typeof r.stock !== 'number' || !Number.isFinite(r.stock))) throw Error('MYOB 庫存無效');
           rows[code] = {
             stock: r.stock,
-            custom: String(r.custom || ''),
-            barcode: String(r.barcode || ''),
-            name: String(r.name || '')
+            custom: String(r.custom || '')
           };
+        }
+        // Do not index empty metadata for every stock row: 5,000+ rows would
+        // otherwise exceed Firestore's 40,000 single-field index-entry limit.
+        for (const [code,r] of Object.entries(payload.rows || {})) for (const field of ['barcode','name']) {
+          if (r[field]) rows[code][field]=String(r[field]);
         }
         data = {
           rows,
@@ -287,7 +290,7 @@ export function initialize(context) {
       } : {});
       respond(true, undefined, data.updatedAt);
     } catch (err) {
-      respond(false, err.code || err.message);
+      respond(false, [err.code, err.message].filter(Boolean).join('：').slice(0, 700) || '未知錯誤');
     }
   });
 }
