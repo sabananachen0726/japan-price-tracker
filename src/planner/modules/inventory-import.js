@@ -1,7 +1,7 @@
 // planner: inventory-import. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "inventory-import",
-  "owns": [{
+  "owns": [{"name":"renderInventorySync","kind":"function"}, {
     "name": "parseInventoryPaste",
     "kind": "function"
   }, {
@@ -14,10 +14,25 @@ export const definition = {
     "name": "commitPastedInventory",
     "kind": "function"
   }],
-  "imports": ["$", "catalogReady", "discoverCatalog", "esc", "norm", "openPlannerDialog", "parseMYOBFactor", "plannerRole", "rebuildCatalog", "renderAll", "sourceSave", "state", "trackerFeed"],
-  "writes": ["commitPastedInventory", "parseInventoryPaste", "pendingInventoryImport", "previewPastedInventory"]
+  "imports": ["cloudJobs", "$", "catalogReady", "discoverCatalog", "esc", "norm", "openPlannerDialog", "parseMYOBFactor", "plannerRole", "rebuildCatalog", "renderAll", "sourceSave", "state", "trackerFeed"],
+  "writes": ["renderInventorySync", "commitPastedInventory", "parseInventoryPaste", "pendingInventoryImport", "previewPastedInventory"]
 };
 export function register(context) {
+  context.renderInventorySync = function renderInventorySync(){
+    const mode=context.trackerFeed?.mode,dirty=!!context.state.sourceDirty?.inventory;
+    const pending=[...context.cloudJobs.values()].some(j=>j.action==='inventory'&&j.mode===mode);
+    const count=Object.keys(context.state.inventory||{}).length,at=context.state.meta.inventoryCloudAt;
+    let text,failed=false;
+    if(mode==='test')text='TEST：只保存在本機，不會同步正式雲端。';
+    else if(pending)text='正在同步 MYOB 快照到雲端… 請等候成功確認。';
+    else if(context.state.meta.inventorySyncError){failed=true;text='雲端同步失敗：'+context.state.meta.inventorySyncError+(dirty?'。本機資料已保留，請按「重試雲端同步」。':'。已保留上次資料，請重新整理確認連線。')}
+    else if(dirty)text='此份 MYOB 快照尚未同步雲端；請按「重試雲端同步」。';
+    else if(context.state.inventoryCloudSeen)text=at?'已同步雲端 · '+count.toLocaleString()+' 個品號 · 最後同步 '+new Date(at).toLocaleString('zh-TW',{timeZone:'Australia/Brisbane'})+'（Brisbane）。其他帳號及電腦共用這份快照。':'雲端尚未有 MYOB 快照，請先貼上資料並確認套用。';
+    else text='正在取得雲端 MYOB 快照…';
+    if(context.state.inventoryCloudSeen&&context.state.meta.myob)text+=' · '+context.state.meta.myob;
+    for(const id of ['inventorySnapshotStatus','inventoryPasteCloudStatus']){const el=context.$(id);if(el){el.textContent=text;el.className='mini '+(failed||dirty&&!pending?'warn':pending?'muted':'ok')}}
+    for(const id of ['retryInventoryCloud','retryInventoryCloudDialog']){const el=context.$(id);if(el){el.hidden=mode==='test'||!dirty;el.disabled=pending}}
+  };
   context.parseInventoryPaste = function parseInventoryPaste(text) {
     const lines = String(text || '').split(/\r?\n/),
       first = lines.find(line => line.trim()) || '';
@@ -163,12 +178,19 @@ export function register(context) {
       resetAt: context.state.inventoryResetAt || ''
     });
     context.renderAll();
-    context.$('inventoryPasteResult').textContent = `已套用本機快照：${Object.keys(rows).length} 品號，配對 ${matched}，未配對 ${missing}。${result.hasUnitColumn ? '本次 MYOB Factor 已生效，舊手動設定已失效。' : '只更新庫存，未改 Factor。'}${context.trackerFeed.mode === 'test' ? ' TEST 模式僅本機保存。' : ' 正在儲存至 Firebase，請確認共享同步狀態。'}`;
+    context.$('inventoryPasteResult').textContent = `本次匯入：${Object.keys(rows).length} 品號，配對 ${matched}，未配對 ${missing}。${result.hasUnitColumn ? '本次 MYOB Factor 已生效，舊手動設定已失效。' : '只更新庫存，未改 Factor。'}${context.trackerFeed.mode === 'test' ? ' TEST 模式僅本機保存。' : ' 雲端同步結果請看下方狀態。'}`;
     context.$('inventoryPasteResult').className = 'ok';
   };
 }
 export function initialize(context) {
   context.pendingInventoryImport = null;
+  const status=document.createElement('p');status.id='inventoryPasteCloudStatus';status.setAttribute('role','status');status.setAttribute('aria-live','polite');context.$('inventoryPasteResult').after(status);
+  for(const [id,after] of [['retryInventoryCloud','inventorySnapshotStatus'],['retryInventoryCloudDialog','inventoryPasteCloudStatus']]){
+    const button=document.createElement('button');button.type='button';button.id=id;button.textContent='重試雲端同步';button.hidden=true;
+    button.onclick=()=>{const payload=context.state.sourceDirty?.inventory;if(payload&&context.trackerFeed?.mode==='live'&&![...context.cloudJobs.values()].some(j=>j.action==='inventory'&&j.mode==='live'))context.sourceSave('inventory',payload)};
+    context.$(after).after(button);
+  }
+  context.renderInventorySync();
   context.$('resetMYOBStock').onclick = () => {
     if (context.plannerRole !== 'admin' || !context.catalogReady) return alert('僅 Admin 可重設庫存');
     if (!confirm('清空全部 MYOB 庫存數值？採購單位保留，庫存將顯示未取得。請先匯出完整備份。')) return;
