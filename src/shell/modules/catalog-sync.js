@@ -87,6 +87,7 @@ export function register(context) {
       }, err => {
         document.getElementById('plannerFrame')?.contentWindow?.postMessage({
           type: 'KAISI_CATALOG_ERROR',
+          source: type,
           error: err.code || err.message
         }, '*');
       }));
@@ -175,8 +176,9 @@ export function initialize(context) {
       action,
       payload
     } = e.data;
-    const respond = (ok, error) => frame.contentWindow.postMessage({
+    const respond = (ok, error, updatedAt) => frame.contentWindow.postMessage({
       type: 'KAISI_CATALOG_SAVE_RESULT',
+      updatedAt,
       id,
       ok,
       error
@@ -283,7 +285,7 @@ export function initialize(context) {
       await context.setDoc(ref, data, merge ? {
         merge: true
       } : {});
-      respond(true);
+      respond(true, undefined, data.updatedAt);
     } catch (err) {
       respond(false, err.code || err.message);
     }
