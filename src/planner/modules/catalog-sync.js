@@ -65,7 +65,7 @@ export const definition = {
     "name": "sourceSave",
     "kind": "function"
   }],
-  "imports": ["$", "ELIGIBLE_SOURCE_ORDER", "KEY", "SEED", "dirtyDrafts", "hydrateSales", "initial", "norm", "refreshRetryStatus", "renderAll", "renderPending", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "scopedKey", "state", "trackerFeed", "updateSalesSummary"],
+  "imports": ["renderInventorySync", "$", "ELIGIBLE_SOURCE_ORDER", "KEY", "SEED", "dirtyDrafts", "hydrateSales", "initial", "norm", "refreshRetryStatus", "renderAll", "renderPending", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "scopedKey", "state", "trackerFeed", "updateSalesSummary"],
   "writes": ["CATALOG_FIELDS", "applyCatalogSnapshot", "catalogReady", "catalogRecord", "catalogRemote", "cloudJobs", "cloudSequence", "dirtyDrafts", "discoverCatalog", "finishCloud", "importPreview", "itemKey", "loadPlannerMode", "meaningfulNumber", "mergePatch", "migrationConflicts", "normalizePlannerState", "rebuildCatalog", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "saveCatalogPatch", "sendCloud", "sourceSave", "state", "storeLocal"]
 };
 export function register(context) {
@@ -128,6 +128,7 @@ export function register(context) {
     context.salesError = '';
     context.$('salesPreview').classList.add('hidden');
     context.state = context.normalizePlannerState(saved || context.initial());
+    context.state.inventoryCloudSeen=false;context.state.meta.inventoryCloudAt='';context.state.meta.inventorySyncError='';
     // LIVE inventory must come from the shared snapshot, never bundled or stale local data.
     if (mode === 'live' && !context.state.sourceDirty.inventory) {
       context.state.inventory = {};
@@ -303,6 +304,7 @@ export function register(context) {
       mode: context.trackerFeed?.mode || 'live'
     });
     context.$('catalogSync').textContent = '共享資料儲存中…';
+    if(action==='inventory'){context.state.meta.inventorySyncError='';context.renderInventorySync();}
     window.parent.postMessage({
       type: 'KAISI_CATALOG_SAVE',
       id,
@@ -366,11 +368,14 @@ export function register(context) {
         for (const [key, v] of Object.entries(job.payload.rules || {})) if (context.state.dirtyCatalog.rules[key] === v) delete context.state.dirtyCatalog.rules[key];
         for (const [code, fields] of Object.entries(job.payload.overrides || {})) for (const field of Object.keys(fields)) if (context.state.legacyOverrides?.[code]) delete context.state.legacyOverrides[code][field];
       } else if (JSON.stringify(context.state.sourceDirty[job.action]) === JSON.stringify(job.payload)) delete context.state.sourceDirty[job.action];
+      if(job.action==='inventory'&&!context.state.sourceDirty.inventory){context.state.inventoryCloudSeen=true;context.state.meta.inventorySyncError='';context.state.meta.inventoryCloudAt=m.updatedAt||context.state.meta.inventoryCloudAt||'';}
       context.$('catalogSync').textContent = '共享資料已儲存';
     } else {
       context.state.syncFailed = true;
+      if(job.action==='inventory')context.state.meta.inventorySyncError=m.error||'未知錯誤';
       context.$('catalogSync').textContent = '共享儲存失敗：' + (m.error || '未知錯誤') + '；本機資料已保留，可按「重新儲存共享資料」';
     }
+    context.renderInventorySync();
     context.refreshRetryStatus();
     context.storeLocal();
     context.renderPending();
@@ -380,6 +385,7 @@ export function register(context) {
     context.storeLocal();
     if (context.trackerFeed?.mode === 'test') {
       context.$('catalogSync').textContent = 'TEST：資料只儲存在本機';
+      context.renderInventorySync();
       return;
     }
     context.sendCloud(action, payload);
