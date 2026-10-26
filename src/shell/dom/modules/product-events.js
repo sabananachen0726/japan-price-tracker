@@ -1,3 +1,4 @@
+import {masterSearchKeys} from '../../../shared/master-search.js';
 // shell/dom: product-events. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "product-events",
@@ -38,9 +39,7 @@ export function initialize(context) {
   context.btnSelectAllMasterFiltered = document.getElementById('btnSelectAllMasterFiltered');
   if (context.btnSelectAllMasterFiltered) context.btnSelectAllMasterFiltered.onclick = () => {
     const term = (context.masterSearchTerm || '').trim().toLowerCase();
-    Object.entries(window.appData.products || {}).forEach(([bc, p]) => {
-      if (!term || [bc, p?.itemCode, p?.name].some(v => String(v || '').toLowerCase().includes(term))) context.masterSelectedProducts.add(bc);
-    });
+    masterSearchKeys(window.appData.products, window.appData.mappings, term).forEach(bc => context.masterSelectedProducts.add(bc));
     context.renderMasterTable();
     context.updateMasterSelectionUI();
   };
