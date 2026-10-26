@@ -771,8 +771,7 @@
         "masterCurrentPage",
         "masterSearchTerm",
         "masterSelectedProducts",
-        "saveFirebaseData",
-        "smartProductMatchScore"
+        "saveFirebaseData"
       ],
       "writes": [
         "masterCurrentPage",
