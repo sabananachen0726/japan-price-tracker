@@ -268,9 +268,10 @@ export function register(context) {
     return Number(q?.price) > 0 && age !== null && age > context.STALE_QUOTE_DAYS;
   };
   context.renderProductCard = function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
-    const p = window.appData.products[primaryB] || {};
-    const aliases = window.appData.mappings[primaryB] || [];
     const cache = context.ensureSearchCache();
+    const p = cache.productsByPrimary?.get(primaryB) || window.appData.products[primaryB] || {};
+    const aliases = cache.aliasesByPrimary?.get(primaryB) || [];
+    const conflict = cache.ambiguousPrimaries?.has(primaryB);
     const cachedBundle = cache.quoteBundlesByPrimary.get(primaryB) || {
       latestBySupplier: {},
       supplierHistory: {}
@@ -401,9 +402,10 @@ export function register(context) {
                   </h5>
                   <div class="mb-2">
                     <span class="item-code-badge me-1">${p.itemCode ? 'Item: ' + p.itemCode : '無 Item Code'}</span>
-                    <span class="fw-bold text-dark me-1">JAN: ${primaryB}</span>
+                    <span class="fw-bold text-dark me-1">JAN: ${p.sourceBarcode || primaryB}</span>
                     ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
                     ${aliasesBadgeHtml}
+                    ${conflict ? '<span class="badge bg-warning text-dark">關聯條碼含不同品號，分開顯示</span>' : ''}
                   </div>
                   <div class="d-flex flex-wrap align-items-center gap-2 mt-2 purchase-copy-row">
                     <div class="input-group input-group-sm" style="width: 135px;">
