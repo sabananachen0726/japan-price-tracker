@@ -21,7 +21,7 @@ export const definition = {
     "name": "renderMasterTable",
     "kind": "function"
   }],
-  "imports": ["cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData"],
+  "imports": ["ensureSearchCache", "cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData"],
   "writes": ["masterCurrentPage", "migrateBarcodeReferences", "normalizeItemCode", "rebuildItemToBarcode", "renderMappingTable", "renderMasterTable", "updateMasterSelectionUI"]
 };
 export function register(context) {
@@ -37,7 +37,8 @@ export function register(context) {
     }
     primaryBarcodes.forEach(mainB => {
       const aliases = mappings[mainB] || [];
-      const p = window.appData.products[mainB] || {};
+      const cache=context.ensureSearchCache(),primary=cache.aliasToPrimary.get(mainB)||mainB;
+      const p = cache.productsByPrimary?.get(primary) || window.appData.products[mainB] || {};
       const aliasBadges = aliases.map(a => `<span class="badge badge-alias m-1">${a} <i class="fa-solid fa-xmark text-danger ms-1 btn-remove-alias" data-main="${mainB}" data-alias="${a}" style="cursor:pointer;"></i></span>`).join('');
       tbody.innerHTML += `
             <tr>
