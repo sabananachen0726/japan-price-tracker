@@ -269,7 +269,8 @@ export function register(context) {
     Object.values(window.appData.finalPiContainers || {}).forEach(c => (c.rows || []).forEach(r => {
       const p = context.getFinalPiProduct(r);
       const hay = [r.itemCode, r.barcode, p.itemCode, p.name].map(v => String(v || '').toLowerCase()).join(' ');
-      if (hay.includes(q)) matches.push({
+      const sameBarcode=/^\d{8,14}$/.test(q)&&context.resolveToPrimaryBarcode(q)===context.resolveToPrimaryBarcode(r.barcode);
+      if (hay.includes(q)||sameBarcode) matches.push({
         c,
         r,
         p
