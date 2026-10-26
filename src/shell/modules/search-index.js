@@ -1,3 +1,4 @@
+import {buildBarcodeGroups} from '../../shared/barcode-groups.js';
 // shell: search-index. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "search-index",
@@ -38,18 +39,15 @@ export function register(context) {
     const products = data.products || {};
     const mappings = data.mappings || {};
     const quotes = data.quotes || [];
-    const aliasToPrimary = new Map();
+    const groups=buildBarcodeGroups(data);
+    const aliasToPrimary = groups.primaryByBarcode;
     const productEntries = [];
-    const allPrimarySet = new Set(Object.keys(products));
+    const allPrimarySet = new Set([...Object.keys(products)].map(k=>aliasToPrimary.get(k)||k));
     const quoteByBarcode = new Map();
     const quoteBundlesByPrimary = new Map();
-    for (const mainB of Object.keys(mappings)) {
-      const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
-      for (const alias of aliases) aliasToPrimary.set(context.cleanBarcode(alias), mainB);
-    }
-    for (const mainB of Object.keys(products)) {
-      const p = products[mainB] || {};
-      const aliases = Array.isArray(mappings[mainB]) ? mappings[mainB] : [];
+    for (const mainB of allPrimarySet) {
+      const p = groups.productsByPrimary.get(mainB) || products[mainB] || {};
+      const aliases = groups.aliasesByPrimary.get(mainB) || [];
       productEntries.push({
         barcode: context.cleanBarcode(p.sourceBarcode || mainB).toLowerCase(),
         itemCode: String(p.itemCode || '').trim().toLowerCase(),
@@ -91,14 +89,18 @@ export function register(context) {
       productEntries,
       quoteByBarcode,
       quoteBundlesByPrimary,
+      productsByPrimary: groups.productsByPrimary,
+      aliasesByPrimary: groups.aliasesByPrimary,
+      ambiguousPrimaries: groups.ambiguousPrimaries,
       allPrimaryBarcodes: [...allPrimarySet]
     };
   };
   context.resolveToPrimaryBarcodeFromCache = function resolveToPrimaryBarcodeFromCache(barcode, aliasToPrimary, itemToBarcode) {
     let value = context.cleanBarcode(barcode);
     if (!value) return '';
-    if (itemToBarcode && itemToBarcode[value]) value = context.cleanBarcode(itemToBarcode[value]);
-    return aliasToPrimary.get(value) || value;
+    const mapped=itemToBarcode?.[value]||itemToBarcode?.[value.toUpperCase()];
+    if(mapped)value=context.cleanBarcode(mapped);
+    return aliasToPrimary.get(value.replace(/[\s-]/g,'')) || aliasToPrimary.get(value) || value;
   };
   context.ensureSearchCache = function ensureSearchCache() {
     if (!context.searchCache.valid) context.rebuildSearchCache();
