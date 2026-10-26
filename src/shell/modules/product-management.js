@@ -1,3 +1,4 @@
+import {masterSearchKeys} from '../../shared/master-search.js';
 // shell: product-management. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "product-management",
@@ -20,7 +21,7 @@ export const definition = {
     "name": "renderMasterTable",
     "kind": "function"
   }],
-  "imports": ["cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData", "smartProductMatchScore"],
+  "imports": ["cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData"],
   "writes": ["masterCurrentPage", "migrateBarcodeReferences", "normalizeItemCode", "rebuildItemToBarcode", "renderMappingTable", "renderMasterTable", "updateMasterSelectionUI"]
 };
 export function register(context) {
@@ -121,16 +122,7 @@ export function register(context) {
     const products = window.appData.products || {};
     const term = (context.masterSearchTerm || '').trim().toLowerCase();
     const allKeys = Object.keys(products);
-    const keys = allKeys.filter(bc => {
-      if (!term) return true;
-      const p = products[bc] || {};
-      return context.smartProductMatchScore(term, {
-        barcode: bc,
-        itemCode: p.itemCode,
-        name: p.name,
-        aliases: window.appData.mappings?.[bc] || []
-      }) > 0;
-    });
+    const keys = masterSearchKeys(products, window.appData.mappings, term);
     const pageSize = Math.max(1, parseInt(pageSizeSelect?.value || '50', 10));
     const totalPages = Math.max(1, Math.ceil(keys.length / pageSize));
     context.masterCurrentPage = Math.min(Math.max(1, context.masterCurrentPage), totalPages);
@@ -139,7 +131,7 @@ export function register(context) {
     if (prevBtn) prevBtn.disabled = context.masterCurrentPage <= 1;
     if (nextBtn) nextBtn.disabled = context.masterCurrentPage >= totalPages || keys.length === 0;
     if (keys.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">目前商品主檔為空。</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">${term ? '找不到符合的商品。' : '目前商品主檔為空。'}</td></tr>`;
       return;
     }
     const startIndex = (context.masterCurrentPage - 1) * pageSize;
