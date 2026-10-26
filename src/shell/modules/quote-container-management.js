@@ -20,7 +20,7 @@ export const definition = {
     "name": "renderContainerManager",
     "kind": "function"
   }],
-  "imports": ["compareContainerNo", "frozenBadgeHtml", "isFrozenContainer", "normalizeContainerNo", "quoteStatusLabel"],
+  "imports": ["ensureSearchCache", "resolveToPrimaryBarcode", "compareContainerNo", "frozenBadgeHtml", "isFrozenContainer", "normalizeContainerNo", "quoteStatusLabel"],
   "writes": ["activeManagedContainer", "escapeContainerText", "getManagedContainerQuotes", "renderContainerDeleteOptions", "renderContainerManager", "updateContainerSelectionInfo"]
 };
 export function register(context) {
@@ -62,16 +62,16 @@ export function register(context) {
     const allRows = context.getManagedContainerQuotes();
     const keyword = (document.getElementById('containerItemSearch')?.value || '').trim().toLowerCase();
     const rows = allRows.filter(q => {
-      const product = (window.appData.products || {})[q.barcode] || {};
-      return [q.itemCode, q.barcode, product.name, q.supplier, q.note].some(v => String(v || '').toLowerCase().includes(keyword));
+      const product = context.ensureSearchCache().productsByPrimary?.get(context.resolveToPrimaryBarcode(q.barcode)) || (window.appData.products || {})[q.barcode] || {};
+      return [q.itemCode, product.itemCode, q.barcode, product.name, q.supplier, q.note].some(v => String(v || '').toLowerCase().includes(keyword));
     });
     document.getElementById('containerManagerTitle').innerHTML = `貨櫃 ${context.escapeContainerText(context.activeManagedContainer)} ${context.frozenBadgeHtml(context.activeManagedContainer)}`;
     document.getElementById('containerManagerCount').textContent = `${allRows.length} 筆`;
     body.innerHTML = rows.length ? rows.map(q => {
-      const product = (window.appData.products || {})[q.barcode] || {};
+      const product = context.ensureSearchCache().productsByPrimary?.get(context.resolveToPrimaryBarcode(q.barcode)) || (window.appData.products || {})[q.barcode] || {};
       return `<tr>
         <td><input class="form-check-input container-item-check" type="checkbox" data-quote-id="${context.escapeContainerText(q.id)}"></td>
-        <td>${context.escapeContainerText(q.itemCode || product.itemCode || '-')}</td>
+        <td>${context.escapeContainerText(product.itemCode || q.itemCode || '-')}</td>
         <td class="small">${context.escapeContainerText(q.barcode || '-')}</td>
         <td>${context.escapeContainerText(product.name || '-')}</td>
         <td>${context.escapeContainerText(q.supplier || '-')}</td>
