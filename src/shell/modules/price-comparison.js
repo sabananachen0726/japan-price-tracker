@@ -230,7 +230,7 @@ export function register(context) {
     if (summaryContainer) {
       summaryContainer.innerHTML = `
         <div class="alert alert-primary d-flex justify-content-between align-items-center mb-3">
-          <div><i class="fa-solid fa-list-check me-2"></i>已貼入比對商品數量：<strong>${items.length}</strong> 項</div>
+          <div><i class="fa-solid fa-list-check me-2"></i>比對商品：<strong>${items.length}</strong> 項${items.ignoredCount ? ` · 已忽略 ${items.ignoredCount} 筆重複資料（保留第一次箱數，不累加）` : ''}</div>
           <small class="text-muted">比對結果已依輸入順序排版</small>
         </div>
       `;
