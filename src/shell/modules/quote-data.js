@@ -1,3 +1,4 @@
+import {deduplicateBatchItems} from '../../shared/batch-dedup.js';
 // shell: quote-data. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "quote-data",
@@ -169,7 +170,9 @@ export function register(context) {
         }
       }
     });
-    return result;
+    const {items,ignoredCount}=deduplicateBatchItems(result,window.appData||{});
+    Object.defineProperty(items,'ignoredCount',{value:ignoredCount});
+    return items;
   };
   context.getTimestampString = function getTimestampString() {
     const now = new Date();
