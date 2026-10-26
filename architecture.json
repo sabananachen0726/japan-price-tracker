@@ -767,6 +767,7 @@
           "renderMasterTable"
         ],
         "imports": [
+          "ensureSearchCache",
           "cleanBarcode",
           "escapeHtml",
           "masterCurrentPage",
@@ -796,6 +797,8 @@
           "renderContainerManager"
         ],
         "imports": [
+          "ensureSearchCache",
+          "resolveToPrimaryBarcode",
           "compareContainerNo",
           "frozenBadgeHtml",
           "isFrozenContainer",
