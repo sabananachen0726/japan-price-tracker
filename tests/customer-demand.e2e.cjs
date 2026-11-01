@@ -7,7 +7,7 @@ module.exports=({test,reportFile})=>{
   {code:'ACE005',qty:99,unit:'CTN',status:'取消'},
   {code:'ACE005',qty:99,unit:'CTN',status:'已出舊貨'}]};
  async function connect(s){await s.planner();await s.page.locator('#customerSourceEmail').fill('customer@example.com');await s.page.locator('#customerSourcePassword').fill('fixture-password');await s.page.locator('#customerSourceConnect').click();await s.page.locator('#customerSourceStatus').filter({hasText:'最後取得'}).waitFor();}
- async function search(s){await s.page.evaluate(()=>{appData.finalPiContainers={ONE:{container:'JSR27B0102',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:10}]},TWO:{container:'JTC27B0101',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:5,expiryDate:'2028-01-01',unitPrice:100}]}}});await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button="pi"]').click();await s.page.locator('#finalPiSearch').fill('ACE005');}
+ async function search(s){await s.page.evaluate(()=>{appData.finalPiContainers={ONE:{container:'JSR27B0102',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:10}]},TWO:{container:'JTC27B0101',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:5,expiryDate:'2028-01-01',unitPrice:100}]}}});await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button="pi"]').click();await s.page.locator('#finalPiSearch').fill('ACE005');await s.page.locator('#finalPiSearch').press('Enter');}
  test('CUSTOMER-01','客訂與 PI','不需預訂計入、只扣一次、未指定分開、卡片欄寬相同',async s=>{
   await connect(s);await search(s);
   const panel=s.page.locator('.customer-demand-panel');assert((await panel.innerText()).includes('未履行客訂：5 箱'));assert((await panel.innerText()).includes('在途可用箱數：10 箱'));
@@ -22,7 +22,7 @@ module.exports=({test,reportFile})=>{
  test('CUSTOMER-03','客訂與 PI','更新失敗保留上次成功資料與時間，沒有 PI 也能查客訂',async s=>{
   await connect(s);await search(s);await s.page.evaluate(()=>{window.__failCustomerRead=true;const now=Date.now();Date.now=()=>now+31000});
   await s.page.locator('#planner-tab').click();await s.page.locator('#customerSourceRefresh').click();await s.page.locator('#customerSourceStatus').filter({hasText:'更新失敗'}).waitFor();
-  await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button="pi"]').click();await s.page.locator('#finalPiSearch').fill('ACE005');let text=await s.page.locator('.customer-demand-panel').innerText();assert(text.includes('未履行客訂：5 箱'));assert(text.includes('更新失敗'));assert(text.includes('最後成功更新：'));
-  await s.page.evaluate(()=>{appData.finalPiContainers={}});await s.page.locator('#finalPiSearch').fill('Acecook');text=await s.page.locator('.customer-demand-panel').innerText();assert(text.includes('未履行客訂：5 箱'));assert(text.includes('在途可用箱數：-5 箱'));
+  await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button="pi"]').click();await s.page.locator('#finalPiSearch').fill('ACE005');await s.page.locator('#finalPiSearch').press('Enter');let text=await s.page.locator('.customer-demand-panel').innerText();assert(text.includes('未履行客訂：5 箱'));assert(text.includes('更新失敗'));assert(text.includes('最後成功更新：'));
+  await s.page.evaluate(()=>{appData.finalPiContainers={}});await s.page.locator('#finalPiSearch').fill('Acecook');await s.page.locator('#finalPiSearch').press('Enter');text=await s.page.locator('.customer-demand-panel').innerText();assert(text.includes('未履行客訂：5 箱'));assert(text.includes('在途可用箱數：-5 箱'));
  },options);
 };
