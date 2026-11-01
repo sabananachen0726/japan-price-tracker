@@ -105,3 +105,15 @@ Next UI update: note-only items are retained in submitted proposals and Excel; �
 2026-10-21 procurement update: four optional sales columns (six-month averages unchanged), a separate maxStock in sales units, nearest whole-box suggestions capped by that limit, MYOB-only unit conversion, projected sales-unit stock, import-overridable shelf locks, Admin unread inactive notifications, editable display names for old/new comments, and per-product PI search rows. Legacy safety values are not reused as limits.
 
 Rapid tab navigation now switches panes immediately to avoid overlapping fade callbacks. Quantity edits update only the affected projected-stock cell.
+
+## V4.17.0：共用採購單與查詢
+
+- 訂貨規劃可勾選「顯示已提交數量」，在原本訂量框下方顯示與雲端最新成功提交箱數的差異；相同時隱藏，提交成功後更新基準。
+- 未修改的工作單自動接收雲端更新。有本機修改且雲端版本變動時，保留草稿並暫停提交，先比較箱數、商品備註及工作設定。比較預設採用雲端；僅勾選的項目才帶入本機值。
+- 提交使用 Firestore transaction 檢查原始版本，監聽尚未收到更新時仍可拒絕過期提交。獨立留言不造成箱數衝突；留言與其他工作單不被覆蓋。
+- 本機恢復資料保留版本基準；缺少基準的舊草稿必須先比較。比較前草稿另留本機存檔，可下載 JSON 備份，不會自動上傳雲端。
+- 部署後請所有同事重新整理網站，讓已開啟的舊程式一起更新。新版的提交檢查無法限制仍在執行舊版程式的寫入；本次沒有變更正式 Firebase Rules。
+- 停用通知對話框可匯出全部通知為 Excel，包含品號、商品名稱、人員、Brisbane 時間及目前帳號的已讀狀態。
+- PI 商品查詢停止輸入 350ms 後執行，Enter 立即查詢、清空立即重置；中文輸入組字期間不搜尋。商品配對索引在每次搜尋中共用，資料更新後重新建立，避免過期配對。
+
+測試：`npm run check`、`npm run test:browser`、`npm run test:e2e`。新增 `order-version.test.mjs` 與 `order-sync.e2e.cjs`，以模擬 Firebase 驗證衝突、交易重試、逐項比較、草稿恢復、箱數差異、匯出與搜尋觸發。瀏覽器測試不寫入正式 Firebase。

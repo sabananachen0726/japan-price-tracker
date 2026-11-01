@@ -1,5 +1,6 @@
 import { createWindowEvents } from "../core/events.js";
 import { createFeatureRuntime } from "../core/runtime.js";
+import * as orderSync from "./modules/order-sync.js";
 import * as feature0 from "./modules/state.js";
 import * as feature1 from "./modules/draft-recovery.js";
 import * as feature2 from "./modules/units.js";
@@ -31,7 +32,7 @@ import * as feature27 from "./modules/sales-view.js";
 import * as feature28 from "./modules/sales-import.js";
 import * as feature29 from "./modules/sales-events.js";
 import * as feature30 from "./modules/workspace.js";
-const features = [feature0, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28, feature29, feature30];
+const features = [feature0, orderSync, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28, feature29, feature30];
 const runtime = createFeatureRuntime(features, {
   imports: {
     events: createWindowEvents(window)

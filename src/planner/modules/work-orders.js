@@ -20,7 +20,7 @@ export const definition = {
     "name": "renderAll",
     "kind": "function"
   }],
-  "imports": ["renderInventorySync", "getItems", "currentPiQuantities", "$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed"],
+  "imports": ["renderInventorySync", "getItems", "currentPiQuantities", "$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed", "orderBaselines", "orderConflicts", "orderPending", "orderSyncReady", "refreshOrderSync", "rememberOrderBase"],
   "writes": ["csvCell", "download", "exportCsv", "renderAll", "renderContainers", "saveDraft"]
 };
 export function register(context) {
@@ -63,6 +63,13 @@ export function register(context) {
       alert('唯讀帳號無法儲存');
       return false;
     }
+    const workCode = context.currentKey();
+    if (context.orderPending.has(workCode)) return false;
+    if (context.trackerFeed?.mode === 'live' && (!context.orderSyncReady || context.orderConflicts.has(workCode))) {
+      alert(context.orderConflicts.has(workCode) ? '雲端已有更新，請先比較並處理版本差異。' : '尚未確認雲端版本，請稍後再提交。');
+      return false;
+    }
+    context.rememberOrderBase(workCode);
     if (Object.entries(context.draft().rows || {}).some(([code, q]) => q > 0 && !Object.hasOwn(context.currentPiQuantities(),code) && (code.startsWith('__') || !context.state.items.some(i => i.code === code && i.kind !== 'unknown')))) {
       alert('本櫃有品號或貨別尚未確認的商品，請先補資料');
       return false;
@@ -83,9 +90,14 @@ export function register(context) {
     context.flushRecovery();
     context.persist();
     context.saveFingerprints.set(key, context.draftFingerprint(d));
+    const requestId = crypto.randomUUID(), revision = crypto.randomUUID();
+    const expectedVersion = context.orderBaselines.get(key) ?? null;
+    context.orderPending.set(key, {requestId, revision, expectedVersion});
+    context.refreshOrderSync();
     window.parent.postMessage({
       type: 'KAISI_ORDER_SAVE',
       code: key,
+      requestId, revision, expectedVersion,
       draft: d
     }, '*');
     context.autosaveLabel('已送出 Firebase 儲存請求 · 本機草稿保留至確認成功');
@@ -110,6 +122,7 @@ export function register(context) {
     context.renderInventorySync();
     context.renderPending();
     context.refreshRetryStatus();
+    context.refreshOrderSync();
     context.$('sourceBadge').textContent = context.trackerFeed ? `商品庫 ${context.state.items.length} 款 · ${context.trackerFeed.mode.toUpperCase()} · ${context.trackerFeed.mode === 'test' ? '本機客訂' : context.customerSourceReady ? '客訂已讀取' : '客訂待連線'}` : '等待資料連動';
   };
 }

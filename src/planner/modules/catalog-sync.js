@@ -65,7 +65,7 @@ export const definition = {
     "name": "sourceSave",
     "kind": "function"
   }],
-  "imports": ["renderInventorySync", "$", "ELIGIBLE_SOURCE_ORDER", "KEY", "SEED", "dirtyDrafts", "hydrateSales", "initial", "norm", "refreshRetryStatus", "renderAll", "renderPending", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "scopedKey", "state", "trackerFeed", "updateSalesSummary"],
+  "imports": ["renderInventorySync", "$", "ELIGIBLE_SOURCE_ORDER", "KEY", "SEED", "dirtyDrafts", "hydrateSales", "initial", "norm", "refreshRetryStatus", "renderAll", "renderPending", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "scopedKey", "state", "trackerFeed", "updateSalesSummary", "orderBaselines", "resetOrderSync"],
   "writes": ["CATALOG_FIELDS", "applyCatalogSnapshot", "catalogReady", "catalogRecord", "catalogRemote", "cloudJobs", "cloudSequence", "dirtyDrafts", "discoverCatalog", "finishCloud", "importPreview", "itemKey", "loadPlannerMode", "meaningfulNumber", "mergePatch", "migrationConflicts", "normalizePlannerState", "rebuildCatalog", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "saveCatalogPatch", "sendCloud", "sourceSave", "state", "storeLocal"]
 };
 export function register(context) {
@@ -102,6 +102,7 @@ export function register(context) {
   context.storeLocal = function storeLocal() {
     try {
       context.state.unsavedDrafts = [...context.dirtyDrafts];
+      context.state.orderBaseVersions = Object.fromEntries(context.orderBaselines);
       const local = {
         ...context.state,
         items: context.state.items.map(({
@@ -137,7 +138,9 @@ export function register(context) {
       context.state.meta.myob = '尚未取得共享 MYOB 快照';
     }
     context.hydrateSales(context.state.salesV1 || null);
+    context.resetOrderSync();
     context.dirtyDrafts = new Set(context.state.unsavedDrafts || []);
+    for (const [code, version] of Object.entries(context.state.orderBaseVersions || {})) if (typeof version === "string") context.orderBaselines.set(code, version);
     context.catalogRemote = {
       items: {},
       overrides: {},

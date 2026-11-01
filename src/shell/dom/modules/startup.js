@@ -1,3 +1,4 @@
+import {bindDeferredSearch} from '../../../shared/deferred-search.js';
 // shell/dom: startup. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "startup",
@@ -11,7 +12,7 @@ export const definition = {
 export function register(context) {}
 export function initialize(context) {
   context.finalPiSearch = document.getElementById('finalPiSearch');
-  if (context.finalPiSearch) context.finalPiSearch.addEventListener('input', context.renderFinalPiSearch);
+  if (context.finalPiSearch) bindDeferredSearch(context.finalPiSearch, context.renderFinalPiSearch);
   document.getElementById('btnRunFinalPiBatch')?.addEventListener('click', () => context.renderFinalPiBatchSearch(true));
   document.getElementById('btnExportFinalPiBatch')?.addEventListener('click', context.exportFinalPiBatch);
   document.getElementById('finalPiBatchInput')?.addEventListener('input', () => {
