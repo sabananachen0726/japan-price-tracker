@@ -1,12 +1,17 @@
 import {parseMYOBFactor} from '../planner/domain/units.js';
 import {createProductResolver, validItemCode} from './product-identity.js';
 import {cleanPiIdentifier} from './pi-paste.js';
+// Firestore map keys have no semantic order; arrays (PI row order) do.
+export function piRowsVersion(value) {
+  const canonical = v => Array.isArray(v) ? v.map(canonical) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canonical(v[k])])) : v;
+  return JSON.stringify(canonical(value));
+}
 export function auditPiData(data, inventory = {}) {
   const issues = [], resolve = createProductResolver(data), hasInventory = Object.keys(inventory).length > 0;
   for (const [key, pi] of Object.entries(data.finalPiContainers || {})) {
     const seen = new Set();
     for (const [index, row] of (pi.rows || []).entries()) {
-      const add = (field, reason, suggestion) => issues.push({id: `${key}:${index}:${field}`, key, container: pi.container || key, index, field, reason, before: row[field], suggestion, row: structuredClone(row), baseline: JSON.stringify(pi.rows)});
+      const add = (field, reason, suggestion) => issues.push({id: `${key}:${index}:${field}`, key, container: pi.container || key, index, field, reason, before: row[field], suggestion, row: structuredClone(row), baseline: piRowsVersion(pi.rows)});
       const clean = {};
       for (const field of ['itemCode', 'barcode']) {
         const original = String(row[field] ?? ''), trimmed = cleanPiIdentifier(original), after = cleanPiIdentifier(trimmed.replace(/^"+|"+$/g, ''));
@@ -40,7 +45,7 @@ export function planPiRepairs(data, selected) {
   for (const issue of selected) {
     if (typeof issue.suggestion !== 'string' || !['itemCode', 'barcode'].includes(issue.field)) continue;
     const pi = data.finalPiContainers?.[issue.key];
-    if (!pi || JSON.stringify(pi.rows) !== issue.baseline) throw Error('檢查後 PI 已有變更，請重新執行排查');
+    if (!pi || piRowsVersion(pi.rows) !== issue.baseline) throw Error('檢查後 PI 已有變更，請重新執行排查');
     if (!changes.has(issue.key)) changes.set(issue.key, {key: issue.key, baseline: issue.baseline, rows: structuredClone(pi.rows)});
     changes.get(issue.key).rows[issue.index][issue.field] = issue.suggestion;
   }
@@ -50,7 +55,7 @@ export async function commitPiRepairs({runTransaction, db, ref, FieldPath, chang
   if (!changes.length) return;
   await runTransaction(db, async tx => {
     const snapshot = await tx.get(ref), data = snapshot.exists() ? snapshot.data() : {};
-    for (const c of changes) if (JSON.stringify(data.finalPiContainers?.[c.key]?.rows) !== c.baseline) throw Error('雲端 PI 已更新，已取消全部修正。請重新排查');
+    for (const c of changes) if (piRowsVersion(data.finalPiContainers?.[c.key]?.rows) !== c.baseline) throw Error('雲端 PI 已更新，已取消全部修正。請重新排查');
     const fields = changes.map(c => new FieldPath('finalPiContainers', c.key, 'rows'));
     tx.set(ref, {finalPiContainers: Object.fromEntries(changes.map(c => [c.key, {rows: c.rows}]))}, {mergeFields: fields});
   });
