@@ -1,4 +1,4 @@
-import {auditPiData, planPiRepairs, commitPiRepairs} from '../../shared/pi-audit.js';
+import {auditPiData, planPiRepairs, commitPiRepairs, piRowsVersion} from '../../shared/pi-audit.js';
 export const definition = {
   id: 'pi-audit', owns: ['renderPiAudit', 'openPiAudit'].map(name => ({name, kind: 'function'})),
   imports: ['auth', 'isAdmin', 'currentDataMode', 'inventoryData', 'chooseImportView', 'db', 'PROD_DOC_REF', 'FieldPath', 'runTransaction', 'saveFirebaseData', 'savedAppData', 'refreshUI', 'sendPlannerSnapshot', 'sendContainerSnapshot', 'escapeFinalPiText'],
@@ -48,11 +48,14 @@ export function initialize(context) {
     const heading = document.createElement('h3'); heading.textContent = '確認歷史 PI 清理'; preview.append(heading);
     const p = document.createElement('p'); p.textContent = `只清理勾選的 ${selected.length} 個品號／條碼欄位。不改箱數、單價、效期、Final 標記或入倉日期。`; preview.append(p);
     const list = document.createElement('pre'); list.textContent = selected.map(i => `${i.container} 第 ${i.index + 1} 列 ${fields[i.field]}：${JSON.stringify(i.before)} → ${JSON.stringify(i.suggestion)}`).join('\n'); preview.append(list);
+    const feedback = document.createElement('p'); feedback.id = 'piRepairStatus'; feedback.setAttribute('role','status'); feedback.setAttribute('aria-live','polite'); preview.append(feedback);
+    const setFeedback = message => {feedback.textContent = message; status.textContent = message;};
     const cancel = document.createElement('button'); cancel.className = 'btn btn-outline-secondary'; cancel.textContent = '取消'; cancel.onclick = () => {preview.close(); preview.remove();};
     const apply = document.createElement('button'); apply.id = 'confirmPiRepair'; apply.className = 'btn btn-primary ms-2'; apply.textContent = '確認清理';
     apply.onclick = async () => {
-      if (busy || !context.isAdmin() || scope.mode !== context.currentDataMode || scope.uid !== context.auth.currentUser?.uid) return;
-      busy = true; apply.disabled = true; cancel.disabled = true; const mode = scope.mode, uid = scope.uid;
+      if (busy) return;
+      if (!context.isAdmin() || scope.mode !== context.currentDataMode || scope.uid !== context.auth.currentUser?.uid) {setFeedback('帳號、權限或模式已改變，請取消後重新排查。'); return;}
+      busy = true; apply.disabled = true; cancel.disabled = true; apply.textContent = '清理中…'; setFeedback('正在確認雲端版本並儲存，請稍候…'); const mode = scope.mode, uid = scope.uid;
       try {
         if (mode === 'test') {
           planPiRepairs(window.appData, selected);
@@ -60,14 +63,14 @@ export function initialize(context) {
           if (!await context.saveFirebaseData()) throw Error('TEST 本機儲存失敗');
         } else {
           await commitPiRepairs({runTransaction:context.runTransaction,db:context.db,ref:context.PROD_DOC_REF,FieldPath:context.FieldPath,changes});
-          if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) return;
+          if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) {setFeedback('原帳號的 LIVE 清理已儲存；目前帳號或模式已改變，請關閉後重新排查。'); apply.textContent = '已完成'; cancel.disabled = false; return;}
           for (const change of changes) {
-            if (JSON.stringify(window.appData.finalPiContainers?.[change.key]?.rows) === change.baseline) window.appData.finalPiContainers[change.key].rows = change.rows;
-            if (JSON.stringify(context.savedAppData?.finalPiContainers?.[change.key]?.rows) === change.baseline) context.savedAppData.finalPiContainers[change.key].rows = structuredClone(change.rows);
+            if (piRowsVersion(window.appData.finalPiContainers?.[change.key]?.rows) === change.baseline) window.appData.finalPiContainers[change.key].rows = change.rows;
+            if (piRowsVersion(context.savedAppData?.finalPiContainers?.[change.key]?.rows) === change.baseline) context.savedAppData.finalPiContainers[change.key].rows = structuredClone(change.rows);
           }
         }
         context.refreshUI(); context.sendPlannerSnapshot(); context.sendContainerSnapshot(); preview.close(); preview.remove(); busy = false; context.renderPiAudit(); status.textContent = `已清理 ${selected.length} 個欄位；其餘資料未修改。`;
-      } catch (err) {status.textContent = '未完成清理：' + err.message; apply.disabled = false; cancel.disabled = false;}
+      } catch (err) {setFeedback('未完成清理：' + (err.code ? '[' + err.code + '] ' : '') + err.message + '。請核對後重試，或取消並重新排查。'); apply.disabled = false; cancel.disabled = false; apply.textContent = '重試清理';}
       finally {busy = false;}
     };
     preview.append(cancel, apply); preview.addEventListener('cancel', e => {if (busy) e.preventDefault(); else preview.remove();}); document.body.append(preview); preview.showModal();

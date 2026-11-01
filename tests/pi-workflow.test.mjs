@@ -33,3 +33,8 @@ test('assigned demand is per container; unassigned and other containers are neve
  const rows=[{code:'KR405',container:'one',qty:6,unit:'CTN',customer:'<Store>'},{code:'KR405',container:'TWO',qty:2,unit:'箱',customer:'B'},{code:'KR405',container:'',qty:3,unit:'CTN'},{code:'KR405',container:'OLD',qty:8,unit:'CTN'},{code:'KR405',container:'ONE',qty:99,unit:'CTN',status:'取消'}];
  const r=allocatePiDemand(rows,new Set(['KR405']),['ONE','TWO']);assert.equal(r.assigned.get('ONE').total,6);assert.equal(r.assigned.get('TWO').total,2);assert.equal(r.unassigned.total,3);assert.equal(r.other.total,8);const html=renderPiContainerDemand({allocation:r.assigned.get('ONE'),incoming:4,ready:true});assert(html.includes('超額分配 2 箱'));assert(html.includes('&lt;Store&gt;'));assert(!html.includes('<Store>'));assert(renderStoreOrders([...rows.slice(0,1),...rows.slice(0,1)]).includes('1 家／2 筆'));
 });
+test('PI cleanup version ignores map key order but retains row order and changed values',async()=>{
+ const d=data(),changes=planPiRepairs(d,auditPiData(d).filter(i=>i.suggestion));const remote=structuredClone(d);remote.finalPiContainers.ONE.rows=remote.finalPiContainers.ONE.rows.map(r=>Object.fromEntries(Object.entries(r).reverse()));let writes=0;
+ await commitPiRepairs({changes,FieldPath:class{},runTransaction:async(_,fn)=>fn({get:async()=>({exists:()=>true,data:()=>remote}),set:()=>writes++})});assert.equal(writes,1);
+ remote.finalPiContainers.ONE.rows[0].qty=99;await assert.rejects(commitPiRepairs({changes,FieldPath:class{},runTransaction:async(_,fn)=>fn({get:async()=>({exists:()=>true,data:()=>remote}),set:()=>writes++})}),/已更新/);assert.equal(writes,1);
+});

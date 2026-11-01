@@ -244,6 +244,9 @@
           "sendContainerSnapshot"
         ],
         "imports": [
+          "db",
+          "runTransaction",
+          "CATALOG_REF",
           "ORDER_PLANNER_REF",
           "auth",
           "catalogData",
