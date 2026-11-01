@@ -1,3 +1,4 @@
+import {deleteInactiveNotices} from '../inactive-notice-actions.js';
 import {inactiveNotices, noticeExportRows} from '../inactive-notices.js';
 // shell: work-orders. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -30,7 +31,7 @@ export const definition = {
     "name": "sendContainerSnapshot",
     "kind": "function"
   }],
-  "imports": ["ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
+  "imports": ["db", "runTransaction", "CATALOG_REF", "ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
   "writes": ["people", "noticeReads", "renderInactiveNotices", "deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "startSharedOrderListener", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
@@ -176,7 +177,7 @@ export function initialize(context) {
   button.id = 'inactiveNoticeButton'; button.hidden = true; button.className = 'btn btn-sm btn-outline-secondary';
   document.getElementById('btnUsers').before(button);
   const dialog = document.createElement('dialog'); dialog.id = 'inactiveNoticeDialog';
-  dialog.innerHTML = '<div class="d-flex justify-content-between"><h3>商品停用通知</h3><button type="button" class="btn btn-outline-secondary" data-close-notices>關閉</button></div><button type="button" class="btn btn-primary my-2" data-export-notices>匯出停用通知 Excel</button><div id="inactiveNoticeRows"></div><div id="inactiveNoticeStatus" role="status"></div>';
+  dialog.innerHTML = '<div class="d-flex justify-content-between"><h3>商品停用通知</h3><button type="button" class="btn btn-outline-secondary" data-close-notices>關閉</button></div><button type="button" class="btn btn-primary my-2" data-export-notices>匯出停用通知 Excel</button><div class="d-flex flex-wrap gap-2 mb-2"><button type="button" class="btn btn-outline-primary" data-read-all-notices>全部已讀</button><button type="button" class="btn btn-outline-danger" data-delete-all-notices>全部已處理（刪除通知）</button></div><p class="small text-muted">已讀只影響目前帳號；刪除會移除所有同事共用的通知紀錄，商品仍保持停用。</p><div id="inactiveNoticeRows"></div><div id="inactiveNoticeStatus" role="status"></div>';
   document.body.append(dialog);
   button.onclick = () => {context.renderInactiveNotices(); dialog.showModal();};
   dialog.querySelector('[data-export-notices]').onclick = () => {
@@ -192,13 +193,31 @@ export function initialize(context) {
     status.textContent = '已匯出 ' + entries.length + ' 筆停用通知。';
   };
   dialog.querySelector('[data-close-notices]').onclick = () => dialog.close();
+  let noticeBusy = false;
   dialog.addEventListener('click', async e => {
-    const id = e.target.closest('[data-read-notice]')?.dataset.readNotice;
-    if (!id || !context.isAdmin()) return;
-    if (context.currentDataMode !== 'live') {document.getElementById('inactiveNoticeStatus').textContent='請切換 LIVE 後標為已讀。';return;}
+    const action = e.target.closest('[data-read-notice],[data-read-all-notices],[data-delete-all-notices]');
+    if (!action || noticeBusy || !context.isAdmin()) return;
     const status = document.getElementById('inactiveNoticeStatus');
-    try {await context.setDoc(context.ORDER_PLANNER_REF,{noticeReads:{[context.auth.currentUser.uid]:{[id]:true}}},{merge:true}); status.textContent='';}
-    catch(err){status.textContent='儲存失敗，請重試。';}
+    if (context.currentDataMode !== 'live' || !context.auth.currentUser) {status.textContent='請切換 LIVE 並登入後操作通知。';return;}
+    const uid = context.auth.currentUser.uid;
+    const entries = inactiveNotices(context.catalogData, window.appData, context.people, context.noticeReads, uid);
+    const deleting = action.hasAttribute('data-delete-all-notices');
+    const selected = deleting ? entries : entries.filter(n => !n.read && (!action.dataset.readNotice || n.id === action.dataset.readNotice));
+    if (!selected.length) {status.textContent = deleting ? '目前沒有通知可刪除。' : '所有通知都已讀。'; return;}
+    if (deleting && !confirm(`確定將目前 ${selected.length} 筆停用通知全部標為已處理並刪除？所有同事都會看不到這些通知，無法還原。商品停用狀態與訂貨資料不變；執行期間新增的通知會保留。`)) return;
+    noticeBusy = true;
+    const buttons = [...dialog.querySelectorAll('button')]; buttons.forEach(b => b.disabled = true);
+    status.textContent = deleting ? '正在刪除通知紀錄…' : '正在標為已讀…';
+    try {
+      if (deleting) {
+        const count = await deleteInactiveNotices({entries:selected,runTransaction:context.runTransaction,db:context.db,catalogRef:context.CATALOG_REF,plannerRef:context.ORDER_PLANNER_REF,deleteField:context.deleteField});
+        status.textContent = `已處理並刪除 ${count} 筆通知；商品停用狀態不變。`;
+      } else {
+        await context.setDoc(context.ORDER_PLANNER_REF,{noticeReads:{[uid]:Object.fromEntries(selected.map(n=>[n.id,true]))}},{merge:true});
+        status.textContent = `已將 ${selected.length} 筆通知標為已讀。`;
+      }
+    } catch(err) {status.textContent='操作失敗，請重試：' + (err.code ? '[' + err.code + '] ' : '') + err.message;}
+    finally {noticeBusy = false; buttons.forEach(b => b.disabled = false);}
   });
   document.getElementById('sharedOrderList')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-proposal-export],[data-proposal-delete]');
