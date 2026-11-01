@@ -1,3 +1,5 @@
+import {parsePiPaste, isMultiPiPaste} from '../../shared/pi-paste.js';
+import {reviewPiPaste} from '../pi-paste-preview.js';
 import {reviewPiProducts} from '../pi-review.js';
 // shell: pi-import. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -44,103 +46,12 @@ export function register(context) {
     URL.revokeObjectURL(url);
   };
   context.parseFinalPiMultiPaste = function parseFinalPiMultiPaste(text) {
-    const groups = new Map(),
-      invalid = [];
-    let shelfColumn = -1;
-    String(text || '').split(/\r?\n/).forEach((line, idx) => {
-      if (!line.trim()) return;
-      const cols = context.parseFinalPiLine(line);
-      const first = String(cols[0] || '').toLowerCase();
-      if (first.includes('container') || first.includes('貨櫃')) {
-        shelfColumn = context.findPiShelfColumn(cols);
-        return;
-      }
-      const fail = reason => invalid.push({
-        line: idx + 1,
-        reason,
-        raw: line
-      });
-      if (cols.length < 4) {
-        fail('欄位不足：多櫃格式至少需要 Container、Supplier、JAN Code、Qty(CTN)');
-        return;
-      }
-      const container = context.normalizeContainerNo(cols[0]);
-      const supplier = String(cols[1] || '').trim();
-      const barcode = context.cleanBarcode(cols[2]);
-      const qtyRaw = String(cols[3] ?? '').trim();
-      const qty = Number(qtyRaw.replace(/,/g, ''));
-      const itemCode = String(cols[4] || '').trim();
-      const rawPrice = String(cols[5] ?? '').trim();
-      const unitPrice = rawPrice === '' ? null : Number(rawPrice.replace(/[¥$,\s]/g, ''));
-      const expiryDate = context.normalizeFinalPiDate(cols[6]);
-      const shelfLifeMonths = context.readPiShelfCell(cols, shelfColumn, 7);
-      if (shelfLifeMonths === false) {
-        fail('保存期限（月）須為 1～120 的整數');
-        return;
-      }
-      if (!container) {
-        fail('Container No. 為必填');
-        return;
-      }
-      if (!supplier) {
-        fail(`${container}：Supplier 為必填`);
-        return;
-      }
-      if (!barcode) {
-        fail(`${container}：JAN Code / Barcode 為必填`);
-        return;
-      }
-      if (!qtyRaw) {
-        fail(`${container} / JAN ${barcode}：箱數為空白`);
-        return;
-      }
-      if (!Number.isFinite(qty) || qty <= 0) {
-        fail(`${container} / JAN ${barcode}：箱數「${qtyRaw}」不是有效的正數`);
-        return;
-      }
-      if (unitPrice !== null && (!Number.isFinite(unitPrice) || unitPrice < 0)) {
-        fail(`${container} / JAN ${barcode}：單包價「${rawPrice}」格式無效`);
-        return;
-      }
-      if (!groups.has(container)) groups.set(container, {
-        container,
-        supplier,
-        rows: []
-      });
-      const g = groups.get(container);
-      if (!g.supplier) g.supplier = supplier;
-      g.rows.push({
-        itemCode,
-        qty,
-        unitPrice,
-        barcode,
-        expiryDate,
-        shelfLifeMonths
-      });
-    });
-    return {
-      groups: [...groups.values()],
-      invalid
-    };
+    return parsePiPaste(text, true);
   };
-  context.looksLikeFinalPiMulti = function looksLikeFinalPiMulti(text) {
-    const lines = String(text || '').split(/\r?\n/).filter(x => x.trim());
-    if (!lines.length) return false;
-    const firstCols = context.parseFinalPiLine(lines[0]);
-    const first = String(firstCols[0] || '').trim().toLowerCase();
-    if (first.includes('container') || first.includes('貨櫃')) return true;
-    if (firstCols.length >= 4) {
-      const c = context.normalizeContainerNo(firstCols[0]);
-      const supplier = String(firstCols[1] || '').trim();
-      const barcode = context.cleanBarcode(firstCols[2]);
-      const qty = Number(String(firstCols[3] || '').replace(/,/g, ''));
-      return !!c && !!supplier && !!barcode && Number.isFinite(qty) && qty > 0 && !/^\d{8,14}$/.test(c);
-    }
-    return false;
-  };
+  context.looksLikeFinalPiMulti = isMultiPiPaste;
   context.invalidFinalPiHtml = function invalidFinalPiHtml(invalid) {
     if (!invalid?.length) return '';
-    return `<div class="alert alert-warning mt-2 mb-0"><div class="fw-bold mb-1">⚠️ 跳過 ${invalid.length} 列：</div>${invalid.map(x => `<div class="small mb-2"><strong>第 ${x.line} 列：</strong>${context.escapeFinalPiText(x.reason)}<br><code class="text-wrap">${context.escapeFinalPiText(x.raw || '')}</code></div>`).join('')}</div>`;
+    return `<div class="alert alert-warning mt-2 mb-0"><div class="fw-bold mb-1">⚠️ 需要確認 ${invalid.length} 列：</div>${invalid.map(x => `<div class="small mb-2"><strong>第 ${x.line} 列：</strong>${context.escapeFinalPiText(x.reason)}<br><code class="text-wrap">${context.escapeFinalPiText(x.raw || '')}</code></div>`).join('')}</div>`;
   };
   context.invalidFinalPiText = function invalidFinalPiText(invalid) {
     if (!invalid?.length) return '';
@@ -148,6 +59,7 @@ export function register(context) {
   };
   context.importFinalPiMulti = async function importFinalPiMulti() {
     const parsed = context.parseFinalPiMultiPaste(document.getElementById('finalPiMultiPaste')?.value || '');
+    if (parsed.invalid.length) {await reviewPiPaste(parsed, parsed.groups); return;}
     if (!parsed.groups.length) {
       alert('沒有可匯入的多櫃 Final PI 資料。');
       return;
@@ -161,7 +73,7 @@ export function register(context) {
     const shelfContext = context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog.overrides : context.catalogData?.overrides;
     const shelfPlan = context.planPiShelf(parsed.groups, shelfContext);
     msg += context.piShelfPreviewText(shelfPlan);
-    if (!confirm(msg + '\n\n確定繼續？')) return;
+    if (!await reviewPiPaste(parsed, parsed.groups, msg)) return;
     const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,parsed.groups || [{container,rows:parsed.rows}]);
     if (!review) return;
     shelfPlan.review = review;
@@ -205,6 +117,7 @@ export function register(context) {
       alert('請選擇廠商。');
       return;
     }
+    if (parsed.invalid.length) {await reviewPiPaste(parsed, [{container, rows: parsed.rows}]); return;}
     if (!parsed.rows.length) {
       alert('沒有可匯入的 Final PI 資料。請確認 JAN／箱數與選填欄位格式。');
       return;
@@ -220,7 +133,7 @@ export function register(context) {
       rows: parsed.rows
     }], shelfContext);
     msg += context.piShelfPreviewText(shelfPlan);
-    if (!confirm(msg + '\n\n確定繼續？')) return;
+    if (!await reviewPiPaste(parsed, [{container, rows: parsed.rows}], msg)) return;
     const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,[{container,rows:parsed.rows}]);
     if (!review) return;
     shelfPlan.review = review;
