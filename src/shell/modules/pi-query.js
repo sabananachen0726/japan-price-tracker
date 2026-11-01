@@ -1,5 +1,7 @@
+import {parsePiPaste, readPiGrid} from '../../shared/pi-paste.js';
 import {createProductResolver} from '../../shared/product-identity.js';
-import {renderCustomerDemand} from '../customer-demand-view.js';
+import {renderPiAllocationOverview, renderPiContainerDemand} from '../customer-demand-view.js';
+import {allocationContainer} from '../../shared/customer-demand.js';
 // shell: pi-query. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-query",
@@ -46,7 +48,7 @@ export const definition = {
     "name": "renderFinalPiSearch",
     "kind": "function"
   }],
-  "imports": ["auth", "currentDataMode", "customerRows", "customerFetchedAt", "customerStatus", "cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
+  "imports": ["renderFinalPiBatchSearch", "auth", "currentDataMode", "customerRows", "customerFetchedAt", "customerStatus", "cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
   "writes": ["escapeFinalPiText", "finalPiContainerSort", "finalPiLogistics", "finalPiWorkflowStatus", "getFinalPiProduct", "getFinalPiToday", "isFinalPiConfirmed", "isFinalPiReceived", "normalizeFinalPiDate", "parseFinalPiLine", "parseFinalPiPaste", "renderFinalPiContainerList", "renderFinalPiSearch", "updateFinalPiPendingBadge"]
 };
 export function register(context) {
@@ -69,87 +71,10 @@ export function register(context) {
     return raw;
   };
   context.parseFinalPiLine = function parseFinalPiLine(line) {
-    if (line.includes('\t')) return line.split('\t').map(v => v.trim());
-    const out = [];
-    let cur = '';
-    let quoted = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (quoted && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else quoted = !quoted;
-      } else if (ch === ',' && !quoted) {
-        out.push(cur.trim());
-        cur = '';
-      } else cur += ch;
-    }
-    out.push(cur.trim());
-    return out;
+    return readPiGrid(line).records[0]?.cells.map(v => v.trim()) || [];
   };
   context.parseFinalPiPaste = function parseFinalPiPaste(text) {
-    const rows = [];
-    const invalid = [];
-    let shelfColumn = -1;
-    String(text || '').split(/\r?\n/).forEach((line, idx) => {
-      if (!line.trim()) return;
-      const cols = context.parseFinalPiLine(line);
-      const first = String(cols[0] || '').toLowerCase();
-      if ((idx === 0 || first.includes('jan') || first.includes('barcode') || first.includes('條碼')) && (first.includes('jan') || first.includes('barcode') || first.includes('條碼'))) {
-        shelfColumn = context.findPiShelfColumn(cols);
-        return;
-      }
-      const fail = reason => invalid.push({
-        line: idx + 1,
-        reason,
-        raw: line
-      });
-      if (cols.length < 2) {
-        fail('欄位不足：至少需要 JAN Code 與箱數');
-        return;
-      }
-      const barcode = context.cleanBarcode(cols[0]);
-      const qtyRaw = String(cols[1] ?? '').trim();
-      const qty = Number(qtyRaw.replace(/,/g, ''));
-      const itemCode = String(cols[2] || '').trim();
-      const rawPrice = String(cols[3] ?? '').trim();
-      const unitPrice = rawPrice === '' ? null : Number(rawPrice.replace(/[¥$,\s]/g, ''));
-      const expiryDate = context.normalizeFinalPiDate(cols[4]);
-      const shelfLifeMonths = context.readPiShelfCell(cols, shelfColumn, 5);
-      if (shelfLifeMonths === false) {
-        fail('保存期限（月）須為 1～120 的整數');
-        return;
-      }
-      if (!barcode) {
-        fail('JAN Code / Barcode 為必填');
-        return;
-      }
-      if (!qtyRaw) {
-        fail(`JAN ${barcode}：箱數為空白`);
-        return;
-      }
-      if (!Number.isFinite(qty) || qty <= 0) {
-        fail(`JAN ${barcode}：箱數「${qtyRaw}」不是有效的正數`);
-        return;
-      }
-      if (unitPrice !== null && (!Number.isFinite(unitPrice) || unitPrice < 0)) {
-        fail(`JAN ${barcode}：單包價「${rawPrice}」格式無效`);
-        return;
-      }
-      rows.push({
-        itemCode,
-        qty,
-        unitPrice,
-        barcode,
-        expiryDate,
-        shelfLifeMonths
-      });
-    });
-    return {
-      rows,
-      invalid
-    };
+    return parsePiPaste(text);
   };
   context.getFinalPiProduct = function getFinalPiProduct(row, resolve = createProductResolver(window.appData)) {
     const identity = resolve(row);
@@ -218,7 +143,8 @@ export function register(context) {
     const count = document.getElementById('finalPiContainerCount');
     if (!host) return;
     const resolve = createProductResolver(window.appData);
-    const containers = Object.values(window.appData.finalPiContainers || {}).sort(context.finalPiContainerSort);
+    const includeHistory = document.getElementById('piIncludeReceived')?.checked === true;
+    const containers = Object.values(window.appData.finalPiContainers || {}).filter(c => includeHistory || !context.isFinalPiReceived(c)).sort(context.finalPiContainerSort);
     if (count) count.textContent = `${containers.length} 條貨櫃`;
     context.updateFinalPiPendingBadge();
     if (!containers.length) {
@@ -268,7 +194,8 @@ export function register(context) {
     }
     const matches = [];
     const resolve = createProductResolver(window.appData);
-    Object.values(window.appData.finalPiContainers || {}).forEach(c => (c.rows || []).forEach(r => {
+    const includeHistory = document.getElementById('piIncludeReceived')?.checked === true;
+    Object.values(window.appData.finalPiContainers || {}).filter(c => includeHistory || !context.isFinalPiReceived(c)).forEach(c => (c.rows || []).forEach(r => {
       const p = context.getFinalPiProduct(r, resolve);
       const hay = [r.itemCode, r.barcode, p.itemCode, p.name].map(v => String(v || '').toLowerCase()).join(' ');
       const sameBarcode=/^\d{8,14}$/.test(q)&&context.resolveToPrimaryBarcode(q)===context.resolveToPrimaryBarcode(r.barcode);
@@ -285,7 +212,7 @@ export function register(context) {
     const customerRows = context.auth.currentUser && context.currentDataMode === 'live' ? context.customerRows : null;
     (customerRows || []).forEach(o => {if (String(o.code || '').toLowerCase().includes(q)) matchedCodes.add(String(o.code).trim().toUpperCase());});
     if (!matches.length && !matchedCodes.size) {
-      host.innerHTML = '<div class="alert alert-light border text-center mb-0">找不到任何 Final PI 貨櫃紀錄。</div>';
+      host.innerHTML = '<div class="alert alert-light border text-center mb-0">目前沒有符合的未到貨 PI 或商品資料。</div>';
       return;
     }
     const groups = new Map();
@@ -308,13 +235,16 @@ export function register(context) {
     const pendingFutureQty = pendingFuture.reduce((sum, g) => sum + g.rows.reduce((n, x) => n + (Number(x.r.qty) || 0), 0), 0);
     const names = [...new Set(matches.map(x => x.p.name).filter(Boolean))];
     const codes = [...new Set(matches.map(x => x.r.itemCode).filter(Boolean))];
+    const overview = renderPiAllocationOverview({rows: customerRows, codes: matchedCodes, incoming: futureQty, containers: future.map(g => g.c.container), fetchedAt: context.currentDataMode === 'live' ? context.customerFetchedAt : 0, status: context.currentDataMode === 'live' ? context.customerStatus : 'TEST：不讀正式客訂'});
     const renderGroup = g => {
       const qty = g.rows.reduce((n, x) => n + (Number(x.r.qty) || 0), 0);
       const wf = context.finalPiWorkflowStatus(g.c);
       const details = '<div class="table-responsive mt-2"><table class="table table-sm pi-search-table"><colgroup><col style="width:110px"><col><col style="width:80px"><col style="width:120px"><col style="width:100px"></colgroup><thead><tr><th>品號</th><th>商品名稱</th><th class="text-end">箱數</th><th>效期</th><th class="text-end">單價</th></tr></thead><tbody>' + g.rows.map(x => '<tr><td><strong>' + context.escapeFinalPiText(x.r.itemCode || x.p.itemCode || x.r.barcode || '—') + '</strong></td><td>' + context.escapeFinalPiText(x.p.name || x.r.itemCode || '未命名商品') + (x.p.piIdentity?.code && x.p.piIdentity.product.primaryBarcode !== x.r.barcode ? '<div class="small text-muted">PI 關聯條碼：'+context.escapeFinalPiText(x.r.barcode)+'</div>' : '') + '</td><td class="text-end fw-bold">' + Number(x.r.qty).toLocaleString() + '</td><td>' + context.escapeFinalPiText(x.r.expiryDate || '未填') + '</td><td class="text-end">' + (x.r.unitPrice === null || x.r.unitPrice === undefined || x.r.unitPrice === '' ? '—' : '¥' + Number(x.r.unitPrice).toLocaleString()) + '</td></tr>').join('') + '</tbody></table></div>';
-      return `<div class="border rounded p-3 mb-2"><div class="d-flex justify-content-between gap-2"><div><div class="fw-bold fs-5">📦 ${context.escapeFinalPiText(g.c.container)} ${context.frozenBadgeHtml(g.c.container)}</div><div class="small text-muted">${context.escapeFinalPiText(g.c.supplier || '-')}｜<span class="badge ${wf.cls}">${wf.label}</span>｜${context.isFinalPiReceived(g.c) ? '已拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).actualReceived) : '待拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).unloadDate || '—')}</div></div><div class="text-end"><div class="fw-bold fs-4 text-primary">${qty.toLocaleString()} CTN<div class="small fw-normal text-muted">符合搜尋條件</div></div></div></div>${details}</div>`;
+      return `<div class="pi-search-card border rounded p-3 mb-2" data-pi-container="${context.escapeFinalPiText(g.c.container)}"><div class="d-flex justify-content-between gap-2"><div><div class="fw-bold fs-5">📦 ${context.escapeFinalPiText(g.c.container)} ${context.frozenBadgeHtml(g.c.container)}</div><div class="small text-muted">${context.escapeFinalPiText(g.c.supplier || '-')}｜<span class="badge ${wf.cls}">${wf.label}</span>｜${context.isFinalPiReceived(g.c) ? '已拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).actualReceived) : '待拆櫃 ' + context.escapeFinalPiText(context.finalPiLogistics(g.c).unloadDate || '—')}</div></div><div class="text-end"><div class="fw-bold fs-4 text-primary">${qty.toLocaleString()} CTN<div class="small fw-normal text-muted">符合搜尋條件</div></div></div></div>${context.isFinalPiReceived(g.c) ? '<p class="small text-muted">歷史到貨紀錄，不計入未到貨合計與分配。</p>' : renderPiContainerDemand({allocation:overview.allocation.assigned.get(allocationContainer(g.c.container)),incoming:qty,ready:overview.allocation.ready})}${details}</div>`;
     };
-    host.innerHTML = `<div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">找到 ${matchedCodes.size} 項商品 · ${arr.length} 個貨櫃</div><div class="mt-2"><span class="badge bg-warning text-dark me-2">🚢 未到貨箱數 ${futureQty.toLocaleString()} 箱 / ${future.length} 櫃</span><span class="badge bg-primary me-2">✓ Final ${finalFutureQty.toLocaleString()} CTN</span><span class="badge bg-danger me-2">⚠ 未 Final ${pendingFutureQty.toLocaleString()} CTN</span><span class="badge bg-secondary">🏭 已到倉 ${receivedQty.toLocaleString()} CTN / ${received.length} Containers</span></div></div>${renderCustomerDemand({rows:customerRows,codes:matchedCodes,incoming:futureQty,fetchedAt:context.currentDataMode === 'live' ? context.customerFetchedAt : 0,status:context.currentDataMode === 'live' ? context.customerStatus : 'TEST：不讀正式客訂',containers:future.map(g=>g.c.container)})}<h5 class="text-warning-emphasis">🚢 未到貨貨櫃</h5>${future.length ? future.map(renderGroup).join('') : '<div class="text-muted mb-3">目前沒有未到貨貨櫃。</div>'}<details class="mt-3" ${future.length ? '' : 'open'}><summary class="fw-bold text-secondary" style="cursor:pointer">🏭 查看已到倉紀錄（${received.length} 條貨櫃 / ${receivedQty.toLocaleString()} CTN）</summary><div class="mt-2">${received.length ? received.map(renderGroup).join('') : '<div class="text-muted">沒有已到倉紀錄。</div>'}</div></details>`;
+    host.innerHTML = `<div class="border rounded p-3 mb-3 bg-light"><div class="fw-bold fs-5">找到 ${matchedCodes.size} 項商品 · ${future.length} 個未到貨櫃${includeHistory ? ' · '+received.length+' 個歷史到貨櫃' : ''}</div><p class="small text-muted mb-0">包含已 Final 與未 Final PI；以實際拆櫃／入倉完成判斷是否到貨，不以 ETA 是否已過判斷。</p></div>${overview.html}<h5 class="text-warning-emphasis">未到貨貨櫃</h5>${future.length ? future.map(renderGroup).join('') : '<div class="text-muted mb-3">目前沒有未到貨 PI。</div>'}${includeHistory ? `<details class="mt-3"><summary class="fw-bold text-secondary">已到貨紀錄（${received.length} 櫃）</summary><div class="mt-2">${received.length ? received.map(renderGroup).join('') : '沒有已到貨紀錄。'}</div></details>` : ''}`;
   };
 }
-export function initialize(context) {}
+export function initialize(context) {
+  document.getElementById('piIncludeReceived')?.addEventListener('change', () => {context.renderFinalPiSearch(); context.renderFinalPiContainerList(); context.renderFinalPiBatchSearch();});
+}

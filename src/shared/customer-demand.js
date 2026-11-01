@@ -20,3 +20,15 @@ export function summarizeDemand(rows, codes) {
   const selected = rows.filter(order => wanted.has(normalizeCode(order.code)) && activeCustomerOrder(order));
   return {rows: selected, total: selected.reduce((sum, order) => sum + (customerBoxes(order) ?? 0), 0), unknown: selected.filter(order => customerBoxes(order) === null).length};
 }
+export const allocationContainer = value => normalizeCode(value).replace(/\s/g, '');
+export function allocatePiDemand(rows, codes, containers) {
+  const selected = summarizeDemand(rows, codes), assigned = new Map(containers.map(c => [allocationContainer(c), []])), unassigned = [], other = [];
+  for (const order of selected.rows) {
+    const key = allocationContainer(order.container);
+    if (!key) unassigned.push(order);
+    else if (assigned.has(key)) assigned.get(key).push(order);
+    else other.push(order);
+  }
+  const summarize = list => ({rows: list, total: list.reduce((n, o) => n + (customerBoxes(o) ?? 0), 0), unknown: list.filter(o => customerBoxes(o) === null).length});
+  return {ready: Array.isArray(rows), assigned: new Map([...assigned].map(([key, list]) => [key, summarize(list)])), unassigned: summarize(unassigned), other: summarize(other)};
+}

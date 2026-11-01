@@ -72,6 +72,7 @@ export function register(context) {
       groups = new Map(),
       itemMap = window.appData.itemToBarcode || {};
     for (const c of Object.values(window.appData.finalPiContainers || {})) {
+      if (!document.getElementById('piIncludeReceived')?.checked && context.isFinalPiReceived(c)) continue;
       (c.rows || []).forEach((r, index) => {
         const p = context.getFinalPiProduct(r);
         const code = String(r.itemCode || p.itemCode || '').trim().toUpperCase();

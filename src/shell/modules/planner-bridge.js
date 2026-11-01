@@ -19,7 +19,7 @@ export const definition = {
     "name": "loadEmbeddedOrderPlanner",
     "kind": "function"
   }],
-  "imports": ["getDoc", "doc", "db", "auth", "containerTrackerData", "currentDataMode", "currentRole", "getContainerDates", "legacySafeDate", "normalizeContainerNo", "sendCatalogSources", "sendCustomerSource"],
+  "imports": ["renderPiAudit", "getDoc", "doc", "db", "auth", "containerTrackerData", "currentDataMode", "currentRole", "getContainerDates", "legacySafeDate", "normalizeContainerNo", "sendCatalogSources", "sendCustomerSource"],
   "writes": ["ORDER_PLANNER_URL", "chooseImportView", "loadEmbeddedOrderPlanner", "plannerLoaded", "sendPlannerSnapshot"]
 };
 export function register(context) {
@@ -145,8 +145,9 @@ export function register(context) {
   context.chooseImportView = function chooseImportView(view) {
     const role = context.currentRole || 'viewer';
     if (role !== 'admin' && view !== 'planner') view = 'planner';
-    if (!['master', 'quotes', 'pi', 'planner', 'backup'].includes(view)) view = role === 'admin' ? 'master' : 'planner';
+    if (!['master', 'quotes', 'pi', 'planner', 'backup', 'issues'].includes(view)) view = role === 'admin' ? 'master' : 'planner';
     document.body.dataset.importView = view;
+    if (view === 'issues') context.renderPiAudit();
     document.querySelectorAll('.import-switcher [data-import-view]').forEach(b => b.classList.toggle('active', b.dataset.importView === view));
     if (view === 'planner' && document.getElementById('add-tab').classList.contains('active')) {
       context.loadEmbeddedOrderPlanner();
@@ -164,7 +165,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261101-v4170';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261101-v4180';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
