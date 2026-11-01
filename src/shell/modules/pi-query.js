@@ -151,8 +151,8 @@ export function register(context) {
       invalid
     };
   };
-  context.getFinalPiProduct = function getFinalPiProduct(row) {
-    const identity = createProductResolver(window.appData)(row);
+  context.getFinalPiProduct = function getFinalPiProduct(row, resolve = createProductResolver(window.appData)) {
+    const identity = resolve(row);
     return {...identity.product, imgUrl:identity.imgUrl, itemCode:identity.code, name:identity.name + (identity.ambiguous ? '（條碼對到多個品號，待確認）' : ''), piIdentity:identity};
   };
   context.getFinalPiToday = function getFinalPiToday() {
@@ -217,6 +217,7 @@ export function register(context) {
     const host = document.getElementById('finalPiContainerList');
     const count = document.getElementById('finalPiContainerCount');
     if (!host) return;
+    const resolve = createProductResolver(window.appData);
     const containers = Object.values(window.appData.finalPiContainers || {}).sort(context.finalPiContainerSort);
     if (count) count.textContent = `${containers.length} 條貨櫃`;
     context.updateFinalPiPendingBadge();
@@ -234,7 +235,7 @@ export function register(context) {
       const overdue = !arrived && !lg.unloadDate && lg.eta && lg.eta < context.getFinalPiToday();
       const status = `<div class="text-end"><span class="badge ${wf.cls}">${wf.label}</span><div class="small ${overdue ? 'text-danger fw-bold' : 'text-muted'} mt-1">${lg.linked ? '到港日 ' + context.escapeFinalPiText(lg.portDate || (lg.etaEstimated ? lg.eta + '（15日推估）' : '—')) + ' · 拆櫃日 ' + context.escapeFinalPiText(lg.unloadDate || '—') : '⚠ Container Tracker 尚未建立此櫃'}</div></div>`;
       const detail = rows.map(r => {
-        const p = context.getFinalPiProduct(r);
+        const p = context.getFinalPiProduct(r, resolve);
         return `<tr><td>${context.escapeFinalPiText(r.itemCode || p.itemCode || '-')}</td><td class="small">${context.escapeFinalPiText(r.barcode || '-')}</td><td>${context.escapeFinalPiText(p.name || '⚠️ 商品資料待補')}</td><td class="text-end fw-bold">${Number(r.qty).toLocaleString()} CTN</td><td class="text-end">${r.unitPrice === null || r.unitPrice === undefined || r.unitPrice === '' ? '—' : '¥' + Number(r.unitPrice).toLocaleString()}</td><td>${context.escapeFinalPiText(r.expiryDate || '-')}</td><td>${r.shelfLifeMonths == null ? '—' : context.escapeFinalPiText(r.shelfLifeMonths) + ' 月'}</td></tr>`;
       }).join('');
       return `<div class="border rounded p-3 mb-3 ${arrived ? 'bg-light' : ''}">
@@ -266,8 +267,9 @@ export function register(context) {
       return;
     }
     const matches = [];
+    const resolve = createProductResolver(window.appData);
     Object.values(window.appData.finalPiContainers || {}).forEach(c => (c.rows || []).forEach(r => {
-      const p = context.getFinalPiProduct(r);
+      const p = context.getFinalPiProduct(r, resolve);
       const hay = [r.itemCode, r.barcode, p.itemCode, p.name].map(v => String(v || '').toLowerCase()).join(' ');
       const sameBarcode=/^\d{8,14}$/.test(q)&&context.resolveToPrimaryBarcode(q)===context.resolveToPrimaryBarcode(r.barcode);
       if (hay.includes(q)||sameBarcode) matches.push({

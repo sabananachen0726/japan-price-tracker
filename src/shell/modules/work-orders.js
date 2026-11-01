@@ -1,3 +1,4 @@
+import {inactiveNotices, noticeExportRows} from '../inactive-notices.js';
 // shell: work-orders. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "work-orders",
@@ -37,7 +38,7 @@ export function register(context) {
     const button = document.getElementById('inactiveNoticeButton');
     if (!button) return;
     button.hidden = !context.isAdmin();
-    const entries = Object.entries(context.catalogData?.items || {}).flatMap(([code,item]) => Object.values(item.inactiveNotices || {}).map(n => ({...n,code,name:item.name || window.appData.products?.[window.appData.itemToBarcode?.[code]]?.name || code}))).sort((a,b) => String(b.at).localeCompare(String(a.at)));
+    const entries = inactiveNotices(context.catalogData, window.appData, context.people, context.noticeReads, context.auth.currentUser?.uid);
     const read = context.noticeReads?.[context.auth.currentUser?.uid] || {};
     const unread = entries.filter(n => !read[n.id]);
     button.textContent = '停用通知' + (unread.length ? ' · ' + unread.length + ' 未讀' : '');
@@ -175,9 +176,21 @@ export function initialize(context) {
   button.id = 'inactiveNoticeButton'; button.hidden = true; button.className = 'btn btn-sm btn-outline-secondary';
   document.getElementById('btnUsers').before(button);
   const dialog = document.createElement('dialog'); dialog.id = 'inactiveNoticeDialog';
-  dialog.innerHTML = '<div class="d-flex justify-content-between"><h3>商品停用通知</h3><button type="button" class="btn btn-outline-secondary" data-close-notices>關閉</button></div><div id="inactiveNoticeRows"></div><div id="inactiveNoticeStatus" role="status"></div>';
+  dialog.innerHTML = '<div class="d-flex justify-content-between"><h3>商品停用通知</h3><button type="button" class="btn btn-outline-secondary" data-close-notices>關閉</button></div><button type="button" class="btn btn-primary my-2" data-export-notices>匯出停用通知 Excel</button><div id="inactiveNoticeRows"></div><div id="inactiveNoticeStatus" role="status"></div>';
   document.body.append(dialog);
   button.onclick = () => {context.renderInactiveNotices(); dialog.showModal();};
+  dialog.querySelector('[data-export-notices]').onclick = () => {
+    if (!context.isAdmin()) return;
+    const status = document.getElementById('inactiveNoticeStatus');
+    const entries = inactiveNotices(context.catalogData, window.appData, context.people, context.noticeReads, context.auth.currentUser?.uid);
+    if (!entries.length) {status.textContent = '目前沒有可匯出的停用通知。'; return;}
+    if (typeof XLSX === 'undefined') {status.textContent = 'Excel 元件尚未載入，請稍後重試。'; return;}
+    const sheet = XLSX.utils.aoa_to_sheet(noticeExportRows(entries));
+    sheet['!cols'] = [{wch:18},{wch:55},{wch:28},{wch:28},{wch:12}];
+    const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, sheet, 'Inactive Notices');
+    XLSX.writeFile(book, 'Inactive_Notices_' + new Date().toLocaleDateString('en-CA', {timeZone:'Australia/Brisbane'}) + '.xlsx');
+    status.textContent = '已匯出 ' + entries.length + ' 筆停用通知。';
+  };
   dialog.querySelector('[data-close-notices]').onclick = () => dialog.close();
   dialog.addEventListener('click', async e => {
     const id = e.target.closest('[data-read-notice]')?.dataset.readNotice;

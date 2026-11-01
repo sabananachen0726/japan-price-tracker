@@ -1,3 +1,4 @@
+import {commitOrderDraft} from '../../shared/order-version.js';
 import {withTemporaryImages} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {editTemporaryProduct} from '../pi-temporary-editor.js';
@@ -190,11 +191,14 @@ export function initialize(context) {
     if (e.source === plannerWindow && e.data?.type === 'KAISI_ORDER_SAVE') {
       const code = context.normalizeContainerNo(e.data.code),
         draft = e.data.draft;
+      const requestId = e.data.requestId;
+      const expectedVersion = e.data.expectedVersion;
       if (!context.canPlan()) {
         plannerWindow.postMessage({
           type: 'KAISI_ORDER_SAVE_RESULT',
           code,
           ok: false,
+          requestId,
           error: '唯讀帳號不能儲存'
         }, '*');
         return;
@@ -208,6 +212,7 @@ export function initialize(context) {
         itemNotes: {},
         snapshot: {},
         submittedBy: context.auth.currentUser.email || '',
+        revision: typeof e.data.revision === 'string' ? e.data.revision : crypto.randomUUID(),
         updatedAt: new Date().toISOString()
       };
       Object.entries(draft.rows).forEach(([item, q]) => {
@@ -236,27 +241,21 @@ export function initialize(context) {
           type: 'KAISI_ORDER_SAVE_RESULT',
           code,
           ok: true,
-          localOnly: true
+          localOnly: true, requestId
         }, '*');
         return;
       }
-      context.setDoc(context.ORDER_PLANNER_REF, {
-        drafts: {
-          [code]: cleaned
-        }
-      }, {
-        // Replace editable maps, including deleted notes, without touching shared comments/presets.
-        mergeFields: Object.keys(cleaned).map(field => new context.FieldPath('drafts', code, field))
-      }).then(() => plannerWindow.postMessage({
-        type: 'KAISI_ORDER_SAVE_RESULT',
-        code,
-        ok: true
-      }, '*')).catch(err => plannerWindow.postMessage({
-        type: 'KAISI_ORDER_SAVE_RESULT',
-        code,
-        ok: false,
-        error: err.code || err.message
-      }, '*'));
+      const mode = context.currentDataMode, uid = context.auth.currentUser.uid;
+      commitOrderDraft({runTransaction: context.runTransaction, db: context.db,
+        ref: context.ORDER_PLANNER_REF, code, cleaned, expectedVersion, FieldPath: context.FieldPath
+      }).then(saved => {
+        if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) return;
+        plannerWindow.postMessage({type: 'KAISI_ORDER_SAVE_RESULT', code, requestId, ok: true, draft: saved}, '*');
+      }).catch(err => {
+        if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) return;
+        plannerWindow.postMessage({type: 'KAISI_ORDER_SAVE_RESULT', code, requestId, ok: false,
+          conflict: err.code === 'order-conflict', latest: err.latest || null, error: err.code || err.message}, '*');
+      });
     }
     if (e.source === containerWindow && e.data?.type === 'KAISI_CONTAINER_HEADER') {
       detailBar.querySelector('[data-detail-title]').textContent = String(e.data.title || '').slice(0, 120);
