@@ -397,3 +397,7 @@ button.primary,.preset-button{background:#255ba6;border-color:#255ba6;color:whit
 .column-resizer{right:0;width:9px;border-right:2px solid #b7c8df}
 
 #plan .product-table thead th{position:relative!important}
+
+.order-conflict-banner{border:2px solid #b45309;background:#fffbeb;color:#78350f;border-radius:10px;padding:14px;margin:12px 0}.order-conflict-banner[hidden]{display:none}.order-conflict-banner p{margin:6px 0 10px}.order-conflict-dialog{width:min(1000px,92vw);max-width:1000px;max-height:85vh}.order-conflict-dialog .scroll{min-height:0;max-height:min(45vh,420px);overflow:auto}.order-conflict-dialog table{min-width:550px}.order-conflict-dialog td{white-space:pre-wrap;overflow-wrap:anywhere;max-width:300px}.order-conflict-dialog input[type=checkbox]{width:22px;height:22px}
+
+.qty-comparison{display:block;margin-top:5px;font-size:12px;font-weight:600;white-space:nowrap}.qty-comparison[hidden]{display:none}.quantity-increase{color:#15643b}.quantity-decrease{color:#9a3412}
