@@ -26,7 +26,7 @@ export const definition = {
     "name": "advancedSettings",
     "kind": "const"
   }],
-  "imports": ["$", "cloudJobs", "csvCell", "deferredDrafts", "dirtyDrafts", "download", "events", "factor", "flushRecovery", "hydrateSales", "importPreview", "localRecovery", "monthlyInfo", "pendingInventoryImport", "pendingShelfImport", "pendingStatusImport", "plannerRole", "rebuildCatalog", "renderAll", "salesBusy", "salesPending", "salesSignature", "salesWorker", "saveCatalogPatch", "saveFingerprints", "shelfLife", "state", "statusDelimitedRows", "storeLocal", "trackerFeed", "unifiedPending", "val"],
+  "imports": ["$", "cloudJobs", "csvCell", "deferredDrafts", "dirtyDrafts", "download", "events", "factor", "flushRecovery", "hydrateSales", "importPreview", "localRecovery", "monthlyInfo", "pendingInventoryImport", "pendingShelfImport", "pendingStatusImport", "plannerRole", "rebuildCatalog", "renderAll", "salesBusy", "salesPending", "salesSignature", "salesWorker", "saveCatalogPatch", "saveFingerprints", "shelfLife", "state", "statusDelimitedRows", "storeLocal", "trackerFeed", "unifiedPending", "val", "resetOrderSync"],
   "writes": ["advancedSettings", "deferredDrafts", "dirtyDrafts", "exportSettings412", "hiddenSettingsPanel", "importPreview", "localRecovery", "managementHead", "notifyPlannerWidth412", "parseSheetGrid412", "pendingInventoryImport", "pendingShelfImport", "pendingStatusImport", "restorePlanner412", "salesBusy", "salesPending", "salesSignature", "salesWorker", "snapshotPlanner412", "unifiedPending"]
 };
 export function register(context) {
@@ -77,6 +77,7 @@ export function register(context) {
     };
   };
   context.restorePlanner412 = function restorePlanner412(data) {
+    context.resetOrderSync();
     context.dirtyDrafts = new Set();
     context.deferredDrafts = {};
     context.localRecovery = {

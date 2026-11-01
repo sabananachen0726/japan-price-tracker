@@ -11,7 +11,7 @@ export const definition = {
     "name": "updateDraftTotal",
     "kind": "function"
   }],
-  "imports": ["currentPiQuantities", "$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
+  "imports": ["refreshQuantityComparison", "refreshOrderSync", "currentPiQuantities", "$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
   "writes": ["projectedCell", "renderPlan", "updateDraftTotal"]
 };
 export function register(context) {
@@ -63,7 +63,7 @@ export function register(context) {
  ${context.salesMonthCells(i)}
  <td><input class="maxStock-field" type="number" min="0" step="1" data-max-stock="${context.esc(i.code)}" value="${c.maxStock ?? ''}" placeholder="未設" aria-label="${context.esc(i.code)} 最高庫存" ${context.plannerRole === 'viewer' ? 'disabled' : ''}></td>
  <td><strong>${c.suggest === null ? '<span class="missing-data">資料不足，無法計算</span>' : context.fmt(c.suggest)}</strong>${c.issues.length ? `<div><button class="mini" data-explain="${context.esc(i.code)}" title="查看計算原因">計算說明</button></div>` : ''}</td>
- <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div></td>
+ <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div><small class="qty-comparison" data-qty-comparison="${context.esc(i.code)}" hidden></small></td>
  <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="15" class="empty">沒有符合的商品</td></tr>';
     const body = context.$('productRows');
     if (preserveInputs) {
@@ -93,8 +93,10 @@ export function register(context) {
     source.hidden = !Object.keys(context.currentPiQuantities()).length;
     source.textContent = '本櫃 PI 商品完整保留（含新品、Inactive 與未分類）；已填數量優先。搜尋與篩選仍可縮小顯示範圍。按提交才會共用。';
     context.updateTableHeader();
+    context.refreshOrderSync();
   };
   context.updateDraftTotal = function updateDraftTotal(changedCode) {
+    context.refreshQuantityComparison(changedCode);
     const values = Object.values(context.draft().rows || {}).filter(x => Number(x) > 0);
     context.$('draftTotal').textContent = `目前 ${values.length} 款 · ${values.reduce((sum, x) => sum + Number(x), 0).toLocaleString()} 箱`;
     const items = new Map(context.state.items.map(i => [i.code, i]));

@@ -47,7 +47,7 @@ export const definition = {
     "name": "mergeChangingContainerKey",
     "kind": "function"
   }],
-  "imports": ["$", "currentKey", "deferredDrafts", "dirtyDrafts", "draft", "loadWork", "plannerRole", "renderAll", "selectedWorkApplied", "state", "trackerFeed", "updateWorkSelect"],
+  "imports": ["$", "currentKey", "deferredDrafts", "dirtyDrafts", "draft", "loadWork", "plannerRole", "renderAll", "selectedWorkApplied", "state", "trackerFeed", "updateWorkSelect", "rememberOrderBase", "orderBaselines"],
   "writes": ["autosaveLabel", "clearRecoveredWork", "draftFingerprint", "flushRecovery", "loadLocalRecovery", "localDraftCopy", "localRecovery", "localRecoveryScope", "mergeChangingContainerKey", "plannerUid", "previousContainerCode", "recoveryKey", "recoveryTimer", "saveFingerprints", "selectedWorkApplied", "stageLocalDraft"]
 };
 export function register(context) {
@@ -94,6 +94,7 @@ export function register(context) {
     if (context.plannerRole === 'viewer') return;
     const code = context.currentKey(),
       d = context.draft();
+    context.rememberOrderBase(code);
     d.rows ||= {};
     d.kind = context.$('kind').value;
     d.arrival = context.$('arrival').value;
@@ -105,6 +106,7 @@ export function register(context) {
     context.localRecovery.works ||= {};
     context.localRecovery.works[code] = {
       updatedAt: Date.now(),
+      baseVersion: context.orderBaselines.get(code) ?? null,
       draft: context.localDraftCopy(d)
     };
     context.localRecovery.lastCode = code;
@@ -138,6 +140,8 @@ export function register(context) {
         notes: cloud.notes || []
       };
       context.dirtyDrafts.add(code);
+      if (typeof record.baseVersion === 'string') context.orderBaselines.set(code, record.baseVersion);
+      else context.orderBaselines.delete(code); // Older rescue copies have no trustworthy cloud baseline.
       restored++;
     }
     if (restored) {
@@ -163,6 +167,8 @@ export function register(context) {
     const typingForward = previous !== '__未命名草稿__' && next.startsWith(previous) && !source.preparedAt && !source.updatedAt;
     if (!oldAnon && !typingForward) return;
     context.state.drafts[next] = source;
+    if (context.orderBaselines.has(previous)) context.orderBaselines.set(next, context.orderBaselines.get(previous));
+    context.orderBaselines.delete(previous);
     delete context.state.drafts[previous];
     context.dirtyDrafts.delete(previous);
     context.dirtyDrafts.add(next);

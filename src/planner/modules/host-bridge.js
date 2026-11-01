@@ -26,7 +26,7 @@ export const definition = {
     "name": "sendPlannerHeight",
     "kind": "function"
   }],
-  "imports": ["renderInventorySync", "$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect"],
+  "imports": ["renderInventorySync", "$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect", "receiveOrderDrafts", "finishOrderSave", "orderConflicts", "orderBaselines", "orderPending"],
   "writes": ["people", "catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
 };
 export function register(context) {
@@ -97,7 +97,7 @@ export function initialize(context) {
       context.trackerFeed = feed;
       context.loadLocalRecovery();
       context.rebuildCatalog();
-      if (feed.mode === 'live') for (const [code, d] of Object.entries(context.deferredDrafts)) if (!context.dirtyDrafts.has(code)) context.state.drafts[code] = d;
+      context.receiveOrderDrafts();
       context.discoverCatalog();
       context.renderAll();
       return;
@@ -106,6 +106,7 @@ export function initialize(context) {
       context.plannerRole = m.role || 'viewer';
       context.plannerUid = String(m.uid || '');
       context.loadLocalRecovery();
+      context.receiveOrderDrafts();
       context.applyPreparedDefaults();
       context.renderAll();
       context.refreshStatusImporterRole();
@@ -118,6 +119,9 @@ export function initialize(context) {
         delete context.state.drafts[m.code];
         delete context.deferredDrafts[m.code];
         context.saveFingerprints.delete(m.code);
+        context.orderBaselines.delete(m.code);
+        context.orderConflicts.delete(m.code);
+        context.orderPending.delete(m.code);
         context.dirtyDrafts.delete(m.code);
         if (context.localRecovery.works) delete context.localRecovery.works[m.code];
         context.flushRecovery();
@@ -169,15 +173,7 @@ export function initialize(context) {
       context.people = m.people || {};
       context.deferredDrafts = m.drafts || {};
       if (context.trackerFeed?.mode === 'live') {
-        for (const code of Object.keys(context.state.drafts)) if (code !== '__未命名草稿__' && !context.dirtyDrafts.has(code) && !Object.hasOwn(context.deferredDrafts, code)) delete context.state.drafts[code];
-        for (const [code, d] of Object.entries(context.deferredDrafts)) {
-          if (!context.dirtyDrafts.has(code)) context.state.drafts[code] = d;else context.state.drafts[code] = {
-            ...context.state.drafts[code],
-            notes: d.notes || [],
-            preparedAt: d.preparedAt,
-            preparedBy: d.preparedBy
-          };
-        }
+        context.receiveOrderDrafts(true);
         context.storeLocal();
         context.applyPreparedDefaults();
         context.renderAll();
@@ -185,18 +181,7 @@ export function initialize(context) {
       return;
     }
     if (m.type === 'KAISI_ORDER_SAVE_RESULT') {
-      if (m.ok) {
-        const current = context.state.drafts[m.code];
-        if (current && context.saveFingerprints.get(m.code) === context.draftFingerprint(current)) {
-          context.dirtyDrafts.delete(m.code);
-          if (!m.localOnly) context.clearRecoveredWork(m.code);
-          context.autosaveLabel(m.localOnly ? '✓ TEST 本機草稿已保存' : '✓ 已提交 Firebase，其他帳號可查看', 'ok');
-        } else context.autosaveLabel('有提交後的新修改，已留在本機，請再次提交', 'warn');
-        context.saveFingerprints.delete(m.code);
-      } else context.autosaveLabel('提交失敗：' + (m.error || '請稍後重試') + '；本機草稿仍保留', 'warn');
-      context.storeLocal();
-      context.updateWorkSelect();
-      context.renderAll();
+      context.finishOrderSave(m);
       return;
     }
     if (m.type === 'KAISI_CATALOG_SAVE_RESULT') {
