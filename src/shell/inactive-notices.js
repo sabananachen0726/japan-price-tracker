@@ -1,6 +1,6 @@
 export function inactiveNotices(catalog, appData, people, reads, uid) {
-  return Object.entries(catalog?.items || {}).flatMap(([code, item]) => Object.values(item.inactiveNotices || {}).map(notice => ({
-    ...notice, code, name: item.name || appData.products?.[appData.itemToBarcode?.[code]]?.name || code,
+  return Object.entries(catalog?.items || {}).flatMap(([code, item]) => Object.entries(item.inactiveNotices || {}).map(([noticeKey, notice]) => ({
+    ...notice, id: notice.id || noticeKey, noticeKey, code, name: item.name || appData.products?.[appData.itemToBarcode?.[code]]?.name || code,
     operator: people?.[notice.uid]?.name || notice.by || '同事', read: !!reads?.[uid]?.[notice.id]
   }))).sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
