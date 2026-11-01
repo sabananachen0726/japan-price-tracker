@@ -2,6 +2,59 @@
   "scope": "planner",
   "features": [
     {
+      "id": "order-sync",
+      "file": "modules/order-sync.js",
+      "owns": [
+        "orderBaselines",
+        "orderConflicts",
+        "orderPending",
+        "orderSyncReady",
+        "resetOrderSync",
+        "receiveOrderDrafts",
+        "rememberOrderBase",
+        "refreshOrderSync",
+        "reviewOrderConflict",
+        "finishOrderSave",
+        "refreshQuantityComparison"
+      ],
+      "imports": [
+        "openPlannerDialog",
+        "draft",
+        "draftFingerprint",
+        "$",
+        "state",
+        "currentKey",
+        "trackerFeed",
+        "plannerRole",
+        "people",
+        "deferredDrafts",
+        "dirtyDrafts",
+        "saveFingerprints",
+        "localRecovery",
+        "localRecoveryScope",
+        "flushRecovery",
+        "stageLocalDraft",
+        "storeLocal",
+        "loadWork",
+        "renderAll",
+        "autosaveLabel",
+        "clearRecoveredWork"
+      ],
+      "writes": [
+        "orderBaselines",
+        "orderConflicts",
+        "orderPending",
+        "orderSyncReady",
+        "resetOrderSync",
+        "receiveOrderDrafts",
+        "rememberOrderBase",
+        "refreshOrderSync",
+        "reviewOrderConflict",
+        "finishOrderSave",
+        "refreshQuantityComparison"
+      ]
+    },
+    {
       "id": "state",
       "file": "modules/state.js",
       "owns": [
@@ -70,7 +123,9 @@
         "selectedWorkApplied",
         "state",
         "trackerFeed",
-        "updateWorkSelect"
+        "updateWorkSelect",
+        "rememberOrderBase",
+        "orderBaselines"
       ],
       "writes": [
         "autosaveLabel",
@@ -253,6 +308,8 @@
         "updateDraftTotal"
       ],
       "imports": [
+        "refreshQuantityComparison",
+        "refreshOrderSync",
         "currentPiQuantities",
         "$",
         "calc",
@@ -372,7 +429,13 @@
         "stageLocalDraft",
         "state",
         "trackedItem",
-        "trackerFeed"
+        "trackerFeed",
+        "orderBaselines",
+        "orderConflicts",
+        "orderPending",
+        "orderSyncReady",
+        "refreshOrderSync",
+        "rememberOrderBase"
       ],
       "writes": [
         "csvCell",
@@ -537,7 +600,9 @@
         "scopedKey",
         "state",
         "trackerFeed",
-        "updateSalesSummary"
+        "updateSalesSummary",
+        "orderBaselines",
+        "resetOrderSync"
       ],
       "writes": [
         "CATALOG_FIELDS",
@@ -837,7 +902,12 @@
         "state",
         "storeLocal",
         "trackerFeed",
-        "updateWorkSelect"
+        "updateWorkSelect",
+        "receiveOrderDrafts",
+        "finishOrderSave",
+        "orderConflicts",
+        "orderBaselines",
+        "orderPending"
       ],
       "writes": [
         "people",
@@ -1167,7 +1237,8 @@
         "storeLocal",
         "trackerFeed",
         "unifiedPending",
-        "val"
+        "val",
+        "resetOrderSync"
       ],
       "writes": [
         "advancedSettings",
