@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict');
+module.exports=({test})=>{
+ async function paste(s,text){await s.imports('pi');await s.page.locator('#finalPiPaste').evaluate(e=>e.closest('details').open=true);await s.page.locator('#finalPiContainer').fill('PI-REVIEW');await s.page.locator('#finalPiSupplier').selectOption('SilkRoad');await s.page.locator('#finalPiPaste').fill(text);await s.page.locator('#btnImportFinalPi').click();await s.page.locator('#piPastePreview').waitFor();}
+ test('PI-WORKFLOW-01','PI 貼上','含儲存格換行先預覽，取消不寫入，確認才清理儲存',async s=>{
+  await paste(s,'4901071404000\t4\t"ACE005\n"\t100\t2027-01-01');assert.equal(await s.page.evaluate(()=>window.__writes.length),0);assert((await s.page.locator('#piPasteStats').innerText()).includes('已清理 1'));await s.page.getByRole('button',{name:'返回修改',exact:true}).click();assert.equal(await s.page.evaluate(()=>window.__writes.length),0);
+  await s.page.locator('#btnImportFinalPi').click();await s.page.locator('#piPastePreviewApply').click();await s.page.waitForFunction(()=>appData.finalPiContainers['PI-REVIEW']);assert.equal(await s.page.evaluate(()=>appData.finalPiContainers['PI-REVIEW'].rows[0].itemCode),'ACE005');
+ });
+ test('PI-WORKFLOW-02','PI 貼上','錯位列阻擋整批，不悄悄略過壞列',async s=>{
+  await paste(s,'4901071404000\t4\tACE005\n4901071404000\t5\t"ACE\n005"');assert(await s.page.locator('#piPastePreviewApply').isDisabled());assert((await s.page.locator('#piPasteProblems').innerText()).includes('品號中間'));assert.equal(await s.page.evaluate(()=>window.__writes.length),0);
+ });
+ async function audit(s){await s.page.evaluate(()=>{const pi={container:'PI-OLD',supplier:'SilkRoad',isFinal:true,note:'keep',rows:[{barcode:'4901071404000',itemCode:'"ACE005\n',qty:4,unitPrice:100}]};appData.finalPiContainers={'PI-OLD':structuredClone(pi)};window.__store['app_data/main_config'].finalPiContainers={'PI-OLD':structuredClone(pi)}});await s.imports('issues');await s.page.locator('[data-pi-repair]:enabled').first().waitFor();}
+ test('PI-WORKFLOW-03','歷史 PI 排查','排查與取消不寫入，確認只清理識別欄位保留 Final',async s=>{
+  await audit(s);assert.equal(await s.page.evaluate(()=>window.__writes.length),0);await s.page.locator('[data-pi-repair]:enabled').first().check();await s.page.locator('#applyPiAudit').click();await s.page.locator('#piRepairPreview').getByRole('button',{name:'取消',exact:true}).click();assert.equal(await s.page.evaluate(()=>window.__writes.length),0);await s.page.locator('#applyPiAudit').click();await s.page.locator('#confirmPiRepair').click();await s.page.waitForFunction(()=>window.__store['app_data/main_config'].finalPiContainers['PI-OLD'].rows[0].itemCode==='ACE005');const pi=await s.page.evaluate(()=>window.__store['app_data/main_config'].finalPiContainers['PI-OLD']);assert(pi.isFinal);assert.equal(pi.note,'keep');assert.equal(pi.rows[0].qty,4);
+ });
+ test('PI-WORKFLOW-04','歷史 PI 排查','預覽後遠端 PI 更新，交易拒絕整批修正',async s=>{
+  await audit(s);await s.page.locator('[data-pi-repair]:enabled').first().check();await s.page.locator('#applyPiAudit').click();await s.page.evaluate(()=>window.__store['app_data/main_config'].finalPiContainers['PI-OLD'].rows[0].qty=9);await s.page.locator('#confirmPiRepair').click();await s.page.locator('#piAuditStatus').filter({hasText:'雲端 PI 已更新'}).waitFor();assert.equal(await s.page.evaluate(()=>window.__store['app_data/main_config'].finalPiContainers['PI-OLD'].rows[0].qty),9);assert.equal(await s.page.evaluate(()=>window.__writes.length),0);
+ });
+ test('PI-WORKFLOW-05','PI 查詢','預設排除已到貨，過期 ETA 不算到貨，勾選顯示歷史',async s=>{
+  await s.page.evaluate(()=>{appData.finalPiContainers={FUTURE:{container:'FUTURE',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:4}],eta:'2020-01-01'},ARRIVED:{container:'ARRIVED',receivedDate:'2020-01-01',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:99}]}}});await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button="pi"]').click();await s.page.locator('#finalPiSearch').fill('ACE005');await s.page.locator('#finalPiSearch').press('Enter');assert.equal(await s.page.locator('.pi-search-card').count(),1);assert.equal(await s.page.locator('[data-pi-container=ARRIVED]').count(),0);await s.page.locator('#piIncludeReceived').check();assert.equal(await s.page.locator('.pi-search-card').count(),2);assert((await s.page.locator('.customer-demand-panel').innerText()).includes('未到貨 PI：4 箱'));
+ });
+ test('PI-WORKFLOW-06','權限','Editor 無歷史 PI 清理入口',async s=>{await s.imports('planner');assert(!await s.page.locator('[data-import-view=issues]').isVisible())},{role:'editor'});
+};
