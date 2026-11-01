@@ -114,3 +114,12 @@ body:not([data-role="admin"]) #systemBackup412,body:not([data-role="admin"]) #sy
 .customer-demand-panel summary{cursor:pointer;font-weight:600;color:#294c87}
 .customer-demand-table{min-width:720px}
 .customer-demand-table td{overflow-wrap:anywhere;white-space:pre-wrap}
+
+body[data-import-view="issues"] #hub-issues{display:block}
+.pi-paste-preview{width:min(1100px,94vw);max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:12px;padding:24px;color:#20334b}
+.pi-paste-preview::backdrop{background:#10223888}
+.pi-preview-scroll{max-height:40vh;overflow:auto}.pi-preview-actions{position:sticky;bottom:0;background:white;padding:12px 0}
+.pi-container-demand,.pi-unassigned,.pi-other-orders{padding:12px;margin-top:10px;border:1px solid #dbe4ef;border-radius:8px;background:#f8fafc}
+.pi-store-orders table{width:100%;margin-top:8px}.pi-store-orders td,.pi-store-orders th{padding:6px 10px;vertical-align:top}.pi-container-demand strong{font-size:1.1rem}
+
+body:not([data-role="admin"]) [data-open-import="issues"]{display:none!important}
