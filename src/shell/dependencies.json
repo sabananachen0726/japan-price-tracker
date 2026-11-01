@@ -145,6 +145,7 @@
         "loadEmbeddedOrderPlanner"
       ],
       "imports": [
+        "renderPiAudit",
         "getDoc",
         "doc",
         "db",
@@ -833,6 +834,7 @@
         "renderFinalPiSearch"
       ],
       "imports": [
+        "renderFinalPiBatchSearch",
         "auth",
         "currentDataMode",
         "customerRows",
@@ -1093,6 +1095,35 @@
       ],
       "writes": [
         "refreshEtaSource"
+      ]
+    },
+    {
+      "id": "pi-audit",
+      "file": "modules/pi-audit.js",
+      "owns": [
+        "renderPiAudit",
+        "openPiAudit"
+      ],
+      "imports": [
+        "auth",
+        "isAdmin",
+        "currentDataMode",
+        "inventoryData",
+        "chooseImportView",
+        "db",
+        "PROD_DOC_REF",
+        "FieldPath",
+        "runTransaction",
+        "saveFirebaseData",
+        "savedAppData",
+        "refreshUI",
+        "sendPlannerSnapshot",
+        "sendContainerSnapshot",
+        "escapeFinalPiText"
+      ],
+      "writes": [
+        "renderPiAudit",
+        "openPiAudit"
       ]
     }
   ]

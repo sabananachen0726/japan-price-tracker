@@ -1,6 +1,27 @@
-import {customerBoxes, normalizeCode, summarizeDemand} from '../shared/customer-demand.js';
+import {customerBoxes, normalizeCode, summarizeDemand, allocatePiDemand} from '../shared/customer-demand.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 const fmt = value => Number(value).toLocaleString('zh-TW', {maximumFractionDigits: 2});
+export function renderStoreOrders(list) {
+  const stores = new Map();
+  for (const order of list) {const name = String(order.customer || '').trim() || '店名未填'; if (!stores.has(name)) stores.set(name, []); stores.get(name).push(order);}
+  return `<details class="pi-store-orders mt-2" open><summary>店名與客訂箱數（${stores.size} 家／${list.length} 筆）</summary><table class="table table-sm"><thead><tr><th>客戶／店名</th><th class="text-end">客訂箱數</th><th>紀錄</th></tr></thead><tbody>${[...stores].map(([name, orders]) => {
+    const qty = orders.reduce((n, o) => n + (customerBoxes(o) ?? 0), 0), unknown = orders.some(o => customerBoxes(o) === null);
+    const details = orders.map(o => `${o.code} · ${o.qty ?? '數量待確認'} ${o.unit || '單位未填'} · ${o.status || '處理中'} · ${o.note || '無備註'}`).join('\n');
+    return `<tr title="${esc(details)}"><td class="fw-bold">${esc(name)}</td><td class="text-end">${fmt(qty)} 箱${unknown ? '<div class="text-danger">另有數量／單位待確認</div>' : ''}</td><td><details><summary>${orders.length} 筆明細</summary><div class="pi-order-lines" style="white-space:pre-wrap">${esc(details)}</div></details></td></tr>`;
+  }).join('')}</tbody></table></details>`;
+}
+export function renderPiContainerDemand({allocation, incoming, ready}) {
+  if (!ready) return '<section class="pi-container-demand alert alert-warning mt-2">客訂尚未取得；已分配與剩餘可用量待確認，不視為零。</section>';
+  const available = allocation.unknown ? null : incoming - allocation.total;
+  return `<section class="pi-container-demand mt-2"><div class="d-flex flex-wrap gap-3 pi-allocation-summary"><span>PI 箱數：<b>${fmt(incoming)}</b></span><span>已分配客訂：<b>${fmt(allocation.total)}</b> 箱${allocation.unknown ? '（另有待確認）' : ''}</span><strong class="${available !== null && available < 0 ? 'text-danger' : 'text-success'}">剩餘可用：${available === null ? '資料不足，無法計算' : fmt(available) + ' 箱'}${available !== null && available < 0 ? ' · 超額分配 ' + fmt(-available) + ' 箱' : ''}</strong></div>${allocation.rows.length ? renderStoreOrders(allocation.rows) : '<p class="text-muted my-2">尚無已分配客訂。</p>'}</section>`;
+}
+export function renderPiAllocationOverview({rows, codes, incoming, containers, fetchedAt, status}) {
+  const result = allocatePiDemand(rows, codes, containers);
+  const assigned = [...result.assigned.values()], total = assigned.reduce((n, d) => n + d.total, 0), unknown = assigned.some(d => d.unknown);
+  const available = result.ready && !unknown ? incoming - total : null;
+  const time = fetchedAt ? new Date(fetchedAt).toLocaleString('zh-TW', {timeZone: 'Australia/Brisbane'}) : '尚未成功更新';
+  return {allocation: result, html: `<section class="customer-demand-panel border rounded p-3 mb-3" aria-label="未履行客訂"><div class="d-flex flex-wrap gap-3 fw-bold"><span>未到貨 PI：${fmt(incoming)} 箱</span><span>已分配至本次未到貨櫃：${result.ready ? fmt(total) + ' 箱' + (unknown ? '（另有待確認）' : '') : '尚未取得'}</span><span>各櫃剩餘合計：${available === null ? '資料不足，無法計算' : fmt(available) + ' 箱'}</span></div><div class="small text-muted mt-2">最後成功更新：${esc(time)}（Brisbane） · ${esc(status || '尚未連線客訂')}</div><p class="small text-muted">各櫃剩餘＝該櫃 PI 箱數－指定該櫃的未履行客訂。未指定貨櫃及其他貨櫃的客訂另列，不重複扣除。</p>${result.ready ? `<div class="pi-unassigned"><h6>未指定貨櫃（${result.unassigned.rows.length} 筆／${fmt(result.unassigned.total)} 箱${result.unassigned.unknown ? '，另有待確認' : ''}）</h6>${result.unassigned.rows.length ? renderStoreOrders(result.unassigned.rows) : '<p class="text-muted">沒有未指定貨櫃的客訂。</p>'}</div>${result.other.rows.length ? `<div class="pi-other-orders"><h6>其他／不在本次未到貨結果的貨櫃客訂（${result.other.rows.length} 筆）</h6>${renderStoreOrders(result.other.rows)}</div>` : ''}` : '<p class="text-warning-emphasis">請先在訂貨規劃連線客訂；未取得資料不視為零。</p>'}</section>`};
+}
 export function renderCustomerDemand({rows, codes, incoming, fetchedAt, status, containers = []}) {
   const demand = summarizeDemand(rows, codes);
   const ready = Array.isArray(rows);
