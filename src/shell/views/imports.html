@@ -1,13 +1,14 @@
 <div class="tab-pane fade" id="add-panel" role="tabpanel">
             <div class="import-hub-hero"><h3><i class="fa-solid fa-box-archive me-2"></i>資料匯入中心</h3>
-<p>選擇商品主檔、廠商報價、PI 或訂貨資料，再預覽並確認更新。備份、帳號與進階維護請至右上方「系統設定」。</p>
+<p>所有資料匯入集中在此；各功能頁提供捷徑回到對應區域。選擇資料後先預覽，再確認更新。備份、帳號與進階維護請至右上方「系統設定」。</p>
 <div class="import-hub-warning">先預覽再確認；LIVE 供同事共用，TEST 僅保留在此瀏覽器。</div>
 <div class="import-switcher" role="group" aria-label="選擇匯入資料類別">
 <button type="button" class="btn btn-outline-primary active" data-import-view="master">① 商品主檔</button>
 <button type="button" class="btn btn-outline-primary" data-import-view="quotes">② 廠商報價</button>
-<button type="button" class="btn btn-outline-primary" data-import-view="pi">③ Final PI</button>
+<button type="button" class="btn btn-outline-primary" data-import-view="pi">③ 廠商 PI</button>
 <button type="button" class="btn btn-outline-primary" data-import-view="planner">④ 訂貨資料設定</button>
 <button type="button" class="btn btn-outline-secondary" data-import-view="backup">⑤ 備份／復原</button>
+<button type="button" class="btn btn-outline-warning import-admin" data-import-view="issues">⑥ 待確認資料</button>
 </div></div><section class="import-hub-section import-admin" id="hub-master" data-import-section="master"><div class="import-section-head"><h4>① 商品主檔</h4><p>直接匯入 Onsight Product Data Export Excel；按欄位名稱讀取，篩選 Place of Production Value 包含 JAPAN 的所有分類（不分大小寫）。依 Item Code 更新，同條碼商品全部保留並標註；未列出的舊商品不刪除。Admin 專用。</p></div><div class="bg-light p-3 border rounded mb-3">
                             <h6>匯入 Onsight Product Data Export Excel（只取日本貨）：</h6>
                             <div class="row g-2">
@@ -134,7 +135,7 @@ WHH002	138	賞味期限 2027/03
                 </div>
 
             </div>
-        </section><section class="import-hub-section import-admin" id="hub-pi" data-import-section="pi"><p class="alert alert-info small">PI 可加選填「保存期限（月）」／Shelf Life (Months) 欄位，填 1～120 整數。無標題時單櫃為第 6 欄、多櫃為第 8 欄；空白保留原設定。預覽會列出修改與衝突，確認後一併儲存。這是完整保存期限，不是剩餘效期。</p><div class="import-section-head"><h4>③ Final PI</h4><p>使用單櫃或多櫃匯入，都是同一套 PI 資料；同櫃再次匯入會<b>完整覆蓋該櫃 PI 明細</b>，並需重新核對 Final 標記。</p></div><div class="card p-4 border-primary">
+        </section><section class="import-hub-section import-admin" id="hub-pi" data-import-section="pi"><p class="alert alert-info small">PI 可加選填「保存期限（月）」／Shelf Life (Months) 欄位，填 1～120 整數。無標題時單櫃為第 6 欄、多櫃為第 8 欄；空白保留原設定。預覽會列出修改與衝突，確認後一併儲存。這是完整保存期限，不是剩餘效期。</p><div class="import-section-head"><h4>③ 廠商 PI</h4><p>廠商確認的商品箱數會影響 PI 查詢與在途庫存；內部採購建議不計入在途。使用單櫃或多櫃匯入，都是同一套 PI 資料；同櫃再次匯入會<b>完整覆蓋該櫃 PI 明細</b>，並需重新核對 Final 標記。</p></div><div class="card p-4 border-primary">
                         <details>
                             <summary class="d-flex flex-wrap justify-content-between align-items-center gap-2" style="cursor:pointer; list-style:none;">
                                 <div>
@@ -192,4 +193,4 @@ JSR26B1202	Tencho	4901234567891	30"></textarea>
                             <button id="btnClearData" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-trash me-1"></i>清空雲端資料</button>
                         </div>
                     </div>
-                </section></div>
+                </section><section class="import-hub-section import-admin" id="hub-issues" data-import-section="issues"><div class="import-section-head"><h4>⑥ 待確認資料</h4><p>檢查已存 PI 的格式、商品配對與採購單位。排查不會修改資料；只有勾選可辨識的品號／條碼清理，再預覽並確認才會儲存。數量、單價及疑似錯位需核對原 Excel。</p></div><div class="d-flex flex-wrap gap-2 mb-3"><button id="scanPiAudit" class="btn btn-outline-primary">重新排查</button><button id="exportPiAudit" class="btn btn-outline-success">匯出待確認清單</button><button id="applyPiAudit" class="btn btn-primary">預覽勾選的清理</button></div><p id="piAuditStatus" role="status"></p><div class="table-responsive"><table class="table table-sm"><thead><tr><th>選取</th><th>貨櫃／列</th><th>商品</th><th>欄位／目前值</th><th>建議</th><th>原因</th><th>處理</th></tr></thead><tbody id="piAuditRows"></tbody></table></div></section></div>
