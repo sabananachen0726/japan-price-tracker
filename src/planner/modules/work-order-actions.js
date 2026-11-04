@@ -95,7 +95,7 @@ export function initialize(context) {
     if (context.plannerRole !== 'admin') return;
     const code = context.currentKey();
     if (code.startsWith('__') || !Object.hasOwn(context.state.drafts, code)) return;
-    if (!confirm(`確定永久刪除採購工作單 ${code}（包括本櫃數量及留言）？\n\n不會刪除正式 Container Tracker 貨櫃或 PI。`)) return;
+
     context.$('deleteWork').disabled = true;
     window.parent.postMessage({
       type: 'KAISI_ORDER_DELETE',
@@ -196,7 +196,7 @@ export function initialize(context) {
     }
     if (t.dataset.delete && context.plannerRole === 'admin') {
       const code = t.dataset.delete;
-      if (confirm('確定刪除採購建議單 ' + code + '？不影響正式貨櫃及 PI。')) window.parent.postMessage({
+      window.parent.postMessage({
         type: 'KAISI_ORDER_DELETE',
         code
       }, '*');
