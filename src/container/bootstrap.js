@@ -1,3 +1,4 @@
+import {installMobileTables} from '../shared/mobile-tables.js';
 import { createWindowEvents } from "../core/events.js";
 import { createFeatureRuntime } from "../core/runtime.js";
 import * as feature0 from "./modules/state.js";
@@ -20,3 +21,5 @@ const runtime = createFeatureRuntime(features, {
   exposeGlobals: true
 });
 runtime.start();
+
+installMobileTables();

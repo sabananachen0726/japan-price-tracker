@@ -48,7 +48,7 @@ export const definition = {
     "name": "renderFinalPiSearch",
     "kind": "function"
   }],
-  "imports": ["renderFinalPiBatchSearch", "auth", "currentDataMode", "customerRows", "customerFetchedAt", "customerStatus", "cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
+  "imports": ["isAdmin","renderFinalPiBatchSearch", "auth", "currentDataMode", "customerRows", "customerFetchedAt", "customerStatus", "cleanBarcode", "compareContainerNo", "findPiShelfColumn", "frozenBadgeHtml", "getContainerDates", "legacySafeDate", "linkedTrackerContainer", "normalizeContainerNo", "readPiShelfCell", "resolveToPrimaryBarcode", "saveFirebaseData", "showAppToast"],
   "writes": ["escapeFinalPiText", "finalPiContainerSort", "finalPiLogistics", "finalPiWorkflowStatus", "getFinalPiProduct", "getFinalPiToday", "isFinalPiConfirmed", "isFinalPiReceived", "normalizeFinalPiDate", "parseFinalPiLine", "parseFinalPiPaste", "renderFinalPiContainerList", "renderFinalPiSearch", "updateFinalPiPendingBadge"]
 };
 export function register(context) {
@@ -167,7 +167,7 @@ export function register(context) {
       return `<div class="border rounded p-3 mb-3 ${arrived ? 'bg-light' : ''}">
         <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start"><div><div class="fw-bold fs-5">${context.escapeFinalPiText(c.container)} ${context.frozenBadgeHtml(c.container)}</div><div class="small text-muted">${context.escapeFinalPiText(c.supplier || '-')}｜${unique} 個商品｜<strong>${total.toLocaleString()} CTN</strong>｜匯入 ${context.escapeFinalPiText((c.importedAt || '').slice(0, 10) || '-')}</div></div>${status}</div>
         <div class="row g-2 align-items-center mt-2"><div class="col-md-7"><div class="small text-muted">到港日／拆櫃日／Expected Month 請統一至「Container Tracker」維護。</div></div><div class="col-md-5"><div class="form-check form-switch border rounded p-2 ps-5 bg-white"><input class="form-check-input final-pi-final-toggle" type="checkbox" data-container="${context.escapeFinalPiText(c.container)}" ${context.isFinalPiConfirmed(c) ? 'checked' : ''}><label class="form-check-label fw-bold">此 PI 已確認為 Final Version</label></div></div></div>
-        <details class="mt-3"><summary class="text-primary" style="cursor:pointer">查看整櫃內容（${rows.length} 列）</summary><div class="table-responsive mt-2"><table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th>Item Code</th><th>Barcode</th><th>商品名稱</th><th class="text-end">箱數</th><th class="text-end">單包價</th><th>Expiry</th><th>保存期限</th></tr></thead><tbody>${detail}</tbody></table></div></details>
+        ${context.isAdmin() ? `<button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-manage-container="${context.escapeFinalPiText(c.container)}">管理此櫃資料</button>` : ''}<details class="mt-3"><summary class="text-primary" style="cursor:pointer">查看整櫃內容（${rows.length} 列）</summary><div class="table-responsive mt-2"><table class="table table-sm table-hover align-middle"><thead class="table-light"><tr><th>Item Code</th><th>Barcode</th><th>商品名稱</th><th class="text-end">箱數</th><th class="text-end">單包價</th><th>Expiry</th><th>保存期限</th></tr></thead><tbody>${detail}</tbody></table></div></details>
       </div>`;
     }).join('');
     host.querySelectorAll('.final-pi-final-toggle').forEach(box => box.addEventListener('change', async () => {

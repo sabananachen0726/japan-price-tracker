@@ -20,7 +20,7 @@ export const definition = {
     "name": "sendContainerHeight",
     "kind": "function"
   }],
-  "imports": ["$", "D", "DEF", "PI", "events", "norm"],
+  "imports": ["E","$", "D", "DEF", "PI", "events", "norm"],
   "writes": ["D", "PI", "lastContainerHeight", "persist", "saveCallbacks", "saveSequence", "sendContainerHeight", "setSaveFeedback"]
 };
 export function register(context) {
@@ -59,6 +59,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
+  document.getElementById('manageTrackerData').onclick=()=>window.parent.postMessage({type:'KAISI_OPEN_DATA_MANAGER',container:document.getElementById('f_code')?.value||''},'*');
   context.saveCallbacks = new Map();
   context.saveSequence = 0;
   context.events.onMessage(event => {
@@ -71,6 +72,7 @@ export function initialize(context) {
       return;
     }
     if (m.type === 'KAISI_CONTAINER_SNAPSHOT') {
+      const editingWasSaved=context.E?.id&&(context.D.containers||[]).some(c=>c.id===context.E.id);
       context.D = m.data || {
         containers: [],
         settings: {
@@ -83,6 +85,7 @@ export function initialize(context) {
       };
       context.PI.finalPiContainers ||= {};
       context.norm();
+      if(editingWasSaved&&context.E?.id&&!context.D.containers.some(c=>c.id===context.E.id))window.closeM();
       context.$("login").classList.add("hide");
       context.$("app").classList.remove("hide");
       render();

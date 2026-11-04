@@ -21,6 +21,7 @@ async function bundle(file,format,define={}) {
 async function page(name,define={}) {
  const base=path.join(root,'src',name);
  let html=await readFile(path.join(base,'template.html'),'utf8');
+ html=html.replace('{{shared-mobile-styles}}',await readFile(path.join(root,'src/shared/mobile.css'),'utf8'));
  async function includeFiles(text,depth=0){
   if(depth>12)throw Error('Template include cycle in '+name);
   for(const match of [...text.matchAll(/\{\{file:([^}]+)\}\}/g)]){

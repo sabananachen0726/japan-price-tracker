@@ -8,7 +8,7 @@ import {createProductResolver} from '../../shared/product-identity.js';
 export const definition = {
   "id": "frame-commands",
   "owns": [],
-  "imports": ["saveFirebaseData", "refreshUI", "catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
+  "imports": ["requestDataDeletion", "openDataManager","saveFirebaseData", "refreshUI", "catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
   "writes": ["frozenSignature"]
 };
 export function register(context) {}
@@ -28,6 +28,7 @@ export function initialize(context) {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
     const containerWindow = document.getElementById('containerTrackerFrame')?.contentWindow;
+    if(e.source===containerWindow&&e.data?.type==='KAISI_OPEN_DATA_MANAGER'){if(context.isAdmin())context.openDataManager({container:e.data.container});return;}
     if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_TEMP_EDIT') {
       if(!context.isAdmin() || document.querySelector('.pi-temporary-dialog'))return;
       const barcode=String(e.data.barcode||'');
@@ -174,14 +175,10 @@ export function initialize(context) {
       }
       // A local draft has never been shared. Clear it locally instead of rejecting an Admin.
       if (context.currentDataMode === 'test' || !Object.hasOwn(context.sharedOrderDrafts, code)) {
-        plannerWindow.postMessage({ type: 'KAISI_ORDER_DELETE_RESULT', code, ok: true, localOnly: true }, '*');
+        context.requestDataDeletion({container:code,localWork:true}).then(ok=>plannerWindow.postMessage({type:'KAISI_ORDER_DELETE_RESULT',code,ok,localOnly:true,error:ok?'':'已取消刪除'},'*'));
         return;
       }
-      context.deleteProposal(code).then(() => plannerWindow.postMessage({
-        type: 'KAISI_ORDER_DELETE_RESULT',
-        code,
-        ok: true
-      }, '*')).catch(err => plannerWindow.postMessage({
+      context.deleteProposal(code).catch(err => plannerWindow.postMessage({
         type: 'KAISI_ORDER_DELETE_RESULT',
         code,
         ok: false,

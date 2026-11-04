@@ -30,7 +30,7 @@ export const definition = {
     "name": "refreshUI",
     "kind": "function"
   }],
-  "imports": ["cleanBarcode", "compareQuotesByContainerNewest", "renderCompareList", "renderContainerDeleteOptions", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderMappingTable", "renderMasterTable", "renderSharedOrderDrafts", "renderSupplierOptions", "sendContainerSnapshot", "sendPlannerSnapshot"],
+  "imports": ["renderDataManager", "renderContainerManager","cleanBarcode", "compareQuotesByContainerNewest", "renderCompareList", "renderContainerDeleteOptions", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderMappingTable", "renderMasterTable", "renderSharedOrderDrafts", "renderSupplierOptions", "sendContainerSnapshot", "sendPlannerSnapshot"],
   "writes": ["PRICE_ANOMALY_THRESHOLD", "ensureSearchCache", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "rebuildSearchCache", "refreshUI", "resolveToPrimaryBarcodeFromCache", "searchCache"]
 };
 export function register(context) {
@@ -116,6 +116,8 @@ export function register(context) {
     // Import history renderer is initialized inside the DOM-ready workflow.
     // Do not call it here because TEST can load LIVE data before that local function exists.
     context.renderContainerDeleteOptions();
+    context.renderContainerManager();
+    context.renderDataManager();
     context.renderFinalPiContainerList();
     context.renderFinalPiSearch();
     context.renderFinalPiBatchSearch();

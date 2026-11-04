@@ -17,7 +17,7 @@ export const definition = {
     "name": "compareResultsContainer",
     "kind": "const"
   }],
-  "imports": ["renderCompareList", "saveFirebaseData"],
+  "imports": ["requestDataDeletion","renderCompareList", "saveFirebaseData"],
   "writes": ["batchSearchInput", "compareResultsContainer", "searchComposing", "searchDebounceTimer", "searchInput"]
 };
 export function register(context) {}
@@ -92,10 +92,7 @@ export function initialize(context) {
       const deleteBtn = e.target.closest(".btn-delete-quote");
       if (deleteBtn) {
         const qId = deleteBtn.getAttribute("data-id");
-        if (confirm("確定刪除此筆報價紀錄？")) {
-          window.appData.quotes = window.appData.quotes.filter(q => q.id !== qId);
-          context.saveFirebaseData();
-        }
+        context.requestDataDeletion({quoteIds:[qId]});
         return;
       }
       const purchaseCopyBtn = e.target.closest(".btn-copy-purchase");

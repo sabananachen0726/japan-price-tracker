@@ -1,3 +1,4 @@
+import {installMobileTables} from '../shared/mobile-tables.js';
 import { createWindowEvents } from "../core/events.js";
 import { createFeatureRuntime } from "../core/runtime.js";
 import * as orderSync from "./modules/order-sync.js";
@@ -40,3 +41,5 @@ const runtime = createFeatureRuntime(features, {
   exposeGlobals: true
 });
 runtime.start();
+
+installMobileTables();

@@ -133,7 +133,7 @@ export function initialize(context) {
         context.updateWorkSelect();
         context.renderAll();
         alert((m.localOnly ? '已刪除本機工作單草稿 ' : '已刪除採購建議單 ') + m.code);
-      } else alert('刪除失敗：' + (m.error || '未知錯誤'));
+      } else if(m.error!=='已取消刪除') alert('刪除失敗：' + (m.error || '未知錯誤'));
       return;
     }
     if (m.type === 'KAISI_ORDER_PRESET_RESULT') {

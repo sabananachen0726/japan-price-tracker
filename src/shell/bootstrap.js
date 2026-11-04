@@ -1,3 +1,4 @@
+import {installMobileTables} from '../shared/mobile-tables.js';
 import { createWindowEvents } from "../core/events.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocsFromServer, runTransaction, deleteDoc, deleteField, writeBatch, updateDoc, arrayUnion, arrayRemove, FieldPath } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -33,7 +34,8 @@ import * as feature25 from "./modules/workspace.js";
 import * as feature26 from "./modules/dom-bindings.js";
 import * as feature27 from './modules/eta-sync.js';
 import * as feature28 from "./modules/pi-audit.js";
-const features = [feature0, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28];
+import * as feature29 from "./modules/data-management.js";
+const features = [feature0, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28, feature29];
 const runtime = createFeatureRuntime(features, {
   imports: {
     events: createWindowEvents(window),
@@ -63,3 +65,5 @@ const runtime = createFeatureRuntime(features, {
   exposeGlobals: false
 });
 runtime.start();
+
+installMobileTables();
