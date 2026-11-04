@@ -53,3 +53,7 @@ html,body{overflow-x:hidden!important;overflow-y:hidden!important}
 .detail-toolbar{padding:12px 0 0!important;position:static!important}.panel>h2{font-size:23px;padding:10px 0 4px}.detail-summary small{display:block;color:#65758b;font-size:12px;line-height:1.5;margin-top:5px}.detail-summary strong{font-size:15px}
 
 .status,.status-badge,.mini-state{border-radius:6px;font-size:12px;padding:3px 7px}
+
+@media(max-width:900px){
+ .toprow,.overview-head,.detail-toolbar{flex-wrap:wrap!important;gap:10px}.top h1{font-size:20px}.toolbar{display:flex;flex-wrap:wrap;gap:8px}.toolbar input,.toolbar select{width:100%;min-width:0!important}.board{grid-template-columns:minmax(0,1fr)!important;min-width:0}.col,.c,.card{min-width:0;max-width:100%}.view-actions{flex-wrap:wrap}.grid,.grid2,.grid3,.cols4,.cols3,.two,.formgrid{grid-template-columns:1fr!important}.panel{width:100%!important;max-width:100%!important;padding:12px!important}.detail-section{padding:12px}.detail-summary{grid-template-columns:1fr!important}.tablewrap{overflow:visible}.quick-drawer{width:min(100vw,480px)!important;max-width:100%!important}.nav{gap:4px;padding:8px!important}.nav button{flex:1;font-size:13px;padding:8px!important}.detail-section input,.detail-section select,.field input,.field select{width:100%;min-width:0}.actions{flex-wrap:wrap}.danger{margin-left:0}.cardtop .code{overflow-wrap:anywhere}.mobile-record-table{font-size:14px}
+}
