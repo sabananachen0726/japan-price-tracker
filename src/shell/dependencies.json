@@ -145,6 +145,7 @@
         "loadEmbeddedOrderPlanner"
       ],
       "imports": [
+        "renderDataManager",
         "renderPiAudit",
         "getDoc",
         "doc",
@@ -192,6 +193,8 @@
       "file": "modules/frame-commands.js",
       "owns": [],
       "imports": [
+        "requestDataDeletion",
+        "openDataManager",
         "saveFirebaseData",
         "refreshUI",
         "catalogData",
@@ -243,6 +246,7 @@
         "sendContainerSnapshot"
       ],
       "imports": [
+        "requestDataDeletion",
         "db",
         "runTransaction",
         "CATALOG_REF",
@@ -581,6 +585,8 @@
         "refreshUI"
       ],
       "imports": [
+        "renderDataManager",
+        "renderContainerManager",
         "cleanBarcode",
         "compareQuotesByContainerNewest",
         "renderCompareList",
@@ -770,6 +776,7 @@
         "renderMasterTable"
       ],
       "imports": [
+        "requestDataDeletion",
         "ensureSearchCache",
         "cleanBarcode",
         "escapeHtml",
@@ -837,6 +844,7 @@
         "renderFinalPiSearch"
       ],
       "imports": [
+        "isAdmin",
         "renderFinalPiBatchSearch",
         "auth",
         "currentDataMode",
@@ -1021,6 +1029,7 @@
       "file": "modules/dom-bindings.js",
       "owns": [],
       "imports": [
+        "requestDataDeletion",
         "CONTAINER_TRACKER_REF",
         "activeManagedContainer",
         "auth",
@@ -1127,6 +1136,48 @@
       "writes": [
         "renderPiAudit",
         "openPiAudit"
+      ]
+    },
+    {
+      "id": "data-management",
+      "file": "modules/data-management.js",
+      "owns": [
+        "openDataManager",
+        "renderDataManager",
+        "requestDataDeletion"
+      ],
+      "imports": [
+        "isAdmin",
+        "auth",
+        "currentDataMode",
+        "chooseImportView",
+        "containerTrackerData",
+        "sharedOrderDrafts",
+        "customerRows",
+        "customerStatus",
+        "PROD_DOC_REF",
+        "CONTAINER_TRACKER_REF",
+        "ORDER_PLANNER_REF",
+        "db",
+        "runTransaction",
+        "FieldPath",
+        "deleteField",
+        "saveFirebaseData",
+        "refreshUI",
+        "sendPlannerSnapshot",
+        "sendContainerSnapshot",
+        "sendSharedOrderDrafts",
+        "masterSelectedProducts",
+        "requestPlannerBackup412",
+        "storeTestPlanner412",
+        "TEST_LOCAL_KEY"
+      ],
+      "writes": [
+        "containerTrackerData",
+        "sharedOrderDrafts",
+        "openDataManager",
+        "renderDataManager",
+        "requestDataDeletion"
       ]
     }
   ]
