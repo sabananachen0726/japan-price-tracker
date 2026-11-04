@@ -31,7 +31,7 @@ export const definition = {
     "name": "sendContainerSnapshot",
     "kind": "function"
   }],
-  "imports": ["db", "runTransaction", "CATALOG_REF", "ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
+  "imports": ["requestDataDeletion","db", "runTransaction", "CATALOG_REF", "ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
   "writes": ["people", "noticeReads", "renderInactiveNotices", "deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "startSharedOrderListener", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
@@ -111,19 +111,9 @@ export function register(context) {
       context.showAppToast('請切換 LIVE 並使用 Admin 帳號刪除', 'danger');
       throw Error('非 LIVE 模式或權限不足');
     }
-    try {
-      await context.setDoc(context.ORDER_PLANNER_REF, {
-        drafts: {
-          [code]: context.deleteField()
-        }
-      }, {
-        merge: true
-      });
-      context.showAppToast('已刪除採購建議單 ' + code);
-    } catch (err) {
-      context.showAppToast('刪除失敗：' + (err.code || err.message), 'danger');
-      throw err;
-    }
+    const ok = await context.requestDataDeletion({container:code,types:['proposal']});
+    if(!ok)throw Error('已取消刪除');
+
   };
   context.sendSharedOrderDrafts = function sendSharedOrderDrafts() {
     const frame = document.getElementById('plannerFrame');
@@ -226,7 +216,7 @@ export function initialize(context) {
     if (btn.dataset.proposalDelete) {
       const code = btn.dataset.proposalDelete;
       if (context.currentDataMode !== 'live') return context.showAppToast('TEST 模式不能刪除 LIVE 工作單', 'danger');
-      if (confirm('確定刪除採購建議單 ' + code + '？此操作不影響正式貨櫃。')) context.deleteProposal(code).catch(() => {});
+      context.deleteProposal(code).catch(() => {});
     }
   });
 }

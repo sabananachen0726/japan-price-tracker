@@ -21,7 +21,7 @@ export const definition = {
     "name": "renderMasterTable",
     "kind": "function"
   }],
-  "imports": ["ensureSearchCache", "cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData"],
+  "imports": ["requestDataDeletion","ensureSearchCache", "cleanBarcode", "escapeHtml", "masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "saveFirebaseData"],
   "writes": ["masterCurrentPage", "migrateBarcodeReferences", "normalizeItemCode", "rebuildItemToBarcode", "renderMappingTable", "renderMasterTable", "updateMasterSelectionUI"]
 };
 export function register(context) {
@@ -186,12 +186,7 @@ export function register(context) {
     tbody.querySelectorAll(".btn-delete-master").forEach(btn => {
       btn.onclick = function () {
         const bc = this.getAttribute("data-barcode");
-        if (confirm(`確定從主檔刪除商品 ${bc} ？`)) {
-          delete window.appData.products[bc];
-          context.masterSelectedProducts.delete(bc);
-          context.rebuildItemToBarcode();
-          context.saveFirebaseData();
-        }
+        context.requestDataDeletion({products:[bc]});
       };
     });
   };
