@@ -2,31 +2,19 @@
 export const definition = {
   "id": "advanced-data-actions",
   "owns": [],
-  "imports": ["saveFirebaseData"],
+  "imports": ["requestDataDeletion", "currentDataMode","saveFirebaseData"],
   "writes": []
 };
 export function register(context) {}
 export function initialize(context) {
   // 清空資料
 
-  document.getElementById("btnClearData").onclick = function () {
-    if (confirm("警告！確定要清空雲端資料庫的所有商品主檔、條碼綁定與報價紀錄？")) {
-      window.appData = {
-        suppliers: ["SilkRoad", "Tencho"],
-        mappings: {},
-        products: {},
-        itemToBarcode: {},
-        quotes: [],
-        masterImportBatches: [],
-        finalPiContainers: {}
-      };
-      context.saveFirebaseData();
-      alert("資料已清空！");
-    }
-  };
+  const clear=document.getElementById('btnClearData');clear.hidden=true;
+  clear.onclick=()=>{if(context.currentDataMode==='test')context.requestDataDeletion({clearTest:true});};
   // 載入 Demo 範例資料
 
   document.getElementById("btnLoadDemo").onclick = function () {
+    if(context.currentDataMode!=='test')return;
     if (confirm("載入範例資料將覆蓋現有內容，確定繼續？")) {
       window.appData = {
         suppliers: ["SilkRoad", "Tencho"],

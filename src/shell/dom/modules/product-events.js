@@ -24,7 +24,7 @@ export const definition = {
     "name": "btnMasterNext",
     "kind": "const"
   }],
-  "imports": ["masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "rebuildItemToBarcode", "renderMasterTable", "saveFirebaseData", "updateMasterSelectionUI"],
+  "imports": ["requestDataDeletion","masterCurrentPage", "masterSearchTerm", "masterSelectedProducts", "rebuildItemToBarcode", "renderMasterTable", "saveFirebaseData", "updateMasterSelectionUI"],
   "writes": ["btnClearMasterSelection", "btnDeleteSelectedMaster", "btnMasterNext", "btnMasterPrev", "btnSelectAllMasterFiltered", "masterCurrentPage", "masterPageSize", "masterSearchInput", "masterSearchTerm"]
 };
 export function register(context) {}
@@ -53,12 +53,7 @@ export function initialize(context) {
   if (context.btnDeleteSelectedMaster) context.btnDeleteSelectedMaster.onclick = () => {
     const selected = [...context.masterSelectedProducts].filter(bc => window.appData.products?.[bc]);
     if (!selected.length) return;
-    if (!confirm(`即將刪除 ${selected.length} 個商品主檔。\n\n只刪除商品主檔，不刪除歷史報價、Final PI 或 Container Tracker 資料。\n確定繼續？`)) return;
-    selected.forEach(bc => delete window.appData.products[bc]);
-    context.masterSelectedProducts.clear();
-    context.rebuildItemToBarcode();
-    context.saveFirebaseData();
-    context.updateMasterSelectionUI();
+    context.requestDataDeletion({products:selected});
   };
   context.masterPageSize = document.getElementById("masterPageSize");
   if (context.masterPageSize) {
