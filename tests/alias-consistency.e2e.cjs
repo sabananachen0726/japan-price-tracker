@@ -11,5 +11,26 @@ module.exports=({test})=>{
  test('ALIAS-04','關聯一致性','手動與快速貼上報價不再建立另一筆待補商品',async s=>{await s.imports('quotes');await s.page.locator('#inputBarcode').fill(B);await s.page.locator('#inputBarcode').blur();assert.equal(await s.page.locator('#inputItemCode').inputValue(),'ITO019');await s.page.locator('#inputSupplier').selectOption('Tencho');await s.page.locator('#inputContainer').fill('JTC27B0201');await s.page.locator('#inputPrice').fill('160');await s.page.locator('#priceForm button[type=submit]').click();await s.page.waitForFunction(()=>window.__writes.length>0);await s.page.locator('#quickBatchText').evaluate(e=>{for(let p=e.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true});await s.page.locator('#quickBatchSupplier').selectOption('SilkRoad');await s.page.locator('#quickBatchContainer').fill('JSR27B0301');await s.page.locator('#quickBatchText').fill(B+'\t150');await s.page.locator('#btnQuickBatchImport').click();await s.page.waitForFunction(()=>appData.quotes.length===5);assert.equal(await s.page.evaluate(()=>Object.keys(appData.products).length),2);assert.equal(await s.page.evaluate(()=>appData.products['4901085663035'].itemCode||''),'')},options);
  test('ALIAS-05','關聯一致性','PI 用任一端條碼都查得到同一筆貨櫃數量',async s=>{await s.page.locator('#container-tab').click();await s.page.locator('[data-container-view-button=pi]').click();for(const q of [A,B]){await s.page.locator('#finalPiSearch').fill(q);await s.page.locator('#finalPiSearch').press('Enter');await s.page.locator('.pi-search-table tbody tr').waitFor();assert.equal(await s.page.locator('.pi-search-table tbody tr').count(),1);assert((await s.page.locator('#finalPiSearchResults').innerText()).includes('ITO019'))}},options);
  test('ALIAS-07','關聯一致性','CSV 報價匯入使用正式商品且不新增待補主檔',async s=>{await s.imports('quotes');const csv='Barcode,Item Code,Name,Supplier,Price,Container,Note\n'+B+',ITO019,,Tencho,155,JTC27B0401,';await s.page.locator('#batchQuoteCSVFile').setInputFiles({name:'alias-quotes.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await s.page.locator('#btnImportBatchCSV').click();await s.page.waitForFunction(()=>appData.quotes.length===4);assert.equal(await s.page.evaluate(()=>Object.keys(appData.products).length),2);assert.equal(await s.page.evaluate(()=>appData.products['4901085654958'].itemCode),'ITO019');assert.equal(await s.page.evaluate(()=>appData.products['4901085663035'].itemCode||''),'')},options);
- test('ALIAS-06','關聯一致性','不同正式品號保留兩張卡，各自報價並提示關聯衝突',async s=>{await search(s,'Tea');assert.equal(await s.page.locator('#compareResultsContainer > .card').count(),2);assert((await s.page.locator('#compareResultsContainer').innerText()).includes('關聯條碼含不同品號'));await search(s,A);assert.equal(await s.page.locator('#compareResultsContainer > .card').count(),1);assert(!(await s.page.locator('#compareResultsContainer').innerText()).includes('Item: OTHER'))},{store:{'app_data/main_config':{...base,products:{[A]:{itemCode:'ITO019',name:'Tea One'},[B]:{itemCode:'OTHER',name:'Tea Two'}}}}});
+ test('ALIAS-06','關聯一致性','任一關聯條碼都顯示兩個正式品號，報價及歷史各自保留',async s=>{
+  const card=s.page.locator('#compareResultsContainer > .linked-quote-card');
+  const cards=card.locator('.linked-quote-product');
+  for(const [q,first] of [[B,'OTHER'],[A,'ITO019'],[B.slice(0,4)+'-'+B.slice(4),null],['4999999999999',null],['OTHER','OTHER']]){
+   await search(s,q);
+   assert.equal(await card.count(),1);
+   assert.equal(await cards.count(),2);
+   if(first) assert((await cards.first().innerText()).includes('Item: '+first));
+   const empty=cards.filter({hasText:'Item: OTHER'}), quoted=cards.filter({hasText:'Item: ITO019'});
+   assert.equal(await empty.getByText('無報價',{exact:true}).count(),2);
+   assert((await quoted.innerText()).includes('¥164'));
+   assert((await quoted.innerText()).includes('¥155'));
+   assert.equal(await card.getByText(/天未更新/).count(),0);
+   assert((await quoted.innerText()).includes('查看歷史報價 (2 筆)'));
+  }
+  assert.equal(await s.page.evaluate(()=>window.__writes.length),0);
+ },{store:{'app_data/main_config':{...base,
+  mappings:{[A]:[B],[B]:['4999999999999']},
+  products:{[B]:{itemCode:'OTHER',name:'New barcode'},[A]:{itemCode:'ITO019',name:'Old barcode'}},
+  itemToBarcode:{OTHER:B,ITO019:A},
+  quotes:[base.quotes[0],{...base.quotes[1],barcode:A,price:155},{...base.quotes[2],barcode:A}]
+ }}});
 };

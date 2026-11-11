@@ -14,8 +14,14 @@ export const definition = {
   "imports": ["$", "SalesCore", "esc", "factor", "fmt", "gzipText", "monthlyInfo", "plannerRole", "plannerUid", "refreshSalesUI", "salesAllowedCodes", "salesBusy", "salesDecoded", "salesImportWorker", "salesLoading", "salesPending", "salesStatus", "salesWorker", "state", "today", "trackerFeed"],
   "writes": ["parseSalesFile", "prepareSales", "salesBusy", "salesPending", "salesWorker", "selectSalesFile"]
 };
+function slotNotice(sources) {
+  if(!Object.keys(sources.current?.basePrices||{}).length)return '缺少 MYOB 基準售價：未判定的銷量維持原計算。';
+  if(sources.history&&!sources.history.priced)return '歷史 CSV 尚未使用基準售價；如需重算歷史出清，請再選取歷史檔。';
+  return '';
+}
 export function register(context) {
-  context.parseSalesFile = function parseSalesFile(file, slot) {
+  let historyUpload;
+  context.parseSalesFile = function parseSalesFile(file, slot, prices = {}) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(new Blob(['(' + context.salesImportWorker.toString() + ')()'], {
         type: 'text/javascript'
@@ -38,7 +44,7 @@ export function register(context) {
       };
       worker.postMessage({
         file,
-        slot,
+        slot, prices,
         allowed: [...context.salesAllowedCodes()]
       });
     });
@@ -77,14 +83,14 @@ export function register(context) {
     context.$('salesPreviewSummary').textContent = `${record || '重新計算'}｜${summary.months[0]}～${end}｜${Object.keys(summary.rows).length} 款｜${manual} 款手動值保留`;
     const matched = context.state.items.filter(i => summary.rows[i.code]);
     const unmatched = Object.keys(summary.rows).filter(code => !context.state.items.some(i => i.code === code));
-    const notes = [missing.length ? '尚缺 ' + missing.join('、') + ' 的來源資料；依現有月份計算自動月銷，缺資料月份不視為零銷售。' : '六個月來源資料已齊全。', summary.overlap.length ? '兩檔重疊月份以 XLSM 整月優先：' + summary.overlap.join('、') : '', ...Object.values(sources).map(s => `${s.label}：讀取 ${s.stats.rows.toLocaleString()} 筆，略過清單外 ${(s.stats.scopeSkipped || 0).toLocaleString()} 筆，排除 KAISI ${s.stats.excluded.toLocaleString()} 筆，負數 ${s.stats.negative.toLocaleString()} 筆。${s.stats.overlap?.length ? '工作表重疊月份（Sales優先）：' + s.stats.overlap.join('、') : ''}`), `配對本工具日本貨清單 ${matched.length} 款；未配對 ${unmatched.length} 款，不新增商品。`, unmatched.length ? '未配對範例：' + unmatched.slice(0, 30).join('、') : ''];
+    const notes = [missing.length ? '尚缺 ' + missing.join('、') + ' 的來源資料；依現有月份計算自動月銷，缺資料月份不視為零銷售。' : '六個月來源資料已齊全。', slotNotice(sources), summary.overlap.length ? (summary.boundaryDate ? '交接日已比對並排除重複交易：' + summary.boundaryDate : '兩檔重疊月份以 XLSM 優先：' + summary.overlap.join('、')) : '', ...Object.values(sources).map(s => `${s.label}：讀取 ${s.stats.rows.toLocaleString()} 筆，略過清單外 ${(s.stats.scopeSkipped || 0).toLocaleString()} 筆，排除 KAISI ${s.stats.excluded.toLocaleString()} 筆，負數 ${s.stats.negative.toLocaleString()} 筆。${s.stats.overlap?.length ? '工作表重疊月份（Sales優先）：' + s.stats.overlap.join('、') : ''}`), `配對本工具日本貨清單 ${matched.length} 款；未配對 ${unmatched.length} 款，不新增商品。`, unmatched.length ? '未配對範例：' + unmatched.slice(0, 30).join('、') : ''];
     context.$('salesPreviewBody').innerHTML = notes.filter(Boolean).map(t => `<p class="mini">${context.esc(t)}</p>`).join('') + `<table><thead><tr><th>Item Code</th>${summary.months.map(m => `<th>${context.esc(m)}</th>`).join('')}<th>出貨月數</th><th>自動平均／採購單位</th><th>套用後來源</th></tr></thead><tbody>${matched.slice(0, 100).map(i => {
       const r = summary.rows[i.code],
         f = context.factor(i),
         auto = r.count && f ? r.raw / f : null,
         manual = context.monthlyInfo(i).manual;
       return `<tr><td>${context.esc(i.code)}</td>${r.net.map((v, n) => `<td>${!summary.coverage[n] ? '—' : f ? context.fmt(v / f) : '待換算'}</td>`).join('')}<td>${r.count}/6</td><td>${auto === null ? '—' : context.fmt(auto)}</td><td>${manual ? '保留手動' : !r.count ? '無銷售資料' : !f ? '換算待確認' : !summary.complete ? '自動・資料不足六個月' : '自動'}</td></tr>`;
-    }).join('')}</tbody></table><p class="mini">預覽前100款；確認後套用全部配對商品。無出貨月份排除，但該月份負數仍計入六個月淨量。平均淨量為負的商品不計算建議採購量。</p>`;
+    }).join('')}</tbody></table><p class="mini">預覽前100款；確認後套用全部配對商品。無出貨月份排除，但該月份負數仍計入六個月淨量。出清不列入需求，有出貨的出清月份仍納入平均；實際銷量照常顯示。平均淨量為負的商品不計算建議採購量。</p>`;
     context.salesStatus('請核對預覽後按「確認套用並共用」。');
     context.refreshSalesUI();
   };
@@ -98,15 +104,23 @@ export function register(context) {
     context.refreshSalesUI();
     context.salesStatus('正在讀取 ' + file.name + '，請勿關閉頁面…');
     try {
-      const parsed = await context.parseSalesFile(file, slot);
+      const parsed = await context.parseSalesFile(file, slot, baseSources.current?.basePrices);
+      let revisedHistory;
+      if(slot==='current' && historyUpload?.scope===scope && Object.keys(parsed.basePrices||{}).length){
+        revisedHistory=await context.parseSalesFile(historyUpload.file,'history',parsed.basePrices);
+        revisedHistory.label=historyUpload.file.name;
+        revisedHistory.importedAt=new Date().toISOString();
+      }
       if (scope !== String(context.trackerFeed?.mode || 'test') + '|' + context.plannerUid) throw Error('帳號或模式已改變，請重新選擇檔案');
       parsed.label = file.name;
       parsed.importedAt = new Date().toISOString();
       const sources = {
         ...baseSources,
+        ...(revisedHistory?{history:context.SalesCore.mergeSource(baseSources.history,revisedHistory)}:{}),
         [slot]: context.SalesCore.mergeSource(baseSources[slot], parsed)
       };
       await context.prepareSales(sources, context.SalesCore.defaultEnd(sources, context.today()), file.name);
+      if(slot==='history')historyUpload={scope,file};
     } catch (err) {
       context.salesStatus('匯入失敗：' + err.message);
       alert('銷售匯入失敗：' + err.message);

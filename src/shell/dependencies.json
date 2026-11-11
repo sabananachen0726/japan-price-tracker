@@ -1179,6 +1179,24 @@
         "renderDataManager",
         "requestDataDeletion"
       ]
+    },
+    {
+      "id": "spec-reports",
+      "file": "modules/spec-reports.js",
+      "owns": [],
+      "imports": [
+        "auth",
+        "canPlan",
+        "currentDataMode",
+        "isAdmin",
+        "db",
+        "ORDER_PLANNER_REF",
+        "runTransaction",
+        "getDoc",
+        "events",
+        "showAppToast"
+      ],
+      "writes": []
     }
   ]
 }

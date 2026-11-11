@@ -83,8 +83,14 @@ export function register(context) {
         bundle.latestBySupplier[sup] = bundle.supplierHistory[sup][0];
       }
     }
+    const relatedSearchCards = new Map(), cardsByGroup = new Map();
+    for (const [barcode, group] of groups.relatedByBarcode) {
+      if (!cardsByGroup.has(group)) cardsByGroup.set(group, group.filter(key => allPrimarySet.has(key)));
+      relatedSearchCards.set(barcode, cardsByGroup.get(group));
+    }
     context.searchCache = {
       valid: true,
+      relatedSearchCards,
       aliasToPrimary,
       productEntries,
       quoteByBarcode,

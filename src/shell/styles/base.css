@@ -16,7 +16,6 @@
         .trend-down { color: #198754; font-size: 0.75rem; font-weight: bold; }
         .trend-same { color: #6c757d; font-size: 0.75rem; }
         .qty-badge { background-color: #0d6efd; color: white; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
-        .stale-quote { border-color:#ffc107 !important; background:#fffdf2 !important; }
         .workbench-table th { white-space: nowrap; }
         .workbench-table td { vertical-align: middle; }
         .workbench-total { font-size: 1.05rem; font-weight: 700; }
@@ -128,3 +127,7 @@ body[data-import-view="manage"] #hub-manage{display:block}.data-manager-types{di
 @media(max-width:900px){
  #protectedApp>.container{padding:10px!important;margin:0!important;width:100%!important;max-width:100%!important}#protectedApp>.container>.border-bottom{display:block!important;margin-bottom:12px!important}#protectedApp h2{font-size:19px;line-height:1.5}#protectedApp>.container>.border-bottom>.d-flex{justify-content:flex-start!important;gap:6px!important}#authUser{max-width:100%;overflow-wrap:anywhere}#mainTabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:6px!important;margin-bottom:14px!important}#mainTabs .nav-link{width:100%;font-size:14px;padding:10px 6px}#mainTabs .nav-item:last-child{grid-column:1/-1}.workspace-subnav{flex-wrap:wrap!important;gap:6px!important}.workspace-subnav button{flex:1}.card.p-4{padding:14px!important}.import-hub-hero{padding:14px}.import-switcher button{min-width:0;flex:1 1 44%;font-size:14px}.import-section-head{padding:12px}.data-manager-types{grid-template-columns:1fr}.table-responsive{max-width:100%;min-width:0}.pi-allocation-summary{display:grid!important;grid-template-columns:1fr 1fr;gap:10px!important}.pi-allocation-summary strong{grid-column:1/-1}.pi-store-orders summary{line-height:1.6}#finalPiSearchResults .fs-4{font-size:21px!important}#finalPiSearchResults .fs-5{font-size:17px!important}#containerDetailBar{position:static;padding:10px}#containerDetailBar .detail-bar-actions{align-self:stretch;justify-content:space-between}.import-hub-section .row{margin-left:0;margin-right:0}#inactiveNoticeDialog{max-height:90dvh}.notice-entry{overflow-wrap:anywhere}
 }
+
+.linked-quote-card{border-color:#c9b8ec}
+.linked-quote-heading{background:#eee6ff;color:#45227d;padding:.6rem 1rem;font-weight:700;border-radius:inherit}
+.linked-quote-product + .linked-quote-product{border-top:2px solid #e8def6}
