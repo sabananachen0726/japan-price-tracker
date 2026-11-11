@@ -53,6 +53,7 @@ export function register(context) {
       f,
       stock,
       monthly,
+      sellableMonths: valid && monthly > 0 && available !== null ? Math.max(0, stock + available) / monthly : null,
       maxStock: limit,
       baseUnits, projected, excess: projected !== null && limit !== null ? Math.max(0, context.round(projected - limit)) : 0,
       months,

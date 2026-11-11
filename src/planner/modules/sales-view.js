@@ -75,12 +75,12 @@ export function register(context) {
     if (!pending && !context.salesBusy) {
       const s = context.salesSummary;
       const missing = s?.months.filter((_, i) => !s.coverage[i]) || [];
-      context.$('salesImportStatus').textContent = context.salesError || (!s ? '尚未匯入銷售資料。' : `${s.months[0]}～${s.end} · ${Object.keys(s.rows).length} 款 · ${missing.length ? '缺少月份：' + missing.join('、') : '六個月資料已齊全'}${s.overlap.length ? '；' + s.overlap.join('、') + ' 使用 XLSM 來源' : ''}${context.state.sourceDirty?.sales ? ' · 尚未成功共用，請查看儲存狀態' : ''}`);
+      context.$('salesImportStatus').textContent = context.salesError || (!s ? '尚未匯入銷售資料。' : `${s.months[0]}～${s.end} · ${Object.keys(s.rows).length} 款 · ${missing.length ? '缺少月份：' + missing.join('、') : '六個月資料已齊全'}${s.boundaryDate ? '；交接日 ' + s.boundaryDate + ' 已比對交易' : s.overlap.length ? '；' + s.overlap.join('、') + ' 使用 XLSM 來源' : ''}${context.state.sourceDirty?.sales ? ' · 尚未成功共用，請查看儲存狀態' : ''}`);
     }
     if (document.activeElement !== context.$('salesEndMonth') && !pending) context.$('salesEndMonth').value = context.state.salesV1?.periodEnd || context.SalesCore.defaultEnd(context.salesDecoded, context.today());
     context.$('salesEndMonth').max = context.SalesCore.monthShift(context.today().slice(0, 7), -1);
     const s = context.salesSummary;
-    context.$('salesPlanSummary').textContent = context.salesError || (s ? `${s.months[0]}～${s.end}｜銷量與月銷皆為採購單位｜無正數出貨月份排除｜${s.complete ? '手動值保留至恢復自動' : '資料不足六個月，依現有月份計算'}` : '尚未匯入銷售資料；可到資料匯入中心更新。');
+    context.$('salesPlanSummary').textContent = context.salesError || (s ? `${s.months[0]}～${s.end}｜銷量與月銷皆為採購單位｜出清不計需求，無正數出貨月份排除｜${s.complete ? '手動值保留至恢復自動' : '資料不足六個月，依現有月份計算'}` : '尚未匯入銷售資料；可到資料匯入中心更新。');
     context.$('salesShowMonths').checked = context.$('plan').classList.contains('sales-expanded');
   };
   context.salesStatus = function salesStatus(text) {
