@@ -7,7 +7,7 @@ export function buildBarcodeGroups(data={}) {
  const edge=(a,b)=>{a=node(a);b=node(b);if(a&&b){graph.get(a).add(b);graph.get(b).add(a)}};
  for(const [key,p] of Object.entries(products)){const k=node(key);entries.set(k,{key,p});if(p.sourceBarcode)edge(k,p.sourceBarcode)}
  for(const [main,list] of Object.entries(data.mappings||{})){roots.push(node(main));for(const alias of Array.isArray(list)?list:[])edge(main,alias)}
- const primaryByBarcode=new Map(),productsByPrimary=new Map(),aliasesByPrimary=new Map(),ambiguousPrimaries=new Set(),visited=new Set();
+ const primaryByBarcode=new Map(),productsByPrimary=new Map(),aliasesByPrimary=new Map(),ambiguousPrimaries=new Set(),relatedByBarcode=new Map(),visited=new Set();
  const quality=p=>(validItemCode(p.itemCode)&&!p.pendingProduct?100:0)+(p.name&&!/待補商品/.test(p.name)?10:0)+(p.imgUrl?1:0);
  for(const start of graph.keys()){
   if(visited.has(start))continue;
@@ -16,6 +16,9 @@ export function buildBarcodeGroups(data={}) {
   const formal=found.filter(e=>validItemCode(e.p.itemCode)&&!e.p.pendingProduct);
   const codes=new Set(formal.map(e=>String(e.p.itemCode).trim().toUpperCase()));
   if(codes.size>1){
+   // Share search membership without sharing product identity or quote history.
+   const related=component.slice().sort();
+   for(const k of component)relatedByBarcode.set(k,related);
    for(const k of component){primaryByBarcode.set(k,k);ambiguousPrimaries.add(k);aliasesByPrimary.set(k,[]);if(entries.has(k))productsByPrimary.set(k,entries.get(k).p)}
    continue;
   }
@@ -24,5 +27,5 @@ export function buildBarcodeGroups(data={}) {
   productsByPrimary.set(primary,chosen?.p||{});
   aliasesByPrimary.set(primary,component.filter(k=>k!==barcodeKey(primary)&&!k.startsWith('__')).sort());
  }
- return {primaryByBarcode,productsByPrimary,aliasesByPrimary,ambiguousPrimaries};
+ return {primaryByBarcode,productsByPrimary,aliasesByPrimary,ambiguousPrimaries,relatedByBarcode};
 }
