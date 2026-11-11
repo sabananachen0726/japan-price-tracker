@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePiPaste,readPiGrid,isMultiPiPaste} from '../src/shared/pi-paste.js';
+import {parsePiPaste,readPiGrid,isMultiPiPaste,formatPiExpiry,readPiColumns} from '../src/shared/pi-paste.js';
 import {auditPiData,planPiRepairs,commitPiRepairs} from '../src/shared/pi-audit.js';
 import {allocatePiDemand} from '../src/shared/customer-demand.js';
 import {renderPiContainerDemand,renderStoreOrders} from '../src/shell/customer-demand-view.js';
@@ -37,4 +37,25 @@ test('PI cleanup version ignores map key order but retains row order and changed
  const d=data(),changes=planPiRepairs(d,auditPiData(d).filter(i=>i.suggestion));const remote=structuredClone(d);remote.finalPiContainers.ONE.rows=remote.finalPiContainers.ONE.rows.map(r=>Object.fromEntries(Object.entries(r).reverse()));let writes=0;
  await commitPiRepairs({changes,FieldPath:class{},runTransaction:async(_,fn)=>fn({get:async()=>({exists:()=>true,data:()=>remote}),set:()=>writes++})});assert.equal(writes,1);
  remote.finalPiContainers.ONE.rows[0].qty=99;await assert.rejects(commitPiRepairs({changes,FieldPath:class{},runTransaction:async(_,fn)=>fn({get:async()=>({exists:()=>true,data:()=>remote}),set:()=>writes++})}),/已更新/);assert.equal(writes,1);
+});
+test('expiry normalizes AU, Japanese and month-only formats without accepting impossible dates',()=>{
+ for(const [input,expected] of [['03/04/2027','03/04/2027'],['15.03.2027','15/03/2027'],['2027/03/15','15/03/2027'],['03.2027','31/03/2027'],['2027/04','30/04/2027'],['2028年2月','29/02/2028'],['02/2027','28/02/2027']]){
+   const p=parsePiPaste('4901071404000\t4\tKR405\t\t'+input);
+   assert.equal(p.invalid.length,0,input);assert.equal(formatPiExpiry(p.rows[0].expiryDate),expected);
+ }
+ for(const date of ['29/02/2027','31.04.2027','13/2027','2027/03/0'])
+   assert.equal(parsePiPaste('4901071404000\t4\t\t\t'+date).invalid[0].line,1);
+});
+test('reordered vendor headers and manually assigned columns use the selected values',()=>{
+ const p=parsePiPaste('賞味期限\t箱数\t品番\t備考\tJAN Code\n02/2028\t6\tKR405\tExtra\t4901071404000');
+ assert.equal(p.rows[0].qty,6);assert.equal(p.rows[0].expiryDate,'2028-02-29');assert(p.warnings.some(w=>w.field.includes('已補月底')));
+ const m=parsePiPaste('Vendor date\tVolume\tProduct\n03.2027\t4\t4901071404000',false,{hasHeader:true,mapping:[2,1,-1,-1,0,-1]});
+ assert.equal(m.rows[0].expiryDate,'2027-03-31');
+});
+test('separate Excel columns preserve blank rows and reject range mismatches',()=>{
+ const cols=['JAN\n4901071404000\n4901071404001\n4901071404002\n','Qty\n1,200\n2\n3\n','','','Best Before\n03.2027\n\n04.2027\n',''];
+ const parse=()=>parsePiPaste(readPiColumns(cols),false,{hasHeader:false});
+ const p=parse();assert.equal(p.invalid.length,0);assert.equal(p.rows[0].qty,1200);
+ assert.deepEqual(p.rows.map(r=>r.expiryDate),['2027-03-31','','2027-04-30']);
+ cols[4]='03.2027\n04.2027';assert(parse().invalid.length);
 });

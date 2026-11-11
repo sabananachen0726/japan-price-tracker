@@ -147,16 +147,21 @@ WHH002	138	賞味期限 2027/03
                         <div class="row g-2 mt-1">
                             <div class="col-md-6"><label class="form-label fw-bold">貨櫃號碼</label><input id="finalPiContainer" class="form-control" placeholder="例如 JSR26B1201"></div>
                             <div class="col-md-6"><label class="form-label fw-bold">廠商</label><select id="finalPiSupplier" class="form-select"></select></div>
-                            <div class="col-12 mt-3">
+                            <div class="col-12"><label class="form-label fw-bold" for="finalPiPasteMode">貼上方式</label>
+                                <select id="finalPiPasteMode" class="form-select"><option value="table">整表貼上</option><option value="columns">逐欄貼上</option></select>
+                            </div>
+                            <fieldset id="finalPiColumns" class="col-12" hidden></fieldset>
+                            <div class="col-12 mt-3" id="finalPiTableInput">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                     <label class="form-label fw-bold mb-0">貼上 Final PI</label>
                                     <div class="d-flex flex-wrap gap-1"><input id="finalPiFile" type="file" accept=".csv,.txt" class="d-none"><button id="btnDownloadFinalPiTemplate" class="btn btn-sm btn-outline-success" type="button"><i class="fa-solid fa-download me-1"></i>下載 CSV Template</button><button id="btnChooseFinalPiFile" class="btn btn-sm btn-outline-secondary" type="button"><i class="fa-solid fa-file-arrow-up me-1"></i>讀取 CSV / TXT 到框內</button></div>
                                 </div>
                                 <textarea id="finalPiPaste" class="form-control font-monospace" rows="9" placeholder="JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date
-4901234567890	20	ASA001	125	2027/06/30
+4901234567890	20	ASA001	125	30/06/2027
 4901234567891	30
 4901234567892	15	ASA003"></textarea>
-                                <div class="form-text"><strong>固定欄位順序：</strong>JAN Code / Barcode <span class="text-danger">（必填）</span>｜箱數 Qty(CTN) <span class="text-danger">（必填）</span>｜Item Code（選填）｜單包價 Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。選填欄位可留空；從 Excel 貼上時會保留中間空白欄位。</div>
+                                <div class="form-text"><strong>有欄名會自動辨認；沒有欄名時，依下列順序：</strong>JAN Code / Barcode <span class="text-danger">（必填）</span>｜箱數 Qty(CTN) <span class="text-danger">（必填）</span>｜Item Code（選填）｜單包價 Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。選填欄位可留空；效期統一顯示 DD/MM/YYYY；只有月份會補為月底。</div>
+                                <details class="mt-2" id="finalPiMapping"><summary>自訂欄位</summary><div data-pi-mapping class="mt-2"></div></details>
                             </div>
                             <div class="col-12"><button id="btnImportFinalPi" class="btn btn-primary w-100" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>匯入 / 覆蓋此貨櫃 Final PI</button></div>
                         </div>
@@ -164,9 +169,10 @@ WHH002	138	賞味期限 2027/03
                         <hr class="my-4">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><div><h5 class="mb-1 text-primary"><i class="fa-solid fa-layer-group me-2"></i>多櫃一次匯入</h5><div class="small text-muted">一份 CSV / Excel 貼上可包含多條貨櫃；系統依 Container No. 自動分組。已存在的貨櫃會以本次資料完整覆蓋，舊 PI 明細不合併。</div></div></div>
                         <textarea id="finalPiMultiPaste" class="form-control font-monospace" rows="8" placeholder="Container No.	Supplier	JAN Code	Qty(CTN)	Item Code	Unit Price	Expiry Date
-JSR26B1201	SilkRoad	4901234567890	20	ASA001	125	2027/06/30
+JSR26B1201	SilkRoad	4901234567890	20	ASA001	125	30/06/2027
 JSR26B1202	Tencho	4901234567891	30"></textarea>
-                        <div class="form-text"><strong>多櫃固定順序：</strong>Container No.（必填）｜Supplier（必填）｜JAN Code（必填）｜Qty CTN（必填）｜Item Code（選填）｜Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。物流日期由 Container Tracker 管理。</div>
+                        <div class="form-text"><strong>有欄名會自動辨認；沒有欄名時，依下列順序：</strong>Container No.（必填）｜Supplier（必填）｜JAN Code（必填）｜Qty CTN（必填）｜Item Code（選填）｜Unit Price（選填）｜Expiry Date（選填）｜保存期限（月）（選填）。物流日期由 Container Tracker 管理。</div>
+                        <details class="mt-2" id="finalPiMultiMapping"><summary>自訂欄位</summary><div data-pi-mapping class="mt-2"></div></details>
                         <button id="btnImportFinalPiMulti" class="btn btn-primary w-100 mt-2" type="button"><i class="fa-solid fa-cloud-arrow-up me-1"></i>多櫃一次匯入 / 覆蓋</button>
                         <div id="finalPiMultiHint" class="small mt-2 text-muted"></div>
                         </details>

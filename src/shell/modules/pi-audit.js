@@ -1,3 +1,4 @@
+import {formatPiExpiry} from '../../shared/pi-paste.js';
 import {auditPiData, planPiRepairs, commitPiRepairs, piRowsVersion} from '../../shared/pi-audit.js';
 export const definition = {
   id: 'pi-audit', owns: ['renderPiAudit', 'openPiAudit'].map(name => ({name, kind: 'function'})),
@@ -34,7 +35,10 @@ export function initialize(context) {
     context.chooseImportView('pi'); document.getElementById('finalPiPaste').closest('details').open = true; document.getElementById('finalPiContainer').value = pi.container || issue.key;
     const supplier = document.getElementById('finalPiSupplier'); if ([...supplier.options].some(o => o.value === pi.supplier)) supplier.value = pi.supplier;
     const quote = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-    document.getElementById('finalPiPaste').value = [['JAN Code','Qty(CTN)','Item Code','Unit Price','Expiry Date','Shelf Life (Months)'], ...pi.rows.map(r => [r.barcode,r.qty,r.itemCode,r.unitPrice,r.expiryDate,r.shelfLifeMonths])].map(row => row.map(quote).join('\t')).join('\n');
+    const mode = document.getElementById('finalPiPasteMode');
+    mode.value = 'table'; mode.dispatchEvent(new Event('change'));
+    document.getElementById('finalPiMapping').open = false;
+    document.getElementById('finalPiPaste').value = [['JAN Code','Qty(CTN)','Item Code','Unit Price','Expiry Date','Shelf Life (Months)'], ...pi.rows.map(r => [r.barcode,r.qty,r.itemCode,r.unitPrice,formatPiExpiry(r.expiryDate),r.shelfLifeMonths])].map(row => row.map(quote).join('\t')).join('\n');
     document.getElementById('finalPiImportHint').textContent = `已載入 ${pi.container || issue.key}；請核對第 ${issue.index + 1} 列：${issue.reason}。尚未儲存；重新匯入會完整覆蓋此櫃並取消 Final，請先預覽。`;
     document.getElementById('finalPiPaste').focus();
   };

@@ -1,4 +1,4 @@
-import {parsePiPaste, isMultiPiPaste} from '../../shared/pi-paste.js';
+import {parsePiPaste, isMultiPiPaste, piFields, readPiColumns, readPiGrid, piMultiFields, suggestPiColumns} from '../../shared/pi-paste.js';
 import {reviewPiPaste} from '../pi-paste-preview.js';
 import {reviewPiProducts} from '../pi-review.js';
 // shell: pi-import. Declare dependencies here when adding cross-feature calls.
@@ -31,7 +31,7 @@ export const definition = {
 };
 export function register(context) {
   context.downloadFinalPiTemplate = function downloadFinalPiTemplate() {
-    const rows = [['Container No.', 'Supplier', 'JAN Code', 'Qty(CTN)', 'Item Code', 'Unit Price', 'Expiry Date', 'Shelf Life (Months)'], ['JSR26B1201', 'SilkRoad', '4901234567890', '20', 'ASA001', '125', '2027/06/30'], ['JSR26B1201', 'SilkRoad', '4901234567891', '30', '', '', ''], ['JTC26B1202', 'Tencho', '4901234567892', '15', 'ASA003', '118', '2027/08/31']];
+    const rows = [['Container No.', 'Supplier', 'JAN Code', 'Qty(CTN)', 'Item Code', 'Unit Price', 'Expiry Date', 'Shelf Life (Months)'], ['JSR26B1201', 'SilkRoad', '4901234567890', '20', 'ASA001', '125', '30/06/2027'], ['JSR26B1201', 'SilkRoad', '4901234567891', '30', '', '', ''], ['JTC26B1202', 'Tencho', '4901234567892', '15', 'ASA003', '118', '31/08/2027']];
     const csv = '\uFEFF' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
     const blob = new Blob([csv], {
       type: 'text/csv;charset=utf-8;'
@@ -58,7 +58,8 @@ export function register(context) {
     return '\n\n⚠️ 格式錯誤 / 跳過明細：\n' + invalid.map(x => `第 ${x.line} 列：${x.reason}\n  ${x.raw || ''}`).join('\n');
   };
   context.importFinalPiMulti = async function importFinalPiMulti() {
-    const parsed = context.parseFinalPiMultiPaste(document.getElementById('finalPiMultiPaste')?.value || '');
+    const parsed = parseInputTable('finalPiMulti', true);
+    if (!parsed) return;
     if (parsed.invalid.length) {await reviewPiPaste(parsed, parsed.groups); return;}
     if (!parsed.groups.length) {
       alert('沒有可匯入的多櫃 Final PI 資料。');
@@ -100,7 +101,9 @@ export function register(context) {
   };
   context.importFinalPi = async function importFinalPi() {
     const pastedText = document.getElementById('finalPiPaste')?.value || '';
-    if (context.looksLikeFinalPiMulti(pastedText)) {
+    const useColumns = document.getElementById('finalPiPasteMode').value === 'columns';
+    if (!useColumns && !document.getElementById('finalPiMapping').open && context.looksLikeFinalPiMulti(pastedText)) {
+      document.getElementById('finalPiMultiMapping').open = false;
       document.getElementById('finalPiMultiPaste').value = pastedText;
       document.getElementById('finalPiPaste').value = '';
       document.getElementById('finalPiImportHint').innerHTML = '<span class="text-primary fw-bold">✓ 已自動辨識為多櫃格式，改用多櫃匯入。</span>';
@@ -108,7 +111,10 @@ export function register(context) {
     }
     const container = context.normalizeContainerNo(document.getElementById('finalPiContainer')?.value);
     const supplier = document.getElementById('finalPiSupplier')?.value || '';
-    const parsed = context.parseFinalPiPaste(pastedText);
+    const parsed = useColumns
+      ? parsePiPaste(readPiColumns([...document.querySelectorAll('#finalPiColumns textarea')].map(input => input.value)), false, {hasHeader:false, mapping:piFields.map((_, i) => i)})
+      : parseInputTable('finalPi', false);
+    if (!parsed) return;
     if (!container) {
       alert('請先填寫貨櫃號碼。');
       return;
@@ -155,4 +161,73 @@ export function register(context) {
     context.showAppToast(`${container} Final PI 已儲存`, 'success');
   };
 }
-export function initialize(context) {}
+function mappingUI(prefix, multi) {
+  const details = document.getElementById(prefix + 'Mapping');
+  const input = document.getElementById(prefix + 'Paste');
+  const panel = details.querySelector('[data-pi-mapping]');
+  const fields = multi ? piMultiFields : piFields;
+  const requiredCount = multi ? 4 : 2;
+  function refresh() {
+    panel.replaceChildren();
+    const grid = readPiGrid(input.value), first = grid.records[0]?.cells || [];
+    if (!first.length) {panel.textContent = '請先貼上整表，再指定欄位。'; return;}
+    const width = grid.records.reduce((max, r) => Math.max(max, r.cells.length), 0);
+    const suggested = suggestPiColumns(first, multi);
+    const header = document.createElement('input'); header.type = 'checkbox'; header.id = prefix + 'HasHeader';
+    header.checked = suggested.some(i => i >= 0) || !first.some(v => /^\d{8,14}$/.test(v.trim()));
+    const headerLabel = document.createElement('label'); headerLabel.className = 'd-flex align-items-center gap-2 mb-2';
+    headerLabel.append(header, '第一列是欄名'); panel.append(headerLabel);
+    const layout = document.createElement('div'); layout.className = 'row g-2'; panel.append(layout);
+    function renderOptions() {
+      layout.replaceChildren();
+      for (const [i, [key, name]] of fields.entries()) {
+        const label = document.createElement('label'); label.className = 'col-6 col-md-4';
+        label.append(name + (i < requiredCount ? '（必填）' : ''));
+        const select = document.createElement('select'); select.className = 'form-select'; select.dataset.piField = key;
+        select.add(new Option(i < requiredCount ? '請選擇' : '不匯入', '-1'));
+        for (let j = 0; j < width; j++) {
+          const sample = (first[j] ?? '').trim().slice(0, 60);
+          select.add(new Option(`第 ${j + 1} 欄${sample ? '：' + sample : ''}`, String(j)));
+        }
+        select.value = String(header.checked ? suggested[i] : i < width ? i : -1);
+        label.append(select); layout.append(label);
+      }
+    }
+    header.addEventListener('change', renderOptions);
+    renderOptions();
+  }
+  details.addEventListener('toggle', () => {if (details.open) refresh();});
+  input.addEventListener('input', () => {if (details.open) refresh();});
+}
+function parseInputTable(prefix, multi) {
+  const text = document.getElementById(prefix + 'Paste').value;
+  const details = document.getElementById(prefix + 'Mapping');
+  if (!details.open || !details.querySelector('[data-pi-field]')) return parsePiPaste(text, multi);
+  const mapping = [...details.querySelectorAll('[data-pi-field]')].map(select => Number(select.value));
+  const assigned = mapping.filter(i => i >= 0);
+  if (new Set(assigned).size !== assigned.length) {
+    alert('同一個來源欄位不能指定給兩個不同的欄位，請核對自訂欄位。'); return null;
+  }
+  return parsePiPaste(text, multi, {mapping, hasHeader:document.getElementById(prefix + 'HasHeader').checked});
+}
+export function initialize() {
+  mappingUI('finalPi', false);
+  mappingUI('finalPiMulti', true);
+  const mode = document.getElementById('finalPiPasteMode');
+  const columns = document.getElementById('finalPiColumns');
+  const hint = document.createElement('p'); hint.className = 'form-text';
+  hint.textContent = '每個框貼 Excel 的一整欄。各欄請選相同的列範圍（包含空白格）；不需要的選填欄可整欄留空。';
+  const grid = document.createElement('div'); grid.className = 'row g-2';
+  for (const [i, [key, title]] of piFields.entries()) {
+    const label = document.createElement('label'); label.className = 'col-6 col-md-4';
+    label.append(title + (i < 2 ? '（必填）' : '（選填）'));
+    const input = document.createElement('textarea'); input.id = 'finalPiColumn-' + key; input.className = 'form-control font-monospace'; input.rows = 5;
+    label.append(input); grid.append(label);
+  }
+  columns.append(hint, grid);
+  const toggle = () => {
+    const show = mode.value === 'columns';
+    columns.hidden = !show; document.getElementById('finalPiTableInput').hidden = show;
+  };
+  mode.addEventListener('change', toggle); toggle();
+}

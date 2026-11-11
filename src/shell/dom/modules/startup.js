@@ -43,7 +43,8 @@ export function initialize(context) {
     setTimeout(() => {
       const box = document.getElementById('finalPiPaste');
       const txt = box?.value || '';
-      if (context.looksLikeFinalPiMulti(txt)) {
+      if (!document.getElementById('finalPiMapping').open && context.looksLikeFinalPiMulti(txt)) {
+        document.getElementById('finalPiMultiMapping').open = false;
         document.getElementById('finalPiMultiPaste').value = txt;
         box.value = '';
         document.getElementById('finalPiImportHint').innerHTML = '<span class="text-primary fw-bold">✓ 偵測到 Container + Supplier 欄位，已自動移到「多櫃一次匯入」。</span>';
@@ -57,7 +58,9 @@ export function initialize(context) {
     const reader = new FileReader();
     reader.onload = () => {
       const txt = String(reader.result || '');
+      document.getElementById('finalPiMapping').open = false;
       if (context.looksLikeFinalPiMulti(txt)) {
+        document.getElementById('finalPiMultiMapping').open = false;
         document.getElementById('finalPiMultiPaste').value = txt;
         document.getElementById('finalPiPaste').value = '';
         document.getElementById('finalPiMultiHint').innerHTML = `<span class="text-primary fw-bold">✓ 已讀取 ${context.escapeFinalPiText(file.name)}，自動辨識為多櫃格式。</span>`;
