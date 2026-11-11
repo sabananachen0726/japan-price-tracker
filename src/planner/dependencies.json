@@ -1262,6 +1262,24 @@
         "snapshotPlanner412",
         "unifiedPending"
       ]
+    },
+    {
+      "id": "product-info",
+      "file": "modules/product-info.js",
+      "owns": [],
+      "imports": [
+        "calc",
+        "esc",
+        "factorInfo",
+        "fmt",
+        "getItems",
+        "monthlyInfo",
+        "plannerRole",
+        "salesSummary",
+        "trackerFeed",
+        "events"
+      ],
+      "writes": []
     }
   ]
 }
