@@ -35,7 +35,8 @@ import * as feature26 from "./modules/dom-bindings.js";
 import * as feature27 from './modules/eta-sync.js';
 import * as feature28 from "./modules/pi-audit.js";
 import * as feature29 from "./modules/data-management.js";
-const features = [feature0, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28, feature29];
+import * as specReports from "./modules/spec-reports.js";
+const features = [feature0, feature1, feature2, feature3, feature4, feature5, feature6, feature7, feature8, feature9, feature10, feature11, feature12, feature13, feature14, feature15, feature16, feature17, feature18, feature19, feature20, feature21, feature22, feature23, feature24, feature25, feature26, feature27, feature28, feature29, specReports];
 const runtime = createFeatureRuntime(features, {
   imports: {
     events: createWindowEvents(window),
