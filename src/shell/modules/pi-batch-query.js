@@ -1,3 +1,4 @@
+import {formatPiExpiry} from '../../shared/pi-paste.js';
 // shell: pi-batch-query. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-batch-query",
@@ -152,7 +153,7 @@ export function register(context) {
         status: received ? '已到倉' : '未到倉',
         qty,
         unitPrice: x.r.unitPrice,
-        expiry: x.r.expiryDate || '',
+        expiry: formatPiExpiry(x.r.expiryDate),
         barcode: x.rawBarcode || x.barcode,
         code: x.code,
         name: x.p.name || '',
