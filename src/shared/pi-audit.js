@@ -1,3 +1,4 @@
+import {parsePiExpiry} from './pi-paste.js';
 import {parseMYOBFactor} from '../planner/domain/units.js';
 import {createProductResolver, validItemCode} from './product-identity.js';
 import {cleanPiIdentifier} from './pi-paste.js';
@@ -27,8 +28,7 @@ export function auditPiData(data, inventory = {}) {
       if (typeof row.qty !== 'number' || !Number.isFinite(row.qty) || row.qty <= 0) add('qty', '箱數不是有效正數，須核對原 Excel；不自動改數量');
       if (row.unitPrice !== null && row.unitPrice !== undefined && row.unitPrice !== '' && (typeof row.unitPrice !== 'number' || !Number.isFinite(row.unitPrice) || row.unitPrice < 0)) add('unitPrice', '單價格式異常，須核對原 Excel；不自動改價格');
       if (row.expiryDate) {
-        const v = String(row.expiryDate).replace(/\//g, '-');
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || !Number.isFinite(Date.parse(v)) || new Date(v).toISOString().slice(0,10) !== v) add('expiryDate', '效期格式異常，請人工核對');
+        if (!parsePiExpiry(row.expiryDate)?.iso) add('expiryDate', '效期格式異常，請人工核對');
       }
       const identity = resolve({...row, ...clean});
       if (identity.pending) add('identity', identity.ambiguous ? '條碼對到多個品號，請選擇對應商品' : '商品尚未配對主檔，請補入主檔或暫填資料');
