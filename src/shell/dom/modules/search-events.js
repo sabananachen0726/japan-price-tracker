@@ -97,7 +97,7 @@ export function initialize(context) {
       }
       const purchaseCopyBtn = e.target.closest(".btn-copy-purchase");
       if (purchaseCopyBtn) {
-        const card = purchaseCopyBtn.closest('.card');
+        const card = purchaseCopyBtn.closest('.linked-quote-product, .card');
         const qtyInput = card ? card.querySelector('.purchase-copy-qty') : null;
         const qty = Math.max(1, parseInt(qtyInput ? qtyInput.value : '1', 10) || 1);
         if (qtyInput) qtyInput.value = qty;
