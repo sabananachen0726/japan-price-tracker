@@ -177,7 +177,7 @@ export function register(context) {
         const current = scoreByPrimary.get(primary) || 0;
         if (score > current) scoreByPrimary.set(primary, score);
       };
-      // V4.1.1：完整 Item Code / JAN / Alias 精確命中時，只顯示精確商品。
+      // 完整 Item Code / JAN / Alias 命中時，顯示精確商品與其關聯商品。
       // 只有沒有精確命中時，才啟動前綴 / 包含 / 跨欄位智慧搜尋（例如 UL爽）。
       const exactPrimary = new Set();
       for (const entry of cache.productEntries) {
@@ -196,8 +196,13 @@ export function register(context) {
         }
       }
       let targetPrimaryBarcodes;
-      if (exactPrimary.size > 0) {
-        targetPrimaryBarcodes = [...exactPrimary].sort((a, b) => String(a).localeCompare(String(b)));
+      const directHits = [...exactPrimary].sort((a, b) => String(a).localeCompare(String(b)));
+      const relatedHits = new Set(directHits);
+      for (const key of [...directHits, context.cleanBarcode(rawSearch).replace(/[\s-]/g, '')]) {
+        for (const related of cache.relatedSearchCards.get(key) || []) relatedHits.add(related);
+      }
+      if (relatedHits.size > 0) {
+        targetPrimaryBarcodes = [...relatedHits];
       } else {
         for (const entry of cache.productEntries) {
           const score = context.smartProductMatchScore(rawSearch, entry);
@@ -217,7 +222,15 @@ export function register(context) {
         resultsContainer.innerHTML = '<div class="alert alert-info text-center">查無符合條件的商品報價資料。</div>';
         return;
       }
-      resultsContainer.innerHTML = targetPrimaryBarcodes.map(primaryB => context.renderProductCard(primaryB, filterSupplierVal, null, 1)).join('');
+      const rendered = new Set();
+      resultsContainer.innerHTML = targetPrimaryBarcodes.map(primary => {
+        if (rendered.has(primary)) return '';
+        const group = cache.relatedSearchCards.get(primary) || [];
+        const linked = [primary, ...group.filter(key => key !== primary)];
+        linked.forEach(key => rendered.add(key));
+        if (linked.length === 1) return context.renderProductCard(primary, filterSupplierVal, null, 1);
+        return `<div class="card linked-quote-card mb-3"><div class="linked-quote-heading">關聯條碼 · 各品號報價</div>${linked.map(key => context.renderProductCard(key, filterSupplierVal, null, 1, '', true)).join('')}</div>`;
+      }).join('');
       return;
     }
     const batchInput = document.getElementById("batchSearchInput");
@@ -267,7 +280,7 @@ export function register(context) {
     const age = context.quoteAgeDays(q);
     return Number(q?.price) > 0 && age !== null && age > context.STALE_QUOTE_DAYS;
   };
-  context.renderProductCard = function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '') {
+  context.renderProductCard = function renderProductCard(primaryB, filterSupplierVal, container, qty = 1, queryBarcode = '', linked = false) {
     const cache = context.ensureSearchCache();
     const p = cache.productsByPrimary?.get(primaryB) || window.appData.products[primaryB] || {};
     const aliases = cache.aliasesByPrimary?.get(primaryB) || [];
@@ -294,8 +307,6 @@ export function register(context) {
       const history = supplierHistory[sup] || [];
       if (latestQ) {
         const isLowest = latestQ.price === lowestPrice && lowestPrice > 0;
-        const stale = context.isQuoteStale(latestQ);
-        const ageDays = context.quoteAgeDays(latestQ);
         let trendHtml = '';
         if (history.length > 1) {
           const currentP = history[0].price;
@@ -351,7 +362,7 @@ export function register(context) {
         }
         suppliersCardHtml += `
           <div class="col-md-6 mb-2">
-            <div class="p-2 border rounded ${stale ? 'stale-quote' : isLowest ? 'border-success bg-light' : 'bg-white'}">
+            <div class="p-2 border rounded ${isLowest ? 'border-success bg-light' : 'bg-white'}">
               <div class="d-flex justify-content-between align-items-center">
                 <span class="fw-bold">${sup}</span>
                 <div>
@@ -361,7 +372,6 @@ export function register(context) {
                   </span>
                   ${trendHtml}
                   ${anomalyHtml}
-                  ${stale ? `<span class="badge bg-warning text-dark ms-2"><i class="fa-solid fa-hourglass-half me-1"></i>${ageDays} 天未更新</span>` : ''}
                 </div>
               </div>
               <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
@@ -389,7 +399,7 @@ export function register(context) {
     const imgSrc = p.imgUrl || '';
     const imgHtml = imgSrc ? `<img src="${imgSrc}" loading="lazy" decoding="async" class="product-img-thumb img-preview" data-src="${imgSrc}" alt="商品圖">` : `<div class="no-img-placeholder"><i class="fa-solid fa-image"></i>無圖</div>`;
     return `
-      <div class="card mb-3">
+      <div class="${linked ? 'linked-quote-product' : 'card mb-3'}">
         <div class="card-body">
           <div class="d-flex align-items-start gap-3">
             <div class="img-wrapper">${imgHtml}</div>
@@ -405,7 +415,7 @@ export function register(context) {
                     <span class="fw-bold text-dark me-1">JAN: ${p.sourceBarcode || primaryB}</span>
                     ${queryBarcode && queryBarcode !== primaryB ? `<span class="badge bg-warning text-dark me-2">查詢條碼: ${queryBarcode}</span>` : ''}
                     ${aliasesBadgeHtml}
-                    ${conflict ? '<span class="badge bg-warning text-dark">關聯條碼含不同品號，分開顯示</span>' : ''}
+                    ${conflict && !linked ? '<span class="badge bg-warning text-dark">關聯條碼含不同品號，分開顯示</span>' : ''}
                   </div>
                   <div class="d-flex flex-wrap align-items-center gap-2 mt-2 purchase-copy-row">
                     <div class="input-group input-group-sm" style="width: 135px;">
