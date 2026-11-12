@@ -156,6 +156,7 @@ require('./notice-audit-fixes.e2e.cjs')({test});
 require('./pi-workflow.e2e.cjs')({test});
 require('./order-sync.e2e.cjs')({test});
 require('./customer-demand.e2e.cjs')({test,reportFile});
+require('./customer-final.e2e.cjs')({test,reportFile});
 require('./work-notes.e2e.cjs')({test});
 require('./pi-quantity-defaults.e2e.cjs')({test,reportFile});
 require('./pi-completeness.e2e.cjs')({test});

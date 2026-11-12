@@ -85,7 +85,7 @@ export function register(context) {
     };
   };
   context.allocationCode = function allocationCode(value) {
-    const raw = context.norm(value).replace(/\s+/g, '');
+    const raw = context.norm(value).replace(/[^A-Z0-9]/g, '');
     return /^[A-Z]{3}\d{2}B\d{4}(?:F)?$/.test(raw) ? raw : '';
   };
   context.piWithReservations = function piWithReservations(pi, ord) {

@@ -45,23 +45,31 @@ export function register(context) {
     button.textContent = '停用通知' + (unread.length ? ' · ' + unread.length + ' 未讀' : '');
     document.getElementById('inactiveNoticeRows').innerHTML = entries.map(n => '<article class="notice-entry ' + (read[n.id] ? '' : 'unread') + '"><strong>' + context.escapeFinalPiText(n.code + ' · ' + n.name) + '</strong><div>' + context.escapeFinalPiText(context.people?.[n.uid]?.name || n.by || '同事') + ' 設為 Inactive · ' + context.escapeFinalPiText(new Date(n.at).toLocaleString('zh-TW',{timeZone:'Australia/Brisbane'})) + '</div>' + (!read[n.id] ? '<button class="btn btn-sm btn-outline-primary" data-read-notice="' + context.escapeFinalPiText(n.id) + '">標為已讀</button>' : '<small>已讀</small>') + '</article>').join('') || '<p class="text-muted">目前沒有停用通知。</p>';
   };
+  // Submitted lines: the container's own quantity plus Final customer orders sent with it.
+  const proposalLines = d => [...new Set([...Object.keys(d.rows || {}), ...Object.keys(d.itemNotes || {}), ...Object.keys(d.customerFinal || {})])]
+    .map(item => {
+      const own = Number(d.rows?.[item]) || 0, stores = d.customerFinal?.[item] || {};
+      const final = Object.values(stores).reduce((n, q) => n + (Number(q) || 0), 0);
+      return {item, own, final, total: own + final, stores};
+    })
+    .filter(l => l.own > 0 || l.final > 0 || String(d.itemNotes?.[l.item] || '').trim());
   context.renderSharedOrderDrafts = function renderSharedOrderDrafts() {
     const host = document.getElementById('sharedOrderList'),
       badge = document.getElementById('sharedOrderStatus');
     if (!host) return;
-    const entries = Object.entries(context.sharedOrderDrafts || {}).filter(([code, d]) => code && !code.startsWith('__') && (d.preparedAt || Object.values(d.rows || {}).some(q => Number(q) > 0) || Object.values(d.itemNotes || {}).some(n => String(n).trim())));
+    const entries = Object.entries(context.sharedOrderDrafts || {}).filter(([code, d]) => code && !code.startsWith('__') && (d.preparedAt || Object.values(d.rows || {}).some(q => Number(q) > 0) || Object.keys(d.customerFinal || {}).length || Object.values(d.itemNotes || {}).some(n => String(n).trim())));
     entries.sort((a, b) => String(b[1].updatedAt || '').localeCompare(String(a[1].updatedAt || '')));
     badge.textContent = entries.length + ' 份採購建議';
     badge.className = 'badge bg-primary';
     host.innerHTML = entries.length ? entries.map(([code, d]) => {
-      const rows = [...new Set([...Object.keys(d.rows || {}), ...Object.keys(d.itemNotes || {})])].filter(item => Number(d.rows?.[item]) > 0 || String(d.itemNotes?.[item] || '').trim()).map(item => [item, Number(d.rows?.[item]) || 0]),
-        qty = rows.reduce((n, [, q]) => n + Number(q), 0);
+      const lines = proposalLines(d), rows = lines.map(l => [l.item, l.total]),
+        qty = lines.reduce((n, l) => n + l.total, 0), finalQty = lines.reduce((n, l) => n + l.final, 0);
       const tracker = (context.containerTrackerData.containers || []).find(c => context.normalizeContainerNo(c.code) === context.normalizeContainerNo(code));
-      return `<details class="border rounded p-2 mb-2"><summary class="fw-bold" style="cursor:pointer">${context.escapeFinalPiText(code)}　${rows.length} 款 / ${qty.toLocaleString()} 箱　<span class="text-muted fw-normal">${context.escapeFinalPiText(d.kind === 'frozen' ? '冷凍' : '乾貨')} · 預計到倉 ${context.escapeFinalPiText(d.arrival || '待填')} · ${d.updatedAt ? '已提交採購建議' : '已安排，待提交'}</span></summary><div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>商品</th><th>Item Code</th><th>Barcode</th><th class="text-end">箱數</th><th>備註</th></tr></thead><tbody>${rows.map(([item, q]) => {
+      return `<details class="border rounded p-2 mb-2"><summary class="fw-bold" style="cursor:pointer">${context.escapeFinalPiText(code)}　${rows.length} 款 / ${qty.toLocaleString()} 箱${finalQty ? `（含 Final ${finalQty.toLocaleString()} 箱）` : ''}　<span class="text-muted fw-normal">${context.escapeFinalPiText(d.kind === 'frozen' ? '冷凍' : '乾貨')} · 預計到倉 ${context.escapeFinalPiText(d.arrival || '待填')} · ${d.updatedAt ? '已提交採購建議' : '已安排，待提交'}</span></summary><div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>商品</th><th>Item Code</th><th>Barcode</th><th class="text-end">本櫃訂量</th><th class="text-end">Final 客訂</th><th class="text-end">合計</th><th>備註</th></tr></thead><tbody>${lines.map(({item, own, final, total: q, stores}) => {
         const barcode = window.appData.itemToBarcode?.[item] || d.snapshot?.[item]?.barcode || '',
           product = window.appData.products?.[barcode] || {};
         const photo = /^https:\/\//i.test(product.imgUrl || '') ? `<img src="${context.escapeFinalPiText(product.imgUrl)}" alt="" width="40" height="40" style="object-fit:contain" class="me-2 rounded">` : '';
-        return `<tr><td>${photo}${context.escapeFinalPiText(product.name || d.snapshot?.[item]?.name || item)}</td><td>${context.escapeFinalPiText(item)}</td><td>${context.escapeFinalPiText(barcode || '—')}</td><td class="text-end fw-bold">${Number(q) > 0 ? Number(q).toLocaleString() : '<span class="badge bg-light text-secondary">僅備註</span>'}</td><td style="max-width:250px;white-space:normal">${context.escapeFinalPiText(d.itemNotes?.[item] || '—')}</td></tr>`;
+        return `<tr><td>${photo}${context.escapeFinalPiText(product.name || d.snapshot?.[item]?.name || item)}</td><td>${context.escapeFinalPiText(item)}</td><td>${context.escapeFinalPiText(barcode || '—')}</td><td class="text-end">${own.toLocaleString()}</td><td class="text-end">${final ? `${final.toLocaleString()}<div class="small text-muted">${Object.entries(stores).map(([st, n]) => context.escapeFinalPiText(st) + ' ' + n).join('、')}</div>` : '—'}</td><td class="text-end fw-bold">${Number(q) > 0 ? Number(q).toLocaleString() : '<span class="badge bg-light text-secondary">僅備註</span>'}</td><td style="max-width:250px;white-space:normal">${context.escapeFinalPiText(d.itemNotes?.[item] || '—')}</td></tr>`;
       }).join('')}</tbody></table></div>${context.isAdmin() ? `<div class="mt-2 d-flex gap-2"><button class="btn btn-sm btn-primary" data-proposal-export="${context.escapeFinalPiText(code)}">下載 Excel</button><button class="btn btn-sm btn-outline-danger" data-proposal-delete="${context.escapeFinalPiText(code)}">刪除建議單</button></div>` : ''}</details>`;
     }).join('') : '尚無已提交的採購建議。';
   };
@@ -73,9 +81,9 @@ export function register(context) {
     const suppliers = (window.appData.suppliers || []).slice(0, 2);
     while (suppliers.length < 2) suppliers.push('Supplier ' + (suppliers.length + 1));
     const quotes = window.appData.quotes || [];
-    const header = ['Item Code', 'Barcode', 'Product Name', ...suppliers.map(s => s + ' Price'), 'QTY', 'Item Note'];
-    const rows = [...new Set([...Object.keys(draft.rows || {}), ...Object.keys(draft.itemNotes || {})])].filter(item => Number(draft.rows?.[item]) > 0 || String(draft.itemNotes?.[item] || '').trim()).map(item => {
-      const qty = Number(draft.rows?.[item]) || 0;
+    // QTY is what goes to the supplier: the container's own quantity plus Final customer orders.
+    const header = ['Item Code', 'Barcode', 'Product Name', ...suppliers.map(s => s + ' Price'), 'QTY', 'Item Note', '本櫃訂量', 'Final 客訂', 'Final 店家'];
+    const rows = proposalLines(draft).map(({item, own, final, total: qty, stores}) => {
       const barcode = window.appData.itemToBarcode?.[item] || draft.snapshot?.[item]?.barcode || '';
       const product = window.appData.products?.[barcode] || {};
       const snap = draft.snapshot?.[item] || {};
@@ -84,7 +92,7 @@ export function register(context) {
         matching.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         return matching.length ? Number(matching[0].price) : '';
       });
-      return [item, barcode || snap.barcode || '', product.name || snap.name || item, ...prices, Number(qty), draft.itemNotes?.[item] || ''];
+      return [item, barcode || snap.barcode || '', product.name || snap.name || item, ...prices, Number(qty), draft.itemNotes?.[item] || '', own, final, Object.entries(stores).map(([st, n]) => `${st} ${n}`).join('、')];
     });
     const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
     ws['!cols'] = [{
@@ -101,7 +109,7 @@ export function register(context) {
       wch: 12
     }, {
       wch: 48
-    }];
+    }, {wch: 10}, {wch: 10}, {wch: 36}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Purchase Proposal');
     XLSX.writeFile(wb, code.replace(/[^a-zA-Z0-9_-]/g, '_') + '_Purchase_Proposal.xlsx');

@@ -1,3 +1,5 @@
+import {splitContainerCustomerOrders, finalAddOn} from '../../shared/customer-demand.js';
+import {brisbaneDate} from '../../shared/customer-protection.js';
 // planner: work-orders. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "work-orders",
@@ -27,7 +29,7 @@ export function register(context) {
   context.renderContainers = function renderContainers() {
     let entries = Object.entries(context.state.drafts).filter(([k, d]) => k !== '__未命名草稿__' && (d.preparedAt || Object.values(d.rows || {}).some(x => +x > 0) || Object.values(d.itemNotes || {}).some(n => String(n).trim()))),
       pis = context.allPis().sort((a, b) => context.compareContainerIds(a.container, b.container));
-    context.$('containerCards').innerHTML = `<h3>採購工作單 (${entries.length})</h3>` + (entries.map(([k, d]) => `<div class="panel"><div class="row between"><div><b>${context.esc(k)}</b> <span class="tag">${context.deferredDrafts[k]?.updatedAt ? (context.dirtyDrafts.has(k) ? '已提交 · 有本機未提交修改' : '已提交') : context.deferredDrafts[k]?.preparedAt ? '已安排，待提交' : '本機未提交草稿'}</span> · ${context.esc(d.kind === 'dry' ? '乾貨' : '冷凍')} · 到倉 ${context.esc(d.arrival || '未設定')}<br><span class="muted">${Object.values(d.rows || {}).filter(x => +x > 0).length} 款 · ${context.fmt(Object.values(d.rows || {}).reduce((n, x) => n + (+x || 0), 0))} 箱 · ${Object.values(d.itemNotes || {}).filter(n => String(n).trim()).length} 項商品備註</span></div><div class="row"><button data-open="${context.esc(k)}">開啟</button><button data-delete="${context.esc(k)}" class="admin-only" hidden>刪除</button></div></div></div>`).join('') || '<p class="muted">尚無已儲存草稿。</p>') + `<h3>匯入的 PI (${pis.length})</h3>` + (pis.map(p => `<div class="panel"><b>${context.esc(p.container)}</b> · ${p.rows.length} 款 · 到倉 ${context.esc(p.arrival || '待填')} · ${context.esc(p.source === 'tracker' ? 'Price Tracker 同步' : '手動匯入')} · 更新 ${context.esc(p.updated || '')}&nbsp; <button data-pidate="${context.esc(p.container)}">設定到倉日</button><p class="mini muted">不限制 Final；同櫃重新匯入會以新版本完整取代明細。</p></div>`).join('') || '<p class="muted">尚未匯入 PI。起始快照中的歷史欄位不會直接算作在途貨。</p>');
+    context.$('containerCards').innerHTML = `<h3>採購工作單 (${entries.length})</h3>` + (entries.map(([k, d]) => `<div class="panel"><div class="row between"><div><b>${context.esc(k)}</b> <span class="tag">${context.deferredDrafts[k]?.updatedAt ? (context.dirtyDrafts.has(k) ? '已提交 · 有本機未提交修改' : '已提交') : context.deferredDrafts[k]?.preparedAt ? '已安排，待提交' : '本機未提交草稿'}</span> · ${context.esc(d.kind === 'dry' ? '乾貨' : '冷凍')} · 到倉 ${context.esc(d.arrival || '未設定')}<br><span class="muted">${Object.values(d.rows || {}).filter(x => +x > 0).length} 款 · ${context.fmt(Object.values(d.rows || {}).reduce((n, x) => n + (+x || 0), 0))} 箱${(() => { const f = Object.values(context.deferredDrafts[k]?.customerFinal || {}).flatMap(Object.values).reduce((n, q) => n + (+q || 0), 0); return f ? `＋已提交 Final ${context.fmt(f)} 箱` : ''; })()} · ${Object.values(d.itemNotes || {}).filter(n => String(n).trim()).length} 項商品備註</span></div><div class="row"><button data-open="${context.esc(k)}">開啟</button><button data-delete="${context.esc(k)}" class="admin-only" hidden>刪除</button></div></div></div>`).join('') || '<p class="muted">尚無已儲存草稿。</p>') + `<h3>匯入的 PI (${pis.length})</h3>` + (pis.map(p => `<div class="panel"><b>${context.esc(p.container)}</b> · ${p.rows.length} 款 · 到倉 ${context.esc(p.arrival || '待填')} · ${context.esc(p.source === 'tracker' ? 'Price Tracker 同步' : '手動匯入')} · 更新 ${context.esc(p.updated || '')}&nbsp; <button data-pidate="${context.esc(p.container)}">設定到倉日</button><p class="mini muted">不限制 Final；同櫃重新匯入會以新版本完整取代明細。</p></div>`).join('') || '<p class="muted">尚未匯入 PI。起始快照中的歷史欄位不會直接算作在途貨。</p>');
   };
   context.download = function download(name, content, type = 'text/plain') {
     let a = document.createElement('a'),
@@ -48,15 +50,18 @@ export function register(context) {
       alert('請先儲存這條貨櫃');
       return;
     }
-    let rows = Object.entries(d.rows || {}).filter(([, n]) => +n > 0).map(([code, qty]) => {
+    // Quantity is the container's own amount plus the Final customer orders submitted with it.
+    const final = context.deferredDrafts[key]?.customerFinal || {};
+    const finalOf = code => Object.values(final[code] || {}).reduce((n, q) => n + (+q || 0), 0);
+    let rows = [...new Set([...Object.keys(d.rows || {}), ...Object.keys(final)])].map(code => [code, +d.rows?.[code] || 0, finalOf(code)]).filter(([, own, add]) => own + add > 0).map(([code, own, add]) => {
       let i = context.state.items.find(x => x.code === code);
-      return [code, i && context.trackedItem(i)?.barcode || i?.barcode || '', qty, key];
+      return [code, i && context.trackedItem(i)?.barcode || i?.barcode || '', own + add, key, own, add];
     });
     if (!rows.length) {
       alert('請先輸入訂貨量');
       return;
     }
-    context.download(`${key}_Supplier_Order.csv`, '\ufeff' + [['Item Code', 'Barcode', 'Quantity', 'Container No.'], ...rows].map(r => r.map(context.csvCell).join(',')).join('\r\n'), 'text/csv');
+    context.download(`${key}_Supplier_Order.csv`, '\ufeff' + [['Item Code', 'Barcode', 'Quantity', 'Container No.', '本櫃訂量', 'Final 客訂'], ...rows].map(r => r.map(context.csvCell).join(',')).join('\r\n'), 'text/csv');
   };
   context.saveDraft = function saveDraft() {
     if (context.plannerRole === 'viewer') {
@@ -81,6 +86,14 @@ export function register(context) {
     }
     const over = context.state.items.filter(i => Number(context.draft().rows?.[i.code]) > 0).map(i => ({i,c:context.calc(i)})).filter(x => x.c.excess > 0);
     if (over.length && !confirm(over.map(({i,c}) => i.code + '：預計庫存 ' + context.fmt(c.projected) + '，超過上限 ' + context.fmt(c.maxStock) + '，多出 ' + context.fmt(c.excess)).join('\n') + '\n仍要提交？')) return false;
+    // Final customer orders for this container are submitted on top of its own
+    // quantities, straight from the customer-order sheet (never edited here).
+    const liveFeed = context.trackerFeed?.mode === 'live';
+    const customerReady = context.customerSourceReady || context.state.orders.length > 0;
+    if (liveFeed && !customerReady && !confirm('客訂尚未取得，這次提交不會加入 Final 客訂。\n仍要提交？')) return false;
+    const customerFinal = customerReady ? finalAddOn(splitContainerCustomerOrders(context.state.orders, workCode,
+      {protections: context.trackerFeed?.protections || {}, today: brisbaneDate()})) : {};
+    const customerSource = !customerReady ? 'none' : context.customerSourceReady ? 'live' : 'cache';
     let d = context.draft();
     d.kind = context.$('kind').value;
     d.arrival = context.$('arrival').value;
@@ -98,7 +111,7 @@ export function register(context) {
       type: 'KAISI_ORDER_SAVE',
       code: key,
       requestId, revision, expectedVersion,
-      draft: d
+      draft: d, customerFinal, customerSource
     }, '*');
     context.autosaveLabel('已送出 Firebase 儲存請求 · 本機草稿保留至確認成功');
     context.renderPlan();

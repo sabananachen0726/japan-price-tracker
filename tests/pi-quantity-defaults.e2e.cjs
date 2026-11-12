@@ -2,10 +2,10 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 module.exports=({test,reportFile})=>{
  async function setup(s,qty=60){await s.page.evaluate(async qty=>{appData.finalPiContainers={CURRENT:{container:'JSR27B0102',rows:[{itemCode:'ACE005',barcode:'4901071404000',qty:qty/3},{itemCode:'ACE005',barcode:'4901071404000',qty:qty*2/3}]},OTHER:{container:'JTC27B0101',rows:[{itemCode:'TEST002',barcode:'4900000000002',qty:20}]}};await saveFirebaseData()},qty);return s.planner()}
- test('PI-QTY-01','本櫃 PI 帶入','原 PI 60 箱帶入本櫃訂量，扣客訂後預計 50；不自動提交或重複計算',async s=>{
+ test('PI-QTY-01','本櫃 PI 帶入','原 PI 60 箱帶入本櫃訂量；本櫃客訂不再重複扣除，預計 60；不自動提交',async s=>{
   const {frame,handle}=await setup(s);await frame.locator('#container').fill('JSR27B0102');await frame.locator('#search').fill('ACE005');assert.equal(await frame.locator('[data-qty="ACE005"]').inputValue(),'60');
   await handle.evaluate(()=>{const item=state.items.find(i=>i.code==='ACE005');item.stock=0;state.inventory.ACE005={stock:0,custom:'CTN'};customerSourceReady=true;state.orders=[{code:'ACE005',qty:10,unit:'CTN',status:'不需預訂',container:'JSR27B0102'}];renderPlan()});
-  const result=await handle.evaluate(()=>{const c=calc(state.items.find(i=>i.code==='ACE005'));return {pi:c.pi.sum,order:c.ord.total,available:c.available,projected:c.projected}});assert.deepEqual(result,{pi:0,order:10,available:-10,projected:50});assert.equal(await s.page.evaluate(()=>window.__writes.filter(w=>w.path==='app_data/order_planner_v1').length),0);
+  const result=await handle.evaluate(()=>{const c=calc(state.items.find(i=>i.code==='ACE005'));return {pi:c.pi.sum,order:c.ord.total,available:c.available,projected:c.projected}});assert.deepEqual(result,{pi:0,order:0,available:0,projected:60});assert.equal(await s.page.evaluate(()=>window.__writes.filter(w=>w.path==='app_data/order_planner_v1').length),0);
   assert(await frame.locator('#piQuantitySource').isVisible());await s.page.screenshot({path:path.join(path.dirname(reportFile),'V4152-pi-quantity-fixture.png'),fullPage:false});
   await frame.locator('#savePlan').click();await s.page.waitForFunction(()=>window.__store['app_data/order_planner_v1']?.drafts?.JSR27B0102?.rows?.ACE005===60);assert.equal(await s.page.evaluate(()=>appData.finalPiContainers.CURRENT.rows.reduce((n,r)=>n+r.qty,0)),60);
  });

@@ -44,6 +44,17 @@ export function checkProtectedOrder({protections, passes, container, rows, today
   return used;
 }
 
+// Final customer orders submitted with a container: during protection only the
+// protected store's own Final orders may be added.
+export function checkProtectedFinal({protections, customerFinal, today}) {
+  for (const [rawCode, stores] of Object.entries(customerFinal || {})) {
+    const code = normalizeCode(rawCode), protection = protections?.[code];
+    if (!protection || protection.expiresOn <= today) continue;
+    const other = Object.entries(stores || {}).find(([store, boxes]) => boxes > 0 && store !== protection.store);
+    if (other) throw Error(`${code}：客找保護中，只能加入「${protection.store}」的 Final 客訂，「${other[0]}」不可加入。`);
+  }
+}
+
 // Ordinary saves and restores must never replace the separately managed guard.
 export function withoutProtection(data, FieldPath) {
   const {customerProtection, ...payload} = data;

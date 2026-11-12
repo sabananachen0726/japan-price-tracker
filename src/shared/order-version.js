@@ -1,4 +1,4 @@
-import {brisbaneDate, checkProtectedOrder} from './customer-protection.js';
+import {brisbaneDate, checkProtectedOrder, checkProtectedFinal} from './customer-protection.js';
 // Comments and product snapshots are independent of the editable purchase proposal.
 const canonical = value => value && typeof value === 'object' && !Array.isArray(value)
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -46,6 +46,7 @@ export async function commitOrderDraft({runTransaction, db, ref, code, cleaned, 
       if (!guard.exists()) throw new Error('尚未取得客找保護設定，請稍後再提交');
       const {protections, passes} = protection.field ? guard.data()[protection.field] || {} : guard.data();
       const now = protection.now ?? new Date();
+      checkProtectedFinal({protections, customerFinal: cleaned.customerFinal, today: brisbaneDate(now)});
       const redeemed = checkProtectedOrder({
         protections, passes, container:code, rows:cleaned.rows,
         today:brisbaneDate(now), isAdmin:protection.isAdmin

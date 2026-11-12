@@ -4,7 +4,7 @@
     "playwright": "1.62.1"
   },
   "name": "japan-price-tracker",
-  "version": "4.21.0",
+  "version": "4.22.0",
   "private": true,
   "type": "module",
   "scripts": {

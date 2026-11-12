@@ -6,7 +6,7 @@ export const definition = {
     "name": "setArrivalDefault",
     "kind": "function"
   }],
-  "imports": ["$", "autosaveLabel", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "columnFilters", "currentKey", "currentPhotoTrigger", "currentPiTipTrigger", "dirtyDrafts", "draft", "flushRecovery", "mergeChangingContainerKey", "openColumnKey", "openZoom", "persist", "plannerRole", "previousContainerCode", "renderAll", "renderNotes", "renderPlan", "saveCatalogPatch", "setInactive", "shelfLife", "showColumnFilter", "showExplain", "showPhotoPreview", "showPiDetails", "stageLocalDraft", "state", "tableSort", "updateDraftTotal", "updateTableHeader", "val"],
+  "imports": ["$", "autosaveLabel", "calc", "closeColumnFilter", "fmt", "closePhotoPreview", "closePiTip", "columnFilters", "currentKey", "currentPhotoTrigger", "currentPiTipTrigger", "dirtyDrafts", "draft", "flushRecovery", "mergeChangingContainerKey", "openColumnKey", "openZoom", "persist", "plannerRole", "previousContainerCode", "renderAll", "renderNotes", "renderPlan", "saveCatalogPatch", "setInactive", "shelfLife", "showColumnFilter", "showExplain", "showPhotoPreview", "showPiDetails", "stageLocalDraft", "state", "tableSort", "updateDraftTotal", "updateTableHeader", "val"],
   "writes": ["previousContainerCode", "setArrivalDefault", "tableSort"]
 };
 export function register(context) {
@@ -203,6 +203,13 @@ export function initialize(context) {
         context.state.drafts[context.currentKey()] = d;
         context.stageLocalDraft();
         context.updateDraftTotal(t.dataset.qty);
+        const warn = [...context.$('productRows').querySelectorAll('[data-alloc-warn]')].find(el => el.dataset.allocWarn === t.dataset.qty);
+        if (warn) warn.hidden = !(Number(warn.dataset.alloc) > n);
+        const total = [...context.$('productRows').querySelectorAll('[data-qty-total]')].find(el => el.dataset.qtyTotal === t.dataset.qty);
+        if (total) {
+          const final = Number(total.dataset.final) || 0;
+          total.innerHTML = `合計提交 ${context.fmt(n + final)} 箱<br><span>本櫃 ${context.fmt(n)}＋Final ${context.fmt(final)}</span>`;
+        }
       } else context.autosaveLabel('⚠ 請輸入非負整數後才會暫存這個數量', 'warn');
     }
   });

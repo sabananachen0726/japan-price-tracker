@@ -1,4 +1,4 @@
-import {customerBucket, activeCustomerOrder, customerBoxes} from '../../shared/customer-demand.js';
+import {customerBucket, activeCustomerOrder, customerBoxes, allocationContainer} from '../../shared/customer-demand.js';
 // planner: customer-orders. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "customer-orders",
@@ -22,8 +22,11 @@ export function register(context) {
   context.activeOrders = function activeOrders(item) {
     return context.state.orders.filter(o => context.norm(o.code) === item.code && activeCustomerOrder(o));
   };
-  context.orderNeed = function orderNeed(item) {
-    const orders = context.activeOrders(item),
+  // Orders for the container being written are not extra demand: Final orders are
+  // submitted on top of its quantity and 已分配貨櫃 comes out of it.
+  context.orderNeed = function orderNeed(item, current = '') {
+    const own = allocationContainer(current);
+    const orders = context.activeOrders(item).filter(o => !own || allocationContainer(o.container) !== own),
       lines = [];
     let total = 0,
       unknown = 0;

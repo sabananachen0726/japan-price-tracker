@@ -1,6 +1,6 @@
 import {brisbaneDate} from '../../shared/customer-protection.js';
 import {productIndicators} from '../domain/product-indicators.js';
-import {indexContainerCustomerOrders} from '../../shared/customer-demand.js';
+import {splitContainerCustomerOrders} from '../../shared/customer-demand.js';
 // planner: planning-view. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "planning-view",
@@ -34,20 +34,32 @@ export function register(context) {
       filter = context.$('filter').value,
       d = context.draft();
     const container = context.$('container').value.trim();
-    const customer = indexContainerCustomerOrders(context.state.orders, container);
-    const amount = map => [...map].map(([unit,qty]) => context.fmt(qty) + ' ' + context.esc(unit)).join('＋');
+    const today = brisbaneDate();
+    const customer = splitContainerCustomerOrders(context.state.orders, container, {protections: context.trackerFeed?.protections || {}, today});
     const customerStatus = context.state.meta.orders || '';
     const customerError = /失敗|錯誤|無法|權限不足|額度已用完/.test(customerStatus);
-    const customerCell = code => {
+    const boxes = n => context.fmt(n) + ' 箱';
+    const storeLines = (title, map) => map.size ? `<div class="cust-group"><b>${title}</b>${[...map].map(([store, n]) => `<div>${context.esc(store)} · ${boxes(n)}</div>`).join('')}</div>` : '';
+    // Read-only by design: quantities come from the customer-order sheet, never typed here.
+    const customerCell = (code, chosen) => {
       if (!container) return '—';
       if (customerError && !context.state.orders.length) return '讀取失敗';
       if (!context.customerSourceReady && !context.state.orders.length) return '待讀取';
       const row = customer.get(code);
       if (!row) return customerError ? '讀取失敗' : '—';
-      const total = amount(row.totals) || '數量待確認';
-      return `<details${window.matchMedia("(min-width: 1250px)").matches ? " open" : ""}><summary>${total}</summary>${customerError ? '<small>上次資料 · 更新失敗</small>' : ''}<div class="customer-stores">${[...row.stores].map(([store, totals]) => `<div>${context.esc(store)} · ${amount(totals)}</div>`).join('')}${row.unknown ? '<div>另有數量待確認</div>' : ''}</div></details>`;
+      const head = [
+        row.final.boxes ? `<span class="cust-final">Final ＋${boxes(row.final.boxes)}</span>` : '',
+        row.allocated.boxes ? `<span class="cust-alloc">已分配 ${boxes(row.allocated.boxes)}</span>` : '',
+        !row.final.boxes && !row.allocated.boxes && row.processing.count ? `<span class="cust-proc">處理中 ${row.processing.count} 筆</span>` : '',
+        !row.final.boxes && !row.allocated.boxes && !row.processing.count ? '<span class="cust-proc">數量待確認</span>' : ''
+      ].join('');
+      const nonBox = [...row.final.nonBox.map(x => ({...x, kind: 'Final'})), ...row.allocated.nonBox.map(x => ({...x, kind: '已分配'})), ...row.blocked.nonBox.map(x => ({...x, kind: '保護中'}))];
+      const warn = [
+        row.allocated.boxes ? `<div class="cust-warn" data-alloc-warn="${context.esc(code)}" data-alloc="${row.allocated.boxes}"${row.allocated.boxes > chosen ? '' : ' hidden'}>已分配 ${boxes(row.allocated.boxes)}，超過本櫃訂量</div>` : '',
+        row.blocked.boxes || row.blocked.nonBox.length ? `<div class="cust-warn">客找保護中：其他店家 Final ${row.blocked.boxes ? boxes(row.blocked.boxes) : ''}未計入</div>` : ''
+      ].join('');
+      return `<div class="cust-head">${head}</div>${warn}<details><summary>明細</summary>${customerError ? '<small>上次資料 · 更新失敗</small>' : ''}<div class="customer-stores">${storeLines('Final（加在本櫃訂量上）', row.final.stores)}${storeLines('已分配貨櫃（含在本櫃訂量內）', row.allocated.stores)}${storeLines('客找保護中，未計入', row.blocked.stores)}${nonBox.length ? `<div class="cust-group"><b>非箱單位，未加入合計</b>${nonBox.map(x => `<div>${x.kind} · ${context.esc(x.store)} · ${context.fmt(x.qty)} ${context.esc(x.unit)}</div>`).join('')}</div>` : ''}${row.processing.count ? `<div class="cust-group"><b>另有 ${row.processing.count} 筆處理中，未計入</b><div>${[...row.processing.stores].map(context.esc).join('、')}</div></div>` : ''}${row.unknown ? `<div>另有 ${row.unknown} 筆數量待確認</div>` : ''}</div></details>`;
     };
-    const today = brisbaneDate();
     let filtered = [];
     for (const i of list) {
       const c = context.calc(i),
@@ -87,8 +99,8 @@ export function register(context) {
  ${context.salesMonthCells(i)}
  <td><input class="maxStock-field" type="number" min="0" step="1" data-max-stock="${context.esc(i.code)}" value="${c.maxStock ?? ''}" placeholder="未設" aria-label="${context.esc(i.code)} 最高庫存" ${context.plannerRole === 'viewer' ? 'disabled' : ''}></td>
  <td>${c.suggest === null ? '<span class="missing-data" title="資料不足，無法計算建議量">資料不足</span>' : `<strong>${context.fmt(c.suggest)}</strong>`}${c.issues.length ? `<div><button class="mini explain-btn" data-explain="${context.esc(i.code)}" title="查看計算原因">說明</button></div>` : ''}</td>
- <td class="planner-customer">${customerCell(i.code)}</td>
- <td><div class="qty-picker"><input type="number" min="0" step="1" ${protection && context.plannerRole !== "admin" ? `max="${chosen}"` : ""} value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') || protection && context.plannerRole !== 'admin' && !chosen ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null || protection ? 'disabled' : ''}>採用</button></div><small class="qty-comparison" data-qty-comparison="${context.esc(i.code)}" hidden></small></td>
+ <td class="planner-customer">${customerCell(i.code, chosen)}</td>
+ <td><div class="qty-picker"><input type="number" min="0" step="1" ${protection && context.plannerRole !== "admin" ? `max="${chosen}"` : ""} value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') || protection && context.plannerRole !== 'admin' && !chosen ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null || protection ? 'disabled' : ''}>採用</button></div><small class="qty-comparison" data-qty-comparison="${context.esc(i.code)}" hidden></small>${customer.get(i.code)?.final.boxes ? `<small class="qty-total" data-qty-total="${context.esc(i.code)}" data-final="${customer.get(i.code).final.boxes}">合計提交 ${context.fmt(chosen + customer.get(i.code).final.boxes)} 箱<br><span>本櫃 ${context.fmt(chosen)}＋Final ${context.fmt(customer.get(i.code).final.boxes)}</span></small>` : ''}</td>
  <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="19" class="empty">沒有符合的商品</td></tr>';
     const body = context.$('productRows');
     if (preserveInputs) {

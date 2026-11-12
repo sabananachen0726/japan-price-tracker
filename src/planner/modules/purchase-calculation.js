@@ -34,7 +34,7 @@ export function register(context) {
       arrival = context.$('arrival').value || context.today(),
       months = context.dayDiff(context.today(), arrival) / 30.44,
       coverage = Math.max(0, +context.$('coverage').value || 0),
-      ord = context.orderNeed(item),
+      ord = context.orderNeed(item, context.$('container').value),
       pi = context.incoming(item, arrival, context.$('container').value);
     let valid = f !== null && stock !== null && typeof monthly === 'number' && monthly >= 0;
     let before = valid ? monthly * months : null,

@@ -156,3 +156,11 @@ V4.20.0：關聯品號可同卡比價，各自保留歷史與採購操作；報�
 - 其他：版本號統一為 V4.21.0；最新銷售按鈕改名「選擇最新銷售檔」；訂貨設定的月銷顯示到小數兩位；MYOB「清空全部庫存」移到右側並維持確認。
 
 新增 `planner-indicators`、`protection-batch`、`import-detect` 單元測試；`compatibility.json` 已依新版畫面更新。
+
+## V4.22.0：客訂 Final 加訂（唯讀）
+
+- 客訂表狀態分類（`src/shared/customer-demand.js`）：`Final`＝客人預訂，加在本櫃訂量上提交；`已分配貨櫃`＝從本櫃訂量分給店家，不另外加；含「取消」不顯示；`已出貨`不顯示；其他（待處理、已訂待回覆、通知Sab、追Serena…）為處理中，只顯示筆數。
+- 訂貨規劃客訂欄**唯讀**，依目前櫃號＋Item Code 帶入，櫃號比對只看英文字母與數字。明細預設收合。本櫃訂量下方顯示「合計提交＝本櫃＋Final」。已分配超過本櫃訂量時紅字提醒。
+- 提交時，Final 箱數依店家存入工作單的 `customerFinal`，客訂來源存入 `customerSource`（live／cache／none）。客找保護期間只接受保護店家的 Final，`commitOrderDraft` 在交易內再檢查一次。只計「箱」，非箱單位另外列出。
+- 建議量（`orderNeed`）不再扣除目前這一櫃的客訂。其他櫃與未分櫃的客訂照舊扣除；PI 查詢的可用量計算不變。
+- 已提交採購建議、Excel（QTY＝合計，另附本櫃訂量／Final 客訂／Final 店家）與 Supplier CSV 都分列顯示。

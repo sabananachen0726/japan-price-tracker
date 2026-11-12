@@ -228,6 +228,22 @@ export function initialize(context) {
           };
         }
       });
+      // Final customer orders added on top of this container, by store (read-only source).
+      cleaned.customerFinal = {};
+      cleaned.customerSource = ['live', 'cache', 'none'].includes(e.data.customerSource) ? e.data.customerSource : 'none';
+      Object.entries(e.data.customerFinal && typeof e.data.customerFinal === 'object' ? e.data.customerFinal : {}).forEach(([item, stores]) => {
+        const code = String(item || '').toUpperCase();
+        if (!context.safeCatalogKey(code) || !stores || typeof stores !== 'object') return;
+        const clean = {};
+        for (const [store, boxes] of Object.entries(stores)) {
+          const name = String(store || '').trim().slice(0, 120), n = Number(boxes);
+          if (name && Number.isInteger(n) && n > 0 && n <= 1e6) clean[name] = n;
+        }
+        if (!Object.keys(clean).length) return;
+        cleaned.customerFinal[code] = clean;
+        const barcode = window.appData.itemToBarcode?.[code] || '';
+        cleaned.snapshot[code] ||= {barcode, name: window.appData.products?.[barcode]?.name || code};
+      });
       Object.entries(draft.itemNotes || {}).forEach(([item, note]) => {
         const code = String(item || '').toUpperCase();
         const message = String(note || '').trim();
