@@ -1,3 +1,4 @@
+import {withoutProtection} from '../../shared/customer-protection.js';
 import {createProductResolver} from '../../shared/product-identity.js';
 // shell: pi-shelf-life. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -18,7 +19,7 @@ export const definition = {
     "name": "savePiAndShelf",
     "kind": "function"
   }],
-  "imports": ["CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
+  "imports": ["FieldPath", "CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
   "writes": ["catalogData", "findPiShelfColumn", "piShelfPreviewText", "planPiShelf", "readPiShelfCell", "savePiAndShelf"]
 };
 export function register(context) {
@@ -113,7 +114,7 @@ export function register(context) {
       for (const x of plan.changes) ((candidate.overrides ||= {})[x.code] ||= {}).shelfLifeMonths = x.next;
       for (const d of [candidate, window.appData]) if (new TextEncoder().encode(JSON.stringify(d)).length > (d === window.appData ? 950000 : 900000)) throw Error('共享資料容量不足，未套用 PI 或保存期限');
       const batch = context.writeBatch(context.db);
-      batch.set(context.PROD_DOC_REF, window.appData);
+      batch.set(context.PROD_DOC_REF,...withoutProtection(window.appData,context.FieldPath));
       if (hasPatch) batch.set(context.CATALOG_REF, patch, {
         merge: true
       });

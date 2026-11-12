@@ -1,3 +1,4 @@
+import {withoutProtection} from '../../shared/customer-protection.js';
 import {exportTemporaryImages,removedTemporaryImages} from '../temporary-image-store.js';
 import {validateImageRecord,isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 // shell: backups. Declare dependencies here when adding cross-feature calls.
@@ -22,7 +23,7 @@ export const definition = {
     "name": "restoreCompleteBackup412",
     "kind": "function"
   }],
-  "imports": ["doc", "CATALOG_REF", "CONTAINER_TRACKER_REF", "INVENTORY_REF", "ORDER_PLANNER_REF", "PLANNER_SOURCES_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "catalogData", "containerTrackerData", "currentDataMode", "db", "events", "getDoc", "getTimestampString", "inventoryData", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeAppData", "plannerSourcesData", "rebuildItemToBarcode", "refreshUI", "sendCatalogSources", "sendContainerSnapshot", "sharedOrderDrafts", "showAppToast", "writeBatch"],
+  "imports": ["FieldPath", "doc", "CATALOG_REF", "CONTAINER_TRACKER_REF", "INVENTORY_REF", "ORDER_PLANNER_REF", "PLANNER_SOURCES_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "catalogData", "containerTrackerData", "currentDataMode", "db", "events", "getDoc", "getTimestampString", "inventoryData", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeAppData", "plannerSourcesData", "rebuildItemToBarcode", "refreshUI", "sendCatalogSources", "sendContainerSnapshot", "sharedOrderDrafts", "showAppToast", "writeBatch"],
   "writes": ["backupRequests412", "catalogData", "containerTrackerData", "exportToCSV", "inventoryData", "plannerSourcesData", "requestPlannerBackup412", "restoreCompleteBackup412", "sharedOrderDrafts", "storeTestPlanner412", "validateCompleteBackup412"]
 };
 export function register(context) {
@@ -146,7 +147,7 @@ export function register(context) {
     }
     if (mode === 'live') {
       const batch = context.writeBatch(context.db);
-      batch.set(context.PROD_DOC_REF, main);
+      batch.set(context.PROD_DOC_REF,...withoutProtection(main,context.FieldPath));
       for(const [bc,image] of Object.entries(restoredImages))batch.set(context.doc(context.db,'pi_temporary_images',bc),image);
       for(const bc of removedTemporaryImages(window.appData,main))batch.delete(context.doc(context.db,'pi_temporary_images',bc));
       if (payload.containerTrackerData) batch.set(context.CONTAINER_TRACKER_REF, payload.containerTrackerData);

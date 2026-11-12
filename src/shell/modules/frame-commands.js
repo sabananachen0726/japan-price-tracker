@@ -1,3 +1,4 @@
+import {installProtectionManager} from '../protection-manager.js';
 import {commitOrderDraft} from '../../shared/order-version.js';
 import {withTemporaryImages} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
@@ -8,11 +9,12 @@ import {createProductResolver} from '../../shared/product-identity.js';
 export const definition = {
   "id": "frame-commands",
   "owns": [],
-  "imports": ["requestDataDeletion", "openDataManager","saveFirebaseData", "refreshUI", "catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
+  "imports": ["getDoc", "PROD_DOC_REF", "requestDataDeletion", "openDataManager","saveFirebaseData", "refreshUI", "catalogData", "savePiAndShelf", "runTransaction", "db", "CONTAINER_TRACKER_REF", "FieldPath", "ORDER_PLANNER_REF", "arrayRemove", "arrayUnion", "auth", "canPlan", "currentDataMode", "currentRole", "deleteProposal", "events", "frozenSignature", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeContainerNo", "refreshCustomerSource", "routePlannerWorkspace", "safeCatalogKey", "sendContainerSnapshot", "sendPlannerSnapshot", "sendSharedOrderDrafts", "setDoc", "sharedOrderDrafts", "updateDoc", "updateFrozenHeader"],
   "writes": ["frozenSignature"]
 };
 export function register(context) {}
 export function initialize(context) {
+  installProtectionManager(context);
   let containerReturnScroll = null;
   const containerFrame = document.getElementById('containerTrackerFrame');
   const detailBar = document.createElement('div');
@@ -244,7 +246,8 @@ export function initialize(context) {
       }
       const mode = context.currentDataMode, uid = context.auth.currentUser.uid;
       commitOrderDraft({runTransaction: context.runTransaction, db: context.db,
-        ref: context.ORDER_PLANNER_REF, code, cleaned, expectedVersion, FieldPath: context.FieldPath
+        ref: context.ORDER_PLANNER_REF, code, cleaned, expectedVersion, FieldPath: context.FieldPath,
+        protection:{ref:context.PROD_DOC_REF, field:"customerProtection", uid, isAdmin:context.isAdmin()}
       }).then(saved => {
         if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) return;
         plannerWindow.postMessage({type: 'KAISI_ORDER_SAVE_RESULT', code, requestId, ok: true, draft: saved}, '*');
