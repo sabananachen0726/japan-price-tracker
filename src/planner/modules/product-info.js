@@ -1,3 +1,4 @@
+import {productIndicators} from '../domain/product-indicators.js';
 // One reusable popover keeps the order table quiet and preserves its input nodes.
 export const definition = {
   id:'product-info', owns:[],
@@ -43,17 +44,13 @@ export function initialize(context){
     anchor.setAttribute('aria-controls',panel.id);
     const m=context.monthlyInfo(item), c=context.calc(item), s=context.salesSummary, details=s?.details;
     const notices=[];
-    const [gross,clear]=details?.clearance?.[item.code]||[];
-    if(gross>0&&clear/gross>=.3-1e-9)
-      notices.push(`上批出清：近 3 個月 ${context.fmt(clear/gross*100)}%（${moneyFree(m.f?clear/m.f:null)} 箱），出清不計需求。`);
-    const last=details?.lastSales?.[item.code], cutoff=details?.cutoff;
-    let receipt='';
-    if(cutoff) for(const pi of context.trackerFeed?.pis||[])
-      if(pi.received && pi.arrival && pi.arrival<=cutoff && pi.arrival>receipt && pi.rows?.some(r=>r.code===item.code&&r.qty>0))receipt=pi.arrival;
-    const since=last && last>receipt?last:receipt;
-    const weeks=since&&cutoff?Math.floor((Date.parse(cutoff)-Date.parse(since))/604800000):0;
-    if(item.stock>0&&weeks>=4)
-      notices.push(`有庫存，已 ${weeks} 週無對外出貨（起算 ${since}；銷售資料截至 ${cutoff}）。`);
+    const flags=productIndicators(item,details,context.trackerFeed?.pis);
+    if(flags.clearanceShare!==null)
+      notices.push(`近 3 個月出清比例：${context.fmt(flags.clearanceShare*100)}%${flags.clearance?'（上批出清）':''}。`);
+    if(flags.cutoff)
+      notices.push(`最後對外出貨：${flags.last||'無紀錄'}；銷售資料截至 ${flags.cutoff}。`);
+    if(flags.weeks>=4)
+      notices.push(`有庫存，已 ${flags.weeks} 週無對外出貨（起算 ${flags.since}）。`);
     panel.innerHTML=`<header><strong>${esc(item.code)} · ${esc(item.name)}</strong><button type="button" data-info-close aria-label="關閉商品明細">×</button></header>
       <p>採用月銷：<strong>${moneyFree(m.value)}</strong> 箱／月 · ${esc(m.source)}</p>
       ${s?`<table><thead><tr><th>月份</th><th>實際淨銷量</th><th>出清</th><th>計入平均</th></tr></thead><tbody>${s.months.map((month,i)=>{
