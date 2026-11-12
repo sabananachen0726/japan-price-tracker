@@ -136,6 +136,7 @@ export function register(context) {
         products,
         pis,
         historyRows,
+        protections: context.currentDataMode === "live" ? window.appData.customerProtection?.protections || {} : {},
         japanCodes: Array.isArray(window.appData.masterJapanCodes) ? window.appData.masterJapanCodes : null
       }
     }, '*');

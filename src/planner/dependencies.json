@@ -308,6 +308,9 @@
         "updateDraftTotal"
       ],
       "imports": [
+        "customerSourceReady",
+        "salesSummary",
+        "trackerFeed",
         "refreshQuantityComparison",
         "refreshOrderSync",
         "currentPiQuantities",

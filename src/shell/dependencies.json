@@ -193,6 +193,8 @@
       "file": "modules/frame-commands.js",
       "owns": [],
       "imports": [
+        "getDoc",
+        "PROD_DOC_REF",
         "requestDataDeletion",
         "openDataManager",
         "saveFirebaseData",
@@ -509,6 +511,7 @@
         "saveFirebaseData"
       ],
       "imports": [
+        "FieldPath",
         "writeBatch",
         "db",
         "doc",
@@ -625,6 +628,7 @@
         "restoreCompleteBackup412"
       ],
       "imports": [
+        "FieldPath",
         "doc",
         "CATALOG_REF",
         "CONTAINER_TRACKER_REF",
@@ -969,6 +973,7 @@
         "savePiAndShelf"
       ],
       "imports": [
+        "FieldPath",
         "CATALOG_REF",
         "PROD_DOC_REF",
         "TEST_LOCAL_KEY",

@@ -1,3 +1,6 @@
+import {brisbaneDate} from '../../shared/customer-protection.js';
+import {productIndicators} from '../domain/product-indicators.js';
+import {indexContainerCustomerOrders} from '../../shared/customer-demand.js';
 // planner: planning-view. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "planning-view",
@@ -11,7 +14,7 @@ export const definition = {
     "name": "updateDraftTotal",
     "kind": "function"
   }],
-  "imports": ["refreshQuantityComparison", "refreshOrderSync", "currentPiQuantities", "$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
+  "imports": ["customerSourceReady", "salesSummary", "trackerFeed", "refreshQuantityComparison", "refreshOrderSync", "currentPiQuantities", "$", "calc", "closeColumnFilter", "closePhotoPreview", "closePiTip", "dayDiff", "draft", "esc", "fmt", "factorInfo", "getItems", "monthlyCell", "passesColumnFilters", "photo", "plannerRole", "renderSalesHeads", "renderSortMarks", "projectedCell", "salesMonthCells", "shelfLife", "sortRows", "state", "today", "updateTableHeader"],
   "writes": ["projectedCell", "renderPlan", "updateDraftTotal"]
 };
 export function register(context) {
@@ -30,6 +33,21 @@ export function register(context) {
       q = context.$('search').value.trim().toLowerCase(),
       filter = context.$('filter').value,
       d = context.draft();
+    const container = context.$('container').value.trim();
+    const customer = indexContainerCustomerOrders(context.state.orders, container);
+    const amount = map => [...map].map(([unit,qty]) => context.fmt(qty) + ' ' + context.esc(unit)).join('＋');
+    const customerStatus = context.state.meta.orders || '';
+    const customerError = /失敗|錯誤|無法|權限不足|額度已用完/.test(customerStatus);
+    const customerCell = code => {
+      if (!container) return '—';
+      if (customerError && !context.state.orders.length) return '讀取失敗';
+      if (!context.customerSourceReady && !context.state.orders.length) return '待讀取';
+      const row = customer.get(code);
+      if (!row) return customerError ? '讀取失敗' : '—';
+      const total = amount(row.totals) || '數量待確認';
+      return `<details${window.matchMedia("(min-width: 1250px)").matches ? " open" : ""}><summary>${total}</summary>${customerError ? '<small>上次資料 · 更新失敗</small>' : ''}<div class="customer-stores">${[...row.stores].map(([store, totals]) => `<div>${context.esc(store)} · ${amount(totals)}</div>`).join('')}${row.unknown ? '<div>另有數量待確認</div>' : ''}</div></details>`;
+    };
+    const today = brisbaneDate();
     let filtered = [];
     for (const i of list) {
       const c = context.calc(i),
@@ -37,7 +55,12 @@ export function register(context) {
       if (q && !`${i.code} ${i.name} ${i.barcode}`.toLowerCase().includes(q)) continue;
       if (filter === 'written' && !chosen && !String(d.itemNotes?.[i.code] || '').trim()) continue;
       if (filter === 'need' && !(c.suggest > 0) || filter === 'chosen' && !chosen || filter === 'issues' && !c.issues.length || filter === 'orders' && !c.ord.count) continue;
+      const flags = productIndicators(i, context.salesSummary?.details, context.trackerFeed?.pis);
+      const entry = context.trackerFeed?.protections?.[i.code];
+      const protection = entry?.expiresOn > today ? entry : null;
+      if (filter === 'flags' && !flags.clearance && !(flags.weeks >= 4) && !protection) continue;
       const row = {
+        flags, protection,
         i,
         c,
         chosen
@@ -51,9 +74,9 @@ export function register(context) {
     const rowsHtml = filtered.map(({
       i,
       c,
-      chosen
+      chosen, flags, protection
     }) => `<tr>
- <td class="name"><div class="product-flex"><div class="photo-wrap" ${context.photo(i) ? `role="button" tabindex="0" data-zoom="${context.esc(i.code)}" title="移入預覽大圖，點擊開啟縮放"` : ''}>${context.photo(i) ? `<img src="${context.esc(context.photo(i))}" loading="lazy" alt="${context.esc(i.name)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>無圖</span>` : '<span>無圖</span>'}</div><div><div class="code">${context.esc(i.code.startsWith('__JAN_') ? i.barcode : i.code)} <span class="tag">${i.kind === 'dry' ? '乾' : i.kind === 'frozen' ? '凍' : '待分類'}</span></div><button class="product-title product-info-trigger" type="button" aria-expanded="false" data-product-info="${context.esc(i.code)}" aria-label="${context.esc(i.name)}：查看銷售明細">${context.esc(i.name)}</button>${i.pending ? `<div class="mini">${i.ambiguous ? '條碼有多個品號，請確認配對' : (i.temporary ? '暫填資料 · 等待主檔' : '新品／待補主檔')}</div>` : ''}${i.pending && context.plannerRole === 'admin' ? `<button type="button" data-temp-pi="${context.esc(i.barcode)}">暫填名稱／圖片</button>` : ''}${i.ambiguous && context.plannerRole === 'admin' ? `<button type="button" data-match-pi="${context.esc(i.barcode)}">選擇對應商品</button>` : ''}${i.availability !== 'active' ? '<span class="tag">Inactive · 本櫃 PI 保留</span>' : ''}${context.plannerRole !== 'viewer' && i.availability === 'active' && !i.pending ? `<button type="button" class="inactive-action" data-inactive="${context.esc(i.code)}" title="在所有訂貨工作單中隱藏此商品；可在資料管理恢復">設為 Inactive</button>` : ''}</div></div></td>
+ <td class="name"><div class="product-flex"><div class="photo-wrap" ${context.photo(i) ? `role="button" tabindex="0" data-zoom="${context.esc(i.code)}" title="移入預覽大圖，點擊開啟縮放"` : ''}>${context.photo(i) ? `<img src="${context.esc(context.photo(i))}" loading="lazy" alt="${context.esc(i.name)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>無圖</span>` : '<span>無圖</span>'}</div><div><div class="code">${context.esc(i.code.startsWith('__JAN_') ? i.barcode : i.code)} <span class="tag">${i.kind === 'dry' ? '乾' : i.kind === 'frozen' ? '凍' : '待分類'}</span></div><button class="product-title product-info-trigger" type="button" aria-expanded="false" data-product-info="${context.esc(i.code)}" aria-label="${context.esc(i.name)}：查看銷售明細">${context.esc(i.name)}</button>${protection || flags.clearance || flags.weeks >= 4 ? `<div class="product-indicators">${protection ? `<span>客找保護 · ${context.esc(protection.expiresOn.split("-").reverse().join("/"))} 可訂</span>` : ""}${flags.clearance ? '<span>上批出清</span>' : ''}${flags.weeks >= 4 ? `<span>滯銷 ${flags.weeks} 週</span>` : ''}</div>` : ''}${i.pending ? `<div class="mini">${i.ambiguous ? '條碼有多個品號，請確認配對' : (i.temporary ? '暫填資料 · 等待主檔' : '新品／待補主檔')}</div>` : ''}${i.pending && context.plannerRole === 'admin' ? `<button type="button" data-temp-pi="${context.esc(i.barcode)}">暫填名稱／圖片</button>` : ''}${i.ambiguous && context.plannerRole === 'admin' ? `<button type="button" data-match-pi="${context.esc(i.barcode)}">選擇對應商品</button>` : ''}${i.availability !== 'active' ? '<span class="tag">Inactive · 本櫃 PI 保留</span>' : ''}${context.plannerRole !== 'viewer' && i.availability === 'active' && !i.pending ? `<button type="button" class="inactive-action" data-inactive="${context.esc(i.code)}" title="在所有訂貨工作單中隱藏此商品；可在資料管理恢復">設為 Inactive</button>` : ''}</div></div></td>
  <td><strong>${i.stock == null ? '未取得' : context.fmt(i.stock)}</strong></td>
  <td class="purchase-unit"><div class="unit-value">${context.esc(context.factorInfo(i).raw || '未匯入')}</div><div class="unit-note">${context.plannerRole === 'viewer' ? d.itemNotes?.[i.code] ? `<div class="item-note-readonly">備註：${context.esc(d.itemNotes[i.code])}</div>` : '' : `<input class="item-note-inline" type="text" data-item-note="${context.esc(i.code)}" maxlength="250" value="${context.esc(d.itemNotes?.[i.code] || '')}" aria-label="${context.esc(i.code)} 本櫃備註" placeholder="單品備註" autocomplete="off" title="留缺貨、採購重點等備註給 Admin">`}</div></td>
  <td><strong>${context.fmt(c.stock)}</strong></td>
@@ -64,8 +87,9 @@ export function register(context) {
  ${context.salesMonthCells(i)}
  <td><input class="maxStock-field" type="number" min="0" step="1" data-max-stock="${context.esc(i.code)}" value="${c.maxStock ?? ''}" placeholder="未設" aria-label="${context.esc(i.code)} 最高庫存" ${context.plannerRole === 'viewer' ? 'disabled' : ''}></td>
  <td><strong>${c.suggest === null ? '<span class="missing-data">資料不足，無法計算</span>' : context.fmt(c.suggest)}</strong>${c.issues.length ? `<div><button class="mini" data-explain="${context.esc(i.code)}" title="查看計算原因">計算說明</button></div>` : ''}</td>
- <td><div class="qty-picker"><input type="number" min="0" step="1" value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null ? 'disabled' : ''}>採用</button></div><small class="qty-comparison" data-qty-comparison="${context.esc(i.code)}" hidden></small></td>
- <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="16" class="empty">沒有符合的商品</td></tr>';
+ <td class="planner-customer">${customerCell(i.code)}</td>
+ <td><div class="qty-picker"><input type="number" min="0" step="1" ${protection && context.plannerRole !== "admin" ? `max="${chosen}"` : ""} value="${chosen}" ${!i.piItem && (i.code.startsWith('__') || i.kind === 'unknown') || protection && context.plannerRole !== 'admin' && !chosen ? 'disabled' : ''} data-qty="${context.esc(i.code)}" aria-label="${context.esc(i.code)} 訂貨量"><button data-use="${context.esc(i.code)}" type="button" title="填入建議箱數" ${c.suggest == null || protection ? 'disabled' : ''}>採用</button></div><small class="qty-comparison" data-qty-comparison="${context.esc(i.code)}" hidden></small></td>
+ <td class="projected-stock" data-projected="${context.esc(i.code)}">${context.projectedCell(i, c)}</td></tr>`).join('') || '<tr><td colspan="19" class="empty">沒有符合的商品</td></tr>';
     const body = context.$('productRows');
     if (preserveInputs) {
       // Blur from the code field may be focusing an existing quantity input.

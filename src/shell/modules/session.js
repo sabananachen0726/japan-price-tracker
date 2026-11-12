@@ -1,3 +1,4 @@
+import {withoutProtection} from '../../shared/customer-protection.js';
 import {removedTemporaryImages,cacheTemporaryImage} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {clearResolvedTemporaryProducts} from '../../shared/product-identity.js';
@@ -35,7 +36,7 @@ export const definition = {
     "name": "saveFirebaseData",
     "kind": "function"
   }],
-  "imports": ["writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
+  "imports": ["FieldPath", "writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
   "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
@@ -66,11 +67,11 @@ export function register(context) {
       }
       const image=options.temporaryImage, removed=removedTemporaryImages(before,pendingData);
       if(image || removed.length){
-        const batch=context.writeBatch(context.db);batch.set(context.PROD_DOC_REF,pendingData);
+        const batch=context.writeBatch(context.db);batch.set(context.PROD_DOC_REF,...withoutProtection(pendingData,context.FieldPath));
         if(image){const meta=pendingData.piTemporaryProducts?.[image.barcode];if(!validImageBarcode(image.barcode)||!meta?.imageRevision||!isUploadedImage(image.dataUrl))throw Error('圖片資料無效');batch.set(context.doc(context.db,'pi_temporary_images',image.barcode),{barcode:image.barcode,dataUrl:image.dataUrl,updatedAt:meta.imageRevision})}
         for(const bc of removed)batch.delete(context.doc(context.db,'pi_temporary_images',bc));
         await batch.commit();if(image)cacheTemporaryImage(image.barcode,pendingData.piTemporaryProducts[image.barcode],image.dataUrl);
-      }else await context.setDoc(context.PROD_DOC_REF, pendingData);
+      }else await context.setDoc(context.PROD_DOC_REF,...withoutProtection(pendingData,context.FieldPath));
       context.savedAppData = structuredClone(pendingData);
       if (statusBadge) {
         statusBadge.className = "badge bg-success";

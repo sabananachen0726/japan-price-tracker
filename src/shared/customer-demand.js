@@ -32,3 +32,28 @@ export function allocatePiDemand(rows, codes, containers) {
   const summarize = list => ({rows: list, total: list.reduce((n, o) => n + (customerBoxes(o) ?? 0), 0), unknown: list.filter(o => customerBoxes(o) === null).length});
   return {ready: Array.isArray(rows), assigned: new Map([...assigned].map(([key, list]) => [key, summarize(list)])), unassigned: summarize(unassigned), other: summarize(other)};
 }
+
+// This display index is deliberately separate from the planner's submitted quantities.
+export function indexContainerCustomerOrders(orders, container) {
+  const byCode = new Map(), key = allocationContainer(container);
+  if (!key) return byCode;
+  for (const order of orders || []) {
+    if (allocationContainer(order.container) !== key || !activeCustomerOrder(order)) continue;
+    const code = normalizeCode(order.code);
+    if (!code) continue;
+    if (!byCode.has(code)) byCode.set(code, {totals:new Map(), stores:new Map(), unknown:0});
+    const item = byCode.get(code);
+    const unit = customerBoxes(order) !== null ? '箱' : normalizeCode(order.unit) || '單位未填';
+    const qty = Number(order.qty);
+    if (order.qty == null || !String(order.qty).trim() || !Number.isFinite(qty) || qty <= 0) {
+      item.unknown++;
+      continue;
+    }
+    const store = String(order.customer || '').trim() || '店家未填';
+    if (!item.stores.has(store)) item.stores.set(store, new Map());
+    const storeTotals = item.stores.get(store);
+    storeTotals.set(unit, (storeTotals.get(unit) || 0) + qty);
+    item.totals.set(unit, (item.totals.get(unit) || 0) + qty);
+  }
+  return byCode;
+}
