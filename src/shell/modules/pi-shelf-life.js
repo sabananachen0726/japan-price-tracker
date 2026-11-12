@@ -1,4 +1,4 @@
-import {withoutProtection} from '../../shared/customer-protection.js';
+import {addAppDataWrites, assertCapacity} from '../../shared/app-storage.js';
 import {createProductResolver} from '../../shared/product-identity.js';
 // shell: pi-shelf-life. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -19,7 +19,7 @@ export const definition = {
     "name": "savePiAndShelf",
     "kind": "function"
   }],
-  "imports": ["FieldPath", "CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
+  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
   "writes": ["catalogData", "findPiShelfColumn", "piShelfPreviewText", "planPiShelf", "readPiShelfCell", "savePiAndShelf"]
 };
 export function register(context) {
@@ -112,9 +112,11 @@ export function register(context) {
       const candidate = structuredClone(context.catalogData || {});
       for (const [code,fields] of Object.entries(patch.items)) Object.assign(((candidate.items ||= {})[code] ||= {}),fields);
       for (const x of plan.changes) ((candidate.overrides ||= {})[x.code] ||= {}).shelfLifeMonths = x.next;
-      for (const d of [candidate, window.appData]) if (new TextEncoder().encode(JSON.stringify(d)).length > (d === window.appData ? 950000 : 900000)) throw Error('共享資料容量不足，未套用 PI 或保存期限');
+      if (new TextEncoder().encode(JSON.stringify(candidate)).length > 900000) throw Error('訂貨設定容量不足，未套用 PI 或保存期限');
+      const split = context.storageState.split;
+      assertCapacity(window.appData, {split});
       const batch = context.writeBatch(context.db);
-      batch.set(context.PROD_DOC_REF,...withoutProtection(window.appData,context.FieldPath));
+      addAppDataWrites(batch, window.appData, {split, refs: {main: context.PROD_DOC_REF, quotes: context.QUOTES_REF, pis: context.PI_REF}, FieldPath: context.FieldPath});
       if (hasPatch) batch.set(context.CATALOG_REF, patch, {
         merge: true
       });

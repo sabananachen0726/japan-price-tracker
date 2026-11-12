@@ -1,5 +1,6 @@
+import {storageDocFor} from '../../shared/app-storage.js';
 import {buildDeletionPlan,commitDeletionPlan,applyDeletionPlan,deletionContainers,containerKey} from '../../shared/data-deletion.js';
-export const definition={id:'data-management',owns:['openDataManager','renderDataManager','requestDataDeletion'].map(name=>({name,kind:'function'})),imports:['isAdmin','auth','currentDataMode','chooseImportView','containerTrackerData','sharedOrderDrafts','customerRows','customerStatus','PROD_DOC_REF','CONTAINER_TRACKER_REF','ORDER_PLANNER_REF','db','runTransaction','FieldPath','deleteField','saveFirebaseData','refreshUI','sendPlannerSnapshot','sendContainerSnapshot','sendSharedOrderDrafts','masterSelectedProducts','requestPlannerBackup412','storeTestPlanner412','TEST_LOCAL_KEY'],writes:['containerTrackerData','sharedOrderDrafts','openDataManager','renderDataManager','requestDataDeletion']};
+export const definition={id:'data-management',owns:['openDataManager','renderDataManager','requestDataDeletion'].map(name=>({name,kind:'function'})),imports:['QUOTES_REF','PI_REF','storageState','isAdmin','auth','currentDataMode','chooseImportView','containerTrackerData','sharedOrderDrafts','customerRows','customerStatus','PROD_DOC_REF','CONTAINER_TRACKER_REF','ORDER_PLANNER_REF','db','runTransaction','FieldPath','deleteField','saveFirebaseData','refreshUI','sendPlannerSnapshot','sendContainerSnapshot','sendSharedOrderDrafts','masterSelectedProducts','requestPlannerBackup412','storeTestPlanner412','TEST_LOCAL_KEY'],writes:['containerTrackerData','sharedOrderDrafts','openDataManager','renderDataManager','requestDataDeletion']};
 let controller;
 export function register(context){
  context.openDataManager=options=>controller?.open(options||{});
@@ -50,7 +51,8 @@ export function initialize(context){
       }catch(err){localStorage.setItem(context.TEST_LOCAL_KEY,JSON.stringify(before));if(mode===context.currentDataMode&&uid===context.auth.currentUser?.uid){window.appData=before;context.storeTestPlanner412(backup);}throw err;}
      }else if(plan.operations.length){
       if(mode==='live'){
-       await commitDeletionPlan({plan,refs:{main:context.PROD_DOC_REF,tracker:context.CONTAINER_TRACKER_REF,planner:context.ORDER_PLANNER_REF},db:context.db,runTransaction:context.runTransaction,FieldPath:context.FieldPath,deleteField:context.deleteField});
+       const split=context.storageState.split,stored={...plan,operations:plan.operations.map(op=>({...op,doc:storageDocFor(op.doc,op.path,split)}))};
+       await commitDeletionPlan({plan:stored,refs:{main:context.PROD_DOC_REF,quotes:context.QUOTES_REF,pis:context.PI_REF,tracker:context.CONTAINER_TRACKER_REF,planner:context.ORDER_PLANNER_REF},db:context.db,runTransaction:context.runTransaction,FieldPath:context.FieldPath,deleteField:context.deleteField});
       }else{
        const next=applyDeletionPlan(snapshot(),plan);window.appData=next.main;if(!await context.saveFirebaseData())throw Error('TEST 本機儲存失敗');
       }

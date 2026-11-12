@@ -2,7 +2,7 @@ import {formatPiExpiry} from '../../shared/pi-paste.js';
 import {auditPiData, planPiRepairs, commitPiRepairs, piRowsVersion} from '../../shared/pi-audit.js';
 export const definition = {
   id: 'pi-audit', owns: ['renderPiAudit', 'openPiAudit'].map(name => ({name, kind: 'function'})),
-  imports: ['auth', 'isAdmin', 'currentDataMode', 'inventoryData', 'chooseImportView', 'db', 'PROD_DOC_REF', 'FieldPath', 'runTransaction', 'saveFirebaseData', 'savedAppData', 'refreshUI', 'sendPlannerSnapshot', 'sendContainerSnapshot', 'escapeFinalPiText'],
+  imports: ['PI_REF', 'storageState', 'auth', 'isAdmin', 'currentDataMode', 'inventoryData', 'chooseImportView', 'db', 'PROD_DOC_REF', 'FieldPath', 'runTransaction', 'saveFirebaseData', 'savedAppData', 'refreshUI', 'sendPlannerSnapshot', 'sendContainerSnapshot', 'escapeFinalPiText'],
   writes: ['renderPiAudit', 'openPiAudit']
 };
 export function register(context) {
@@ -66,7 +66,7 @@ export function initialize(context) {
           for (const change of changes) window.appData.finalPiContainers[change.key].rows = change.rows;
           if (!await context.saveFirebaseData()) throw Error('TEST 本機儲存失敗');
         } else {
-          await commitPiRepairs({runTransaction:context.runTransaction,db:context.db,ref:context.PROD_DOC_REF,FieldPath:context.FieldPath,changes});
+          await commitPiRepairs({runTransaction:context.runTransaction,db:context.db,ref:context.storageState.split?context.PI_REF:context.PROD_DOC_REF,FieldPath:context.FieldPath,changes});
           if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) {setFeedback('原帳號的 LIVE 清理已儲存；目前帳號或模式已改變，請關閉後重新排查。'); apply.textContent = '已完成'; cancel.disabled = false; return;}
           for (const change of changes) {
             if (piRowsVersion(window.appData.finalPiContainers?.[change.key]?.rows) === change.baseline) window.appData.finalPiContainers[change.key].rows = change.rows;

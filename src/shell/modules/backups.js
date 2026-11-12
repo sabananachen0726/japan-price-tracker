@@ -1,4 +1,4 @@
-import {withoutProtection} from '../../shared/customer-protection.js';
+import {addAppDataWrites, assertCapacity} from '../../shared/app-storage.js';
 import {exportTemporaryImages,removedTemporaryImages} from '../temporary-image-store.js';
 import {validateImageRecord,isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 // shell: backups. Declare dependencies here when adding cross-feature calls.
@@ -23,7 +23,7 @@ export const definition = {
     "name": "restoreCompleteBackup412",
     "kind": "function"
   }],
-  "imports": ["FieldPath", "doc", "CATALOG_REF", "CONTAINER_TRACKER_REF", "INVENTORY_REF", "ORDER_PLANNER_REF", "PLANNER_SOURCES_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "catalogData", "containerTrackerData", "currentDataMode", "db", "events", "getDoc", "getTimestampString", "inventoryData", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeAppData", "plannerSourcesData", "rebuildItemToBarcode", "refreshUI", "sendCatalogSources", "sendContainerSnapshot", "sharedOrderDrafts", "showAppToast", "writeBatch"],
+  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "doc", "CATALOG_REF", "CONTAINER_TRACKER_REF", "INVENTORY_REF", "ORDER_PLANNER_REF", "PLANNER_SOURCES_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "catalogData", "containerTrackerData", "currentDataMode", "db", "events", "getDoc", "getTimestampString", "inventoryData", "isAdmin", "loadEmbeddedOrderPlanner", "normalizeAppData", "plannerSourcesData", "rebuildItemToBarcode", "refreshUI", "sendCatalogSources", "sendContainerSnapshot", "sharedOrderDrafts", "showAppToast", "writeBatch"],
   "writes": ["backupRequests412", "catalogData", "containerTrackerData", "exportToCSV", "inventoryData", "plannerSourcesData", "requestPlannerBackup412", "restoreCompleteBackup412", "sharedOrderDrafts", "storeTestPlanner412", "validateCompleteBackup412"]
 };
 export function register(context) {
@@ -121,7 +121,8 @@ export function register(context) {
   context.validateCompleteBackup412 = function validateCompleteBackup412(payload) {
     if (!payload?.data?.products || !payload.planner || !['catalog', 'inventory', 'sources', 'orders'].every(k => payload.planner[k] && typeof payload.planner[k] === 'object' && !Array.isArray(payload.planner[k]))) throw Error('完整備份缺少訂貨資料，未還原');
     if (payload.containerTrackerData !== null && (!payload.containerTrackerData || !Array.isArray(payload.containerTrackerData.containers))) throw Error('貨櫃備份格式無效');
-    for (const d of [payload.data, payload.containerTrackerData, ...Object.values(payload.planner)]) if (d && new TextEncoder().encode(JSON.stringify(d)).length > (d === payload.data ? 950000 : 900000)) throw Error('備份中有文件超過共享容量，未還原');
+    for (const d of [payload.containerTrackerData, ...Object.values(payload.planner)]) if (d && new TextEncoder().encode(JSON.stringify(d)).length > 900000) throw Error('備份中有文件超過共享容量，未還原');
+    if (payload.data) assertCapacity(payload.data, {split: context.storageState.split});
     if (payload.planner.sources.salesV1?.sources) for (const src of Object.values(payload.planner.sources.salesV1.sources)) if (src.codec !== 'gzip-base64' || typeof src.body !== 'string') throw Error('銷售彙總格式無效');
     const images=payload.temporaryImages || {};
     if(Object.keys(images).length>400)throw Error('暫用圖片超過單次還原上限');
@@ -147,7 +148,8 @@ export function register(context) {
     }
     if (mode === 'live') {
       const batch = context.writeBatch(context.db);
-      batch.set(context.PROD_DOC_REF,...withoutProtection(main,context.FieldPath));
+      assertCapacity(main,{split:context.storageState.split});
+      addAppDataWrites(batch,main,{split:context.storageState.split,refs:{main:context.PROD_DOC_REF,quotes:context.QUOTES_REF,pis:context.PI_REF},FieldPath:context.FieldPath});
       for(const [bc,image] of Object.entries(restoredImages))batch.set(context.doc(context.db,'pi_temporary_images',bc),image);
       for(const bc of removedTemporaryImages(window.appData,main))batch.delete(context.doc(context.db,'pi_temporary_images',bc));
       if (payload.containerTrackerData) batch.set(context.CONTAINER_TRACKER_REF, payload.containerTrackerData);

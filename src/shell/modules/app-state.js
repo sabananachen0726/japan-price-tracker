@@ -34,9 +34,18 @@ export const definition = {
   }, {
     "name": "currentDataMode",
     "kind": "let"
+  }, {
+    "name": "QUOTES_REF",
+    "kind": "const"
+  }, {
+    "name": "PI_REF",
+    "kind": "const"
+  }, {
+    "name": "storageState",
+    "kind": "const"
   }],
   "imports": ["db", "doc"],
-  "writes": ["CONTAINER_TRACKER_REF", "ORDER_PLANNER_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "containerTrackerData", "currentDataMode", "proposalListenerInitialized", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
+  "writes": ["CONTAINER_TRACKER_REF", "ORDER_PLANNER_REF", "PROD_DOC_REF", "QUOTES_REF", "PI_REF", "storageState", "TEST_LOCAL_KEY", "containerTrackerData", "currentDataMode", "proposalListenerInitialized", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {}
 export function initialize(context) {
@@ -55,6 +64,11 @@ export function initialize(context) {
   // LIVE is the default production mode and reads/writes Firestore main_config.
   // TEST is an isolated local browser copy. TEST can be refreshed from LIVE, but TEST is never written back to LIVE.
   context.PROD_DOC_REF = context.doc(context.db, "app_data", "main_config");
+  // Storage v2 keeps quotes and Final PIs in their own documents (see shared/app-storage.js).
+  context.QUOTES_REF = context.doc(context.db, "app_data", "quotes_v1");
+  context.PI_REF = context.doc(context.db, "app_data", "pi_containers_v1");
+  // split: the LIVE server already uses storage v2. Updated by the LIVE listener only.
+  context.storageState = {split: false, loaded: false, error: ''};
   context.CONTAINER_TRACKER_REF = context.doc(context.db, "app_data", "container_tracker_v1");
   context.ORDER_PLANNER_REF = context.doc(context.db, "app_data", "order_planner_v1");
   context.sharedOrderDrafts = {};

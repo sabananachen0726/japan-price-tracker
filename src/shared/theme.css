@@ -338,3 +338,13 @@ body[data-import-view="auto"] #hub-auto{display:block}
 .qty-total{display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--jp-fuji);line-height:1.35}
 .qty-total span{font-weight:500;color:var(--jp-muted);font-size:12px}
 .planner-customer .cust-warn[hidden]{display:none}
+
+/* Storage upgrade / capacity notice (Admin, LIVE), shown at the top of 資料匯入中心. */
+.storage-notice{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin:0 0 14px;padding:14px 18px;border-radius:var(--jp-radius);border:1px solid #efd59b;background:var(--jp-yamabuki-soft);color:#5f4106}
+.storage-notice[hidden]{display:none}
+.storage-notice.upgrade{border-color:#e5b4a8;border-left:4px solid var(--jp-shu);background:#fff4ef;color:var(--jp-ink)}
+.storage-notice strong{font-family:var(--jp-serif);font-size:1.1rem}
+.storage-notice p{margin:4px 0 0}
+.storage-notice>div:first-child{flex:1 1 480px}
+.storage-notice .storage-actions{display:flex;gap:8px;flex-wrap:wrap}
+.storage-notice .storage-status{flex-basis:100%}

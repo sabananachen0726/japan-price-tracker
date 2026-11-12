@@ -1,3 +1,4 @@
+import {isSplit, mergeAppData} from '../../shared/app-storage.js';
 import {exportTemporaryImages} from '../temporary-image-store.js';
 // shell: data-modes. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -36,7 +37,7 @@ export const definition = {
     "name": "startDataListener",
     "kind": "function"
   }],
-  "imports": ["getDoc", "doc", "db", "CONTAINER_TRACKER_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "auth", "containerTrackerData", "currentDataMode", "customerGeneration", "normalizeContainerNo", "onSnapshot", "refreshCustomerSource", "refreshUI", "renderContainerIntegrationCheck", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderSharedOrderDrafts", "searchCache", "sendContainerSnapshot", "sendCustomerSource", "sendPlannerSnapshot", "showAppToast", "unsubscribeContainerTracker", "unsubscribeData"],
+  "imports": ["getDoc", "doc", "db", "CONTAINER_TRACKER_REF", "PROD_DOC_REF", "QUOTES_REF", "PI_REF", "storageState", "TEST_LOCAL_KEY", "auth", "containerTrackerData", "currentDataMode", "customerGeneration", "normalizeContainerNo", "onSnapshot", "refreshCustomerSource", "refreshUI", "renderContainerIntegrationCheck", "renderFinalPiBatchSearch", "renderFinalPiContainerList", "renderFinalPiSearch", "renderSharedOrderDrafts", "searchCache", "sendContainerSnapshot", "sendCustomerSource", "sendPlannerSnapshot", "showAppToast", "unsubscribeContainerTracker", "unsubscribeData"],
   "writes": ["savedAppData", "containerTrackerData", "copyLiveToTest", "currentDataMode", "customerGeneration", "linkedTrackerContainer", "normalizeAppData", "readLiveSnapshotOnce", "setModeUI", "startContainerTrackerLink", "startDataListener", "startLiveListener", "startTestMode", "switchDataMode", "unsubscribeContainerTracker", "unsubscribeData", "updateTestDataInfo"]
 };
 export function register(context) {
@@ -71,26 +72,12 @@ export function register(context) {
       statusBadge.innerHTML = `<i class="fa-solid fa-flask me-1"></i>${sourceText}｜${p} 商品 / ${q} 報價`;
     }
   };
-  context.readLiveSnapshotOnce = function readLiveSnapshotOnce() {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const unsub = context.onSnapshot(context.PROD_DOC_REF, snapshot => {
-        if (settled) return;
-        settled = true;
-        try {
-          unsub();
-        } catch (_) {}
-        if (!snapshot.exists()) return reject(new Error('找不到正式 main_config'));
-        resolve(snapshot.data());
-      }, error => {
-        if (settled) return;
-        settled = true;
-        try {
-          unsub();
-        } catch (_) {}
-        reject(error);
-      });
-    });
+  context.readLiveSnapshotOnce = async function readLiveSnapshotOnce() {
+    const main = await context.getDoc(context.PROD_DOC_REF);
+    if (!main.exists()) throw new Error('找不到正式 main_config');
+    if (!isSplit(main.data())) return mergeAppData(main.data());
+    const [quotes, pis] = await Promise.all([context.getDoc(context.QUOTES_REF), context.getDoc(context.PI_REF)]);
+    return mergeAppData(main.data(), quotes.exists() ? quotes.data() : {}, pis.exists() ? pis.data() : {});
   };
   context.copyLiveToTest = async function copyLiveToTest({
     confirmOverwrite = false
@@ -137,24 +124,47 @@ export function register(context) {
       statusBadge.className = 'badge bg-secondary';
       statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 同步中...';
     }
-    context.unsubscribeData = context.onSnapshot(context.PROD_DOC_REF, snapshot => {
-      if (context.currentDataMode !== 'live') return;
-      if (snapshot.exists()) window.appData = context.normalizeAppData(snapshot.data());else window.appData = context.normalizeAppData({});
-      if (!snapshot.metadata?.hasPendingWrites) context.savedAppData = structuredClone(window.appData);
+    // main_config, plus quotes_v1 and pi_containers_v1 once the server uses storage v2.
+    const latest = {main: null, quotes: null, pis: null}, pending = {}, subs = {};
+    const fail = (where, error) => {
+      console.error('LIVE listener error', where, error);
+      context.storageState.error = where === 'main' ? '' : '報價／PI 文件讀取失敗，請確認 Firebase 規則已更新';
+      if (statusBadge) {
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>LIVE 同步失敗';
+      }
+      if (where !== 'main') context.showAppToast(context.storageState.error, 'danger');
+    };
+    const apply = () => {
+      if (context.currentDataMode !== 'live' || !latest.main) return;
+      const split = isSplit(latest.main);
+      if (split && (!latest.quotes || !latest.pis)) return;
+      context.storageState.split = split;
+      context.storageState.loaded = true;
+      context.storageState.error = '';
+      window.appData = context.normalizeAppData(mergeAppData(latest.main, latest.quotes, latest.pis));
+      if (!Object.values(pending).some(Boolean)) context.savedAppData = structuredClone(window.appData);
       context.searchCache.valid = false;
       context.refreshUI();
       if (statusBadge) {
         statusBadge.className = 'badge bg-success';
         statusBadge.innerHTML = '<i class="fa-solid fa-cloud me-1"></i>LIVE Firebase 已同步';
       }
-    }, error => {
-      console.error('LIVE listener error', error);
-      if (statusBadge) {
-        statusBadge.className = 'badge bg-danger';
-        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>LIVE 同步失敗';
-      }
-      context.showAppToast(`LIVE Firebase 同步失敗：${error?.code || error?.message || '未知錯誤'}`, 'danger');
-    });
+      document.dispatchEvent(new CustomEvent('kaisi:storage-state'));
+    };
+    const listen = (key, ref) => {
+      subs[key] = context.onSnapshot(ref, snapshot => {
+        latest[key] = snapshot.exists() ? snapshot.data() : {};
+        pending[key] = !!snapshot.metadata?.hasPendingWrites;
+        if (key === 'main' && isSplit(latest.main) && !subs.quotes) {
+          listen('quotes', context.QUOTES_REF);
+          listen('pis', context.PI_REF);
+        }
+        apply();
+      }, error => fail(key, error));
+    };
+    listen('main', context.PROD_DOC_REF);
+    context.unsubscribeData = () => { for (const unsub of Object.values(subs)) try { unsub(); } catch (_) {} };
   };
   context.startContainerTrackerLink = function startContainerTrackerLink() {
     if (context.unsubscribeContainerTracker) {

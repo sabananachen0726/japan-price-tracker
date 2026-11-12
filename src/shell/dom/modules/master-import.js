@@ -1,3 +1,4 @@
+import {capacityReport} from '../../../shared/app-storage.js';
 import { JapanMasterImport } from "../domain/master-import.js";
 // shell/dom: master-import. Declare dependencies here when adding cross-feature calls.
 export const definition = {
@@ -18,7 +19,7 @@ export const definition = {
     "name": "previewJapanMaster",
     "kind": "function"
   }],
-  "imports": ["auth", "currentDataMode", "escapeHtml", "isAdmin", "masterCurrentPage", "masterSelectedProducts", "migrateBarcodeReferences", "rebuildItemToBarcode", "refreshUI", "renderMasterImportHistory", "saveFirebaseData", "sendPlannerSnapshot"],
+  "imports": ["storageState", "auth", "currentDataMode", "escapeHtml", "isAdmin", "masterCurrentPage", "masterSelectedProducts", "migrateBarcodeReferences", "rebuildItemToBarcode", "refreshUI", "renderMasterImportHistory", "saveFirebaseData", "sendPlannerSnapshot"],
   "writes": ["JapanMasterImport", "compressMasterUndo", "decompressMasterUndo", "japanMasterPending", "masterCurrentPage", "previewJapanMaster"]
 };
 export function register(context) {
@@ -118,8 +119,10 @@ export function initialize(context) {
         undoSchema: 2
       };
       candidate.masterImportBatches = [...(candidate.masterImportBatches || []), batch].slice(-5);
-      while (candidate.masterImportBatches.length > 1 && new TextEncoder().encode(JSON.stringify(candidate)).length > 900000) candidate.masterImportBatches.shift();
-      if (new TextEncoder().encode(JSON.stringify(candidate)).length > 950000) throw Error('主檔與既有報價超過目前共享文件容量，本次未套用；請先匯出完整備份。');
+      // Only the document that holds products counts here (quotes and PIs have their own in storage v2).
+      const mainBytes = () => capacityReport(candidate, {split: context.storageState.split})[0].bytes;
+      while (candidate.masterImportBatches.length > 1 && mainBytes() > 900000) candidate.masterImportBatches.shift();
+      if (mainBytes() > 950000) throw Error('主檔超過目前共享文件容量，本次未套用；請先匯出完整備份。');
       window.appData = candidate;
       for (const move of p.plan.moves) context.migrateBarcodeReferences(move.from, move.to);
       context.rebuildItemToBarcode();

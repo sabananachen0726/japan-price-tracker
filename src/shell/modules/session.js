@@ -1,4 +1,4 @@
-import {withoutProtection} from '../../shared/customer-protection.js';
+import {addAppDataWrites, assertCapacity} from '../../shared/app-storage.js';
 import {removedTemporaryImages,cacheTemporaryImage} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {clearResolvedTemporaryProducts} from '../../shared/product-identity.js';
@@ -36,7 +36,7 @@ export const definition = {
     "name": "saveFirebaseData",
     "kind": "function"
   }],
-  "imports": ["FieldPath", "writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
+  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
   "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
@@ -65,13 +65,14 @@ export function register(context) {
         statusBadge.className = "badge bg-secondary";
         statusBadge.innerHTML = '<i class="fa-solid fa-sync fa-spin me-1"></i>LIVE 儲存中...';
       }
-      const image=options.temporaryImage, removed=removedTemporaryImages(before,pendingData);
-      if(image || removed.length){
-        const batch=context.writeBatch(context.db);batch.set(context.PROD_DOC_REF,...withoutProtection(pendingData,context.FieldPath));
+      const image=options.temporaryImage, removed=removedTemporaryImages(before,pendingData), split=context.storageState.split;
+      assertCapacity(pendingData,{split});
+      {
+        const batch=context.writeBatch(context.db);addAppDataWrites(batch,pendingData,{split,refs:{main:context.PROD_DOC_REF,quotes:context.QUOTES_REF,pis:context.PI_REF},FieldPath:context.FieldPath});
         if(image){const meta=pendingData.piTemporaryProducts?.[image.barcode];if(!validImageBarcode(image.barcode)||!meta?.imageRevision||!isUploadedImage(image.dataUrl))throw Error('圖片資料無效');batch.set(context.doc(context.db,'pi_temporary_images',image.barcode),{barcode:image.barcode,dataUrl:image.dataUrl,updatedAt:meta.imageRevision})}
         for(const bc of removed)batch.delete(context.doc(context.db,'pi_temporary_images',bc));
         await batch.commit();if(image)cacheTemporaryImage(image.barcode,pendingData.piTemporaryProducts[image.barcode],image.dataUrl);
-      }else await context.setDoc(context.PROD_DOC_REF,...withoutProtection(pendingData,context.FieldPath));
+      }
       context.savedAppData = structuredClone(pendingData);
       if (statusBadge) {
         statusBadge.className = "badge bg-success";

@@ -164,3 +164,8 @@ V4.20.0：關聯品號可同卡比價，各自保留歷史與採購操作；報�
 - 提交時，Final 箱數依店家存入工作單的 `customerFinal`，客訂來源存入 `customerSource`（live／cache／none）。客找保護期間只接受保護店家的 Final，`commitOrderDraft` 在交易內再檢查一次。只計「箱」，非箱單位另外列出。
 - 建議量（`orderNeed`）不再扣除目前這一櫃的客訂。其他櫃與未分櫃的客訂照舊扣除；PI 查詢的可用量計算不變。
 - 已提交採購建議、Excel（QTY＝合計，另附本櫃訂量／Final 客訂／Final 店家）與 Supplier CSV 都分列顯示。
+
+## V4.23.0：分開存放報價與 PI（Storage v2）
+
+`main_config` 已達 Firestore 單一文件 1 MiB 上限（928 KB）。報價移到 `app_data/quotes_v1`，PI 移到 `app_data/pi_containers_v1`；主文件只留商品、對照、廠商、客找保護等。三份一起讀（`src/shell/modules/data-modes.js`）、一起存（`src/shared/app-storage.js` 的 `addAppDataWrites`）。刪除與 PI 修正會寫到該欄位所在的文件。itemToBarcode 讀取時由商品主檔推算，只存推算不到的少數對照。
+搬移由 Admin 在「資料匯入中心」上方按「升級儲存方式」執行，一次交易完成。上線順序與新規則見 `firebase/README.md`、`firebase/firestore.rules`。

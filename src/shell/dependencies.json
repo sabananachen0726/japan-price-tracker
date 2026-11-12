@@ -62,7 +62,10 @@
         "containerTrackerData",
         "unsubscribeContainerTracker",
         "TEST_LOCAL_KEY",
-        "currentDataMode"
+        "currentDataMode",
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState"
       ],
       "imports": [
         "db",
@@ -72,6 +75,9 @@
         "CONTAINER_TRACKER_REF",
         "ORDER_PLANNER_REF",
         "PROD_DOC_REF",
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "TEST_LOCAL_KEY",
         "containerTrackerData",
         "currentDataMode",
@@ -195,6 +201,11 @@
       "imports": [
         "chooseImportView",
         "chooseProductView412",
+        "deleteField",
+        "exportToCSV",
+        "PI_REF",
+        "QUOTES_REF",
+        "storageState",
         "getDoc",
         "PROD_DOC_REF",
         "requestDataDeletion",
@@ -455,6 +466,9 @@
         "db",
         "CONTAINER_TRACKER_REF",
         "PROD_DOC_REF",
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "TEST_LOCAL_KEY",
         "auth",
         "containerTrackerData",
@@ -513,6 +527,9 @@
         "saveFirebaseData"
       ],
       "imports": [
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "FieldPath",
         "writeBatch",
         "db",
@@ -630,6 +647,9 @@
         "restoreCompleteBackup412"
       ],
       "imports": [
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "FieldPath",
         "doc",
         "CATALOG_REF",
@@ -975,6 +995,9 @@
         "savePiAndShelf"
       ],
       "imports": [
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "FieldPath",
         "CATALOG_REF",
         "PROD_DOC_REF",
@@ -1036,6 +1059,7 @@
       "file": "modules/dom-bindings.js",
       "owns": [],
       "imports": [
+        "storageState",
         "requestDataDeletion",
         "CONTAINER_TRACKER_REF",
         "activeManagedContainer",
@@ -1124,6 +1148,8 @@
         "openPiAudit"
       ],
       "imports": [
+        "PI_REF",
+        "storageState",
         "auth",
         "isAdmin",
         "currentDataMode",
@@ -1154,6 +1180,9 @@
         "requestDataDeletion"
       ],
       "imports": [
+        "QUOTES_REF",
+        "PI_REF",
+        "storageState",
         "isAdmin",
         "auth",
         "currentDataMode",

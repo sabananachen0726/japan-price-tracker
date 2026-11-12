@@ -65,9 +65,31 @@ service cloud.firestore {
 
 
     // Japan Price Tracker
+    // Storage v2: quotes and Final PI containers live in their own documents.
+    // main_config may no longer hold them, so a stale page cannot write them back
+    // and fill the 1 MiB document again.
     match /app_data/main_config {
       allow read: if allowed();
-      allow write: if admin();
+      allow write: if admin()
+        && !request.resource.data.keys().hasAny(['quotes', 'finalPiContainers']);
+    }
+
+
+    match /app_data/quotes_v1 {
+      allow read: if allowed();
+      allow create, update: if admin()
+        && request.resource.data.keys().hasOnly(['quotes', 'updatedAt'])
+        && request.resource.data.quotes is list;
+      allow delete: if false;
+    }
+
+
+    match /app_data/pi_containers_v1 {
+      allow read: if allowed();
+      allow create, update: if admin()
+        && request.resource.data.keys().hasOnly(['finalPiContainers', 'updatedAt'])
+        && request.resource.data.finalPiContainers is map;
+      allow delete: if false;
     }
 
 
