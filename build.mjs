@@ -22,6 +22,7 @@ async function page(name,define={}) {
  const base=path.join(root,'src',name);
  let html=await readFile(path.join(base,'template.html'),'utf8');
  html=html.replace('{{shared-mobile-styles}}',await readFile(path.join(root,'src/shared/mobile.css'),'utf8'));
+ html=html.replace('{{shared-theme-styles}}',await readFile(path.join(root,'src/shared/theme.css'),'utf8'));
  async function includeFiles(text,depth=0){
   if(depth>12)throw Error('Template include cycle in '+name);
   for(const match of [...text.matchAll(/\{\{file:([^}]+)\}\}/g)]){
@@ -61,4 +62,4 @@ const planner=await page('planner'),container=await page('container');
 const html=await page('shell');
 await writeFile(path.join(output,'index.html'),html);
 await writeFile(path.join(output,'planner.html'),planner);await writeFile(path.join(output,'container.html'),container);
-console.log('Built V4.13.0:',path.join(output,'index.html'));
+console.log('Built V4.21.0:',path.join(output,'index.html'));

@@ -45,8 +45,14 @@ export function initialize(context){
     const m=context.monthlyInfo(item), c=context.calc(item), s=context.salesSummary, details=s?.details;
     const notices=[];
     const flags=productIndicators(item,details,context.trackerFeed?.pis);
-    if(flags.clearanceShare!==null)
-      notices.push(`近 3 個月出清比例：${context.fmt(flags.clearanceShare*100)}%${flags.clearance?'（上批出清）':''}。`);
+    const dmy=d=>d?d.split('-').reverse().join('/'):'';
+    const b=flags.batch||{};
+    if(b.basis==='none')
+      notices.push(details?.cutoff?'上批出清：沒有實際到倉紀錄，無法判斷上一批。':'上批出清：尚未匯入銷售資料。');
+    else if(flags.clearanceShare===null)
+      notices.push(`上批出清：${dmy(b.start)}～${dmy(b.end)} 沒有對外銷售紀錄。`);
+    else
+      notices.push(`上批（${b.basis==='between'?`${dmy(b.start)} 到倉～${dmy(b.end)} 再到倉前`:`${dmy(b.end)} 到倉前 6 個月`}）低於售價 7 折賣出 ${moneyFree(b.clear)}／${moneyFree(b.gross)} 件，出清比例 ${context.fmt(flags.clearanceShare*100)}%${flags.clearance?'，達 30% 標示「上批出清」':'，未達 30%'}${b.estimated?'（較早月份按天數估算）':''}。`);
     if(flags.cutoff)
       notices.push(`最後對外出貨：${flags.last||'無紀錄'}；銷售資料截至 ${flags.cutoff}。`);
     if(flags.weeks>=4)

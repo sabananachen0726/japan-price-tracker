@@ -1,7 +1,9 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kaisi 採購工作台 V4.13.0</title>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kaisi 採購工作台 V4.21.0</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>{{file:styles/base.css}}</style><style>{{shared-mobile-styles}}</style>
+<style>{{shared-theme-styles}}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
 </head><body><header><div><h1>Kaisi · 日本貨訂貨規劃</h1><small>以 Item Code 串接商品照片、庫存、月銷、客訂與 PI</small></div><span class="tag">可操作原型 · 客訂連動示範</span></header><main>
 <nav class="tabs" aria-label="訂貨工具"><button class="active" data-tab="plan">訂貨規劃</button><button data-tab="containers">工作單／已提交建議</button><button data-tab="settings">資料管理</button><button data-tab="pending">待補資料</button><button data-tab="imports">資料匯入中心</button></nav>
 {{file:views/planning.html}}
@@ -48,5 +50,5 @@ ZY207	周義牛皮豆干	57	5Unit/CTN"></textarea><p class="mini muted">先預�
 <textarea id="unifiedPaste" style="width:100%;min-height:150px;resize:vertical;font:13px/1.5 monospace;padding:10px" placeholder="Item Code	Monthly Sales	Safety Stock	Factor	Shelf Life (Months)	Status
 ACE005	6	12	12	18	Active"></textarea>
 <div class="toolbar"><button id="unifiedPreviewPaste" type="button" class="primary">預覽貼上的資料</button><button id="unifiedChooseFile" type="button">選擇 Excel／CSV</button><input id="unifiedFile" type="file" class="hidden" accept=".xlsx,.xls,.csv,.tsv,.txt"></div>
-<div id="unifiedWarning" class="mini warn"></div><strong id="unifiedSummary" class="mini" aria-live="polite"></strong><div id="unifiedPreview" class="hidden" style="max-height:310px;overflow:auto;border:1px solid #dce4ee;border-radius:8px;margin-top:10px;padding:7px"></div>
+<div id="unifiedWarning" class="mini warn"></div><strong id="unifiedSummary" class="mini" aria-live="polite"></strong><div id="unifiedPreview" class="hidden" style="max-height:310px;overflow:auto;border:1px solid #e6dbc8;border-radius:8px;margin-top:10px;padding:7px"></div>
 <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button id="unifiedCancel" type="button">關閉</button><button id="unifiedApply" class="primary" type="button" disabled>確認套用變更</button></div></dialog></main><script id="seed" type="application/json">{{file:data/seed.json}}</script><script>{{application-script}}</script></body></html>

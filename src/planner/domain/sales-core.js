@@ -80,7 +80,23 @@ export const SalesCore = {
     const lastSales={}, clearance={};
     for(const s of Object.values(sources))for(const [code,date] of Object.entries(s.lastSales||{}))
       if(!lastSales[code]||lastSales[code]<date)lastSales[code]=date;
-    if(!cutoff)return {cutoff,lastSales,clearance};
+    if(!cutoff)return {cutoff,lastSales,clearance,series:{},daily:{},dailyStart:''};
+    // Batch-based clearance needs every month (positive qty, clearance qty) plus the
+    // recent daily detail; the latest source wins for months both files cover.
+    const series={}, daily={};
+    const monthKeys=new Set(Object.values(sources).flatMap(s=>Object.keys(s?.months||{})));
+    for(const m of monthKeys){
+      const rows=sources.current?.months?.[m]||sources.history?.months?.[m]||[];
+      for(const [code,gross,,clear=0] of rows){const a=(series[code]||={})[m]||=[0,0];a[0]+=gross;a[1]+=clear;}
+    }
+    let dailyStart='';
+    for(const [slot,s] of Object.entries(sources))for(const [date,rows] of Object.entries(s.daily||{})){
+      if(slot==='history'&&sources.current?.months?.[date.slice(0,7)])continue;
+      if(!dailyStart||date<dailyStart)dailyStart=date;
+      for(const [code,gross,clear] of rows){const a=(daily[code]||={})[date]||=[0,0];a[0]+=gross;a[1]+=clear;}
+    }
+    // Daily detail starts on the first day of its first month; earlier days come from months.
+    if(dailyStart)dailyStart=dailyStart.slice(0,7)+'-01';
     const month=this.monthShift(cutoff.slice(0,7),-3), next=this.monthShift(month,1),
       lastDay=new Date(Date.parse(next+'-01')-86400000).getUTCDate(),
       start=month+'-'+String(Math.min(lastDay,+cutoff.slice(8,10))).padStart(2,'0');
@@ -92,7 +108,7 @@ export const SalesCore = {
         a[0]+=gross-(d?.[0]||0); a[1]+=clear-(d?.[2]||0);
       }
     }
-    return {cutoff,lastSales,clearance,clearanceStart:start};
+    return {cutoff,lastSales,clearance,clearanceStart:start,series,daily,dailyStart};
   },
   summarize(sources, end, allowed = null) {
     const months = this.range(end),

@@ -194,6 +194,8 @@
         "file": "modules/frame-commands.js",
         "owns": [],
         "imports": [
+          "chooseImportView",
+          "chooseProductView412",
           "getDoc",
           "PROD_DOC_REF",
           "requestDataDeletion",

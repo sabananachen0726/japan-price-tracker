@@ -38,11 +38,12 @@ export function register(context) {
     }, '*');
   };
   context.chooseProductView412 = function chooseProductView412(view) {
-    document.body.dataset.productView = ['settings', 'pending'].includes(view) ? view : 'master';
+    document.body.dataset.productView = ['settings', 'pending', 'protect'].includes(view) ? view : 'master';
     document.querySelectorAll('[data-product-view]').forEach(b => {
       if (b.tagName === 'BUTTON') b.classList.toggle('active', b.dataset.productView === document.body.dataset.productView);
     });
-    if (view !== 'master') context.loadEmbeddedOrderPlanner();
+    if (view !== 'master' && view !== 'protect') context.loadEmbeddedOrderPlanner();
+    document.dispatchEvent(new CustomEvent('kaisi:product-view', {detail: document.body.dataset.productView}));
     context.routePlannerWorkspace();
   };
   context.chooseContainerView412 = function chooseContainerView412(view) {
@@ -151,7 +152,7 @@ export function initialize(context) {
       if (e.target?.id === 'settings-tab') context.chooseProductView412(document.body.dataset.productView || 'master');
       if (e.target?.id !== 'planner-tab') document.body.classList.remove('planner-wide');
     });
-    document.querySelector('[data-import-view="pi"]').textContent = '③ PI 匯入';
+    document.querySelector('[data-import-view="pi"]').textContent = '廠商 PI';
     document.querySelector('#hub-pi details').open = true;
     context.routePlannerWorkspace();
   });

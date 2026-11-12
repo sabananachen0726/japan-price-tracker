@@ -3,6 +3,8 @@
 <style>{{file:styles/base.css}}</style>
 <style id="jpt-module-ui">{{file:styles/overrides.css}}</style>
 <style>{{shared-mobile-styles}}</style>
+<style>{{shared-theme-styles}}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
 </head><body>
 <div id="login" class="login hide"><h2>🚢 Container Tracker</h2><p class="tiny">使用 Kaisi 現有 Firebase 帳號登入。</p><input id="email" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password"><button class="pri" style="width:100%" onclick="doLogin()">登入</button><div id="loginmsg" class="tiny"></div></div>
 <div id="app" class="hide"><div class="top"><div class="toprow"><div><div class="title">🚢 Container Tracker</div><div class="tiny">Quotation → Shipping → Archive · Linked with Japan Price Tracker</div></div><div><span id="cloud" class="status">連線中</span> </div></div>
@@ -12,7 +14,7 @@
 <div id="quickDrawerBackdrop" class="drawer-backdrop" onclick="closeDrawer()"></div><aside id="quickDrawer" class="quick-drawer"><div id="drawerBody"></div></aside>
 <div id="modal" class="modal"><div class="panel">
 <div class="detail-toolbar"><button type="button" id="manageTrackerData" class="soft">管理此櫃資料</button>
-<div class="tiny">Container Tracker　›　<span style="color:#0f6cf2;font-weight:800">Container Detail</span></div>
+<div class="tiny">Container Tracker　›　<span style="color:#2c4a7c;font-weight:800">Container Detail</span></div>
 
 </div><div id="containerSaveFeedback" class="save-feedback" role="status" aria-live="polite"></div><h2 id="mt"></h2><div id="containerSummary" class="detail-summary"></div><div id="form"></div><div class="actions"><button class="soft" onclick="closeM()">取消</button></div></div></div>
 <script type="module">{{application-script}}</script></body></html>

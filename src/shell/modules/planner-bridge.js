@@ -146,7 +146,7 @@ export function register(context) {
   context.chooseImportView = function chooseImportView(view) {
     const role = context.currentRole || 'viewer';
     if (role !== 'admin' && view !== 'planner') view = 'planner';
-    if (!['master', 'quotes', 'pi', 'planner', 'backup', 'issues', 'manage'].includes(view)) view = role === 'admin' ? 'master' : 'planner';
+    if (!['auto', 'master', 'quotes', 'pi', 'planner', 'backup', 'issues', 'manage'].includes(view)) view = role === 'admin' ? 'auto' : 'planner';
     document.body.dataset.importView = view;
     if (view === 'issues') context.renderPiAudit();
     if (view === 'manage') context.renderDataManager();
@@ -167,7 +167,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261111-v4200';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261112-v4210';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
@@ -177,7 +177,7 @@ export function initialize(context) {
     context.chooseImportView(view);
   });
   document.addEventListener('shown.bs.tab', e => {
-    if (e.target?.id === 'add-tab' && document.getElementById('add-tab').classList.contains('active')) context.chooseImportView(document.body.dataset.importView || (context.currentRole === 'admin' ? 'master' : 'planner'));
+    if (e.target?.id === 'add-tab' && document.getElementById('add-tab').classList.contains('active')) context.chooseImportView(document.body.dataset.importView || (context.currentRole === 'admin' ? 'auto' : 'planner'));
     if (e.target?.id === 'planner-tab' && document.getElementById('planner-tab').classList.contains('active')) {
       document.body.dataset.productView = 'master';
       context.loadEmbeddedOrderPlanner();

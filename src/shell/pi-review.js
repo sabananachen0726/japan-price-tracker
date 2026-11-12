@@ -19,6 +19,6 @@ export async function reviewPiProducts(data,catalog,groups,{chooseOnly=false}={}
     const finish=value=>{dialog.close();dialog.remove();done(value)};
     const cancel=document.createElement('button');cancel.type='button';cancel.textContent='取消';cancel.onclick=()=>finish(null);
     const apply=document.createElement('button');apply.type='button';apply.textContent=chooseOnly?'儲存配對':'確認並繼續匯入';apply.className='btn btn-primary';apply.onclick=()=>finish({links:Object.fromEntries(selects.filter(([,s])=>s.value).map(([i,s])=>[i.barcode,s.value])),reactivate:checks.filter(([,c])=>c.checked).map(([c])=>c)});
-    actions.append(cancel,apply);dialog.append(actions);dialog.addEventListener('cancel',e=>{e.preventDefault();finish(null)});dialog.style.cssText='max-width:680px;width:90%;max-height:80vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px';document.body.append(dialog);dialog.showModal();
+    actions.append(cancel,apply);dialog.append(actions);dialog.addEventListener('cancel',e=>{e.preventDefault();finish(null)});dialog.style.cssText='max-width:680px;width:90%;max-height:80vh;overflow:auto;padding:24px;border:1px solid #e6dbc8;border-radius:12px';document.body.append(dialog);dialog.showModal();
   });
 }

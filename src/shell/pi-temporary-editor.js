@@ -3,11 +3,11 @@ import {isUploadedImage} from '../shared/temporary-image.js';
 import {validateTemporaryProduct} from '../shared/product-identity.js';
 export function editTemporaryProduct({barcode,value={},save}) {
   const dialog=document.createElement('dialog');dialog.className='pi-temporary-dialog';
-  dialog.style.cssText='max-width:560px;width:90%;max-height:85vh;overflow:auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px';
+  dialog.style.cssText='max-width:560px;width:90%;max-height:85vh;overflow:auto;padding:24px;border:1px solid #e6dbc8;border-radius:12px';
   const heading=document.createElement('h3');heading.textContent='暫填名稱／圖片';
   const code=document.createElement('p');code.textContent='條碼：'+barcode;
   const help=document.createElement('p');help.textContent='主檔唯一配對成功後，這裡的暫填資料會自動刪除，改用主檔；訂量與備註會保留。';help.style.color='#52627a';
-  const field=(labelText,type,max,val)=>{const label=document.createElement('label');label.style.cssText='display:block;margin:16px 0';label.append(document.createTextNode(labelText));const input=document.createElement('input');input.type=type;input.maxLength=max;input.value=val;input.style.cssText='display:block;width:100%;padding:10px;margin-top:6px;border:1px solid #cbd5e1;border-radius:6px';label.append(input);return {label,input}};
+  const field=(labelText,type,max,val)=>{const label=document.createElement('label');label.style.cssText='display:block;margin:16px 0';label.append(document.createTextNode(labelText));const input=document.createElement('input');input.type=type;input.maxLength=max;input.value=val;input.style.cssText='display:block;width:100%;padding:10px;margin-top:6px;border:1px solid #e6dbc8;border-radius:6px';label.append(input);return {label,input}};
   const name=field('商品名稱','text',200,value.name||''),image=field('圖片網址','url',2048,value.imgUrl||'');image.input.placeholder='https://…';
   const fileLabel=document.createElement('label');fileLabel.style.cssText='display:block;margin:16px 0';fileLabel.textContent='選擇圖片';
   const fileInput=document.createElement('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';fileInput.style.cssText='display:block;margin-top:8px;max-width:100%';fileLabel.append(fileInput);

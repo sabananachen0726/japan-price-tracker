@@ -31,7 +31,7 @@ export function register(context) {
   };
   context.monthlyManagement = function monthlyManagement(item) {
     const m = context.monthlyInfo(item);
-    return `<input type="number" min="0" step="any" data-edit="monthly" data-code="${context.esc(item.code)}" value="${m.value ?? ''}" placeholder="無銷售資料" ${context.plannerRole === 'viewer' ? 'disabled' : ''}><span class="sales-source ${m.manual ? 'manual' : ''}">${context.esc(m.source)}</span>${m.manual && context.plannerRole !== 'viewer' ? `<button type="button" data-monthly-auto="${context.esc(item.code)}">恢復自動</button>` : ''}`;
+    return `<input type="number" min="0" step="any" data-edit="monthly" data-code="${context.esc(item.code)}" value="${m.value == null ? '' : Math.round(m.value * 100) / 100}" placeholder="無銷售資料" ${context.plannerRole === 'viewer' ? 'disabled' : ''}><span class="sales-source ${m.manual ? 'manual' : ''}">${context.esc(m.source)}</span>${m.manual && context.plannerRole !== 'viewer' ? `<button type="button" data-monthly-auto="${context.esc(item.code)}">恢復自動</button>` : ''}`;
   };
   context.salesMonthCells = function salesMonthCells(item) {
     const m = context.monthlyInfo(item);
