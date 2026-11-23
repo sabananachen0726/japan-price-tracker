@@ -32,6 +32,9 @@ export const definition = {
     "name": "salesAllowedCodes",
     "kind": "function"
   }, {
+    "name": "salesPeriodEnd",
+    "kind": "function"
+  }, {
     "name": "updateSalesSummary",
     "kind": "function"
   }, {
@@ -48,15 +51,20 @@ export const definition = {
     "kind": "function"
   }],
   "imports": ["SalesCore", "renderAll", "state", "storeLocal", "today", "trackerFeed"],
-  "writes": ["decodeSales", "gunzipText", "gzipText", "hydrateSales", "salesAllowedCodes", "salesBusy", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "salesWorker", "updateSalesSummary"]
+  "writes": ["decodeSales", "gunzipText", "gzipText", "hydrateSales", "salesAllowedCodes", "salesBusy", "salesDecoded", "salesError", "salesLoadGeneration", "salesLoading", "salesPending", "salesSignature", "salesSummary", "salesPeriodEnd", "salesWorker", "updateSalesSummary"]
 };
 export function register(context) {
   context.salesAllowedCodes = function salesAllowedCodes() {
     const declared = Array.isArray(context.trackerFeed?.japanCodes) ? new Set(context.trackerFeed.japanCodes) : null;
     return new Set(context.state.items.filter(i => !i.code.startsWith('__') && (!declared || declared.has(i.code))).map(i => i.code));
   };
+  // A saved cutoff date is kept; a saved month (before V4.24) means "use the latest data".
+  context.salesPeriodEnd = function salesPeriodEnd() {
+    const saved = context.state.salesV1?.periodEnd || '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(saved) ? saved : context.SalesCore.defaultEnd(context.salesDecoded, context.today());
+  };
   context.updateSalesSummary = function updateSalesSummary() {
-    context.salesSummary = Object.keys(context.salesDecoded).length ? context.SalesCore.summarize(context.salesDecoded, context.state.salesV1?.periodEnd || context.SalesCore.defaultEnd(context.salesDecoded, context.today()), context.salesAllowedCodes()) : null;
+    context.salesSummary = Object.keys(context.salesDecoded).length ? context.SalesCore.summarize(context.salesDecoded, context.salesPeriodEnd(), context.salesAllowedCodes()) : null;
   };
   context.gzipText = async function gzipText(text) {
     if (typeof CompressionStream === 'undefined') throw Error('請使用新版 Chrome／Edge 匯入銷售檔');

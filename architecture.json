@@ -2545,6 +2545,7 @@
           "salesSignature",
           "salesBusy",
           "salesAllowedCodes",
+          "salesPeriodEnd",
           "updateSalesSummary",
           "gzipText",
           "gunzipText",
@@ -2573,6 +2574,7 @@
           "salesPending",
           "salesSignature",
           "salesSummary",
+          "salesPeriodEnd",
           "salesWorker",
           "updateSalesSummary"
         ]
@@ -2617,6 +2619,7 @@
           "salesError",
           "salesLoading",
           "salesPending",
+          "salesPeriodEnd",
           "salesSummary",
           "state",
           "today"

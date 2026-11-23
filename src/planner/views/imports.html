@@ -1,14 +1,14 @@
 <section class="hidden" id="imports"><section class="panel sales-import-panel" id="salesImportPanel">
  <h3>自動平均月銷與銷售紀錄</h3>
- <p class="intro">只計算本工具日本貨清單中可配對 Item Code 的商品（含 Inactive），其他產品略過。只有 Admin 可匯入；確認後供所有同事共用。平均月銷＝六個月淨銷量 ÷ 有正數出貨的月份數，再除以每箱銷售單位 換算成採購單位。</p>
+ <p class="intro">只計算本工具日本貨清單中可配對 Item Code 的商品（含 Inactive），其他產品略過。只有 Admin 可匯入；確認後供所有同事共用。平均月銷＝截止日往回六個月的淨銷量 ÷ 這段期間有正數出貨的月數（頭尾不完整的月份按天數計），再除以每箱銷售單位 換算成採購單位。</p>
  <p class="mini muted">排除 KAISI (MEL)PTY LTD、KAISI AUSTRALIA HOLDINGS PTY LTD；負數扣回總量。沒有正數出貨的月份按約定視為斷貨排除。XLSM 只讀 SalesHist／Sales，不會修改 MYOB 庫存或採購單位。</p>
  <div class="sales-files">
   <div><b>① 歷史銷售 CSV／CSV.GZ</b><p id="salesHistoryInfo" class="mini muted">尚未匯入</p><button type="button" id="salesHistoryChoose" data-sales-admin>選擇歷史銷售檔</button><input id="salesHistoryFile" type="file" class="hidden" accept=".csv,.gz"></div>
   <div><b>② 最新銷售 XLSM／XLSX</b><p id="salesCurrentInfo" class="mini muted">尚未匯入</p><button type="button" id="salesCurrentChoose" data-sales-admin>選擇最新銷售檔</button><input id="salesCurrentFile" type="file" class="hidden" accept=".xlsm,.xlsx"></div>
  </div>
  <p class="mini muted"><b>可連續選取兩份檔案，一次確認套用。歷史檔儲存後保留，以後只更新最新銷售即可。</b>新增日本貨商品後，請重新匯入銷售檔以補上該品項。重複匯入不累加：同來源以新檔涵蓋月份整月取代，較早月份保留；兩個來源重疊時，XLSM 整月優先。若 SalesHist 與 Sales 重疊，Sales 整月優先，預覽會列出月份。</p>
- <div class="toolbar"><label>計算截止月份 <input id="salesEndMonth" type="month" data-sales-admin></label><button id="salesPeriodPreview" type="button" data-sales-admin>預覽重新計算</button><button id="salesExport" type="button">匯出六個月月銷 CSV</button></div>
- <p class="mini muted">預設選取已有資料的最近已結束月份；本月不納入。截止月份可調整，未滿六個月仍按現有資料計算，並標示資料不足。自動月銷會隨每箱銷售單位 重新換算，手動月銷維持採購單位。</p>
+ <div class="toolbar"><label>計算截止日 <input id="salesEndMonth" type="date" data-sales-admin></label><button id="salesPeriodPreview" type="button" data-sales-admin>預覽重新計算</button><button id="salesExport" type="button">匯出六個月月銷 CSV</button></div>
+ <p class="mini muted">預設為銷售資料的最後一天，往回算六個月，例如資料到 10/11 就算 11/05～10/11；最新月份已有的天數也會算進去。截止日可往前調，資料不足六個月仍按現有資料計算，並標示資料不足。自動月銷會隨每箱銷售單位 重新換算，手動月銷維持採購單位。</p>
  <p id="salesImportStatus" class="mini" aria-live="polite">尚未匯入銷售資料。</p>
  <details id="salesPreview" class="hidden" open><summary id="salesPreviewSummary">銷售預覽</summary><div id="salesPreviewBody" class="sales-preview-scroll"></div><div class="toolbar"><button id="salesApply" type="button" class="primary" data-sales-admin>確認套用並共用</button><button id="salesCancel" type="button">取消預覽</button></div></details>
 </section>

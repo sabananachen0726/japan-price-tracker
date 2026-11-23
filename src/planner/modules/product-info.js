@@ -59,9 +59,10 @@ export function initialize(context){
       notices.push(`有庫存，已 ${flags.weeks} 週無對外出貨（起算 ${flags.since}）。`);
     panel.innerHTML=`<header><strong>${esc(item.code)} · ${esc(item.name)}</strong><button type="button" data-info-close aria-label="關閉商品明細">×</button></header>
       <p>採用月銷：<strong>${moneyFree(m.value)}</strong> 箱／月 · ${esc(m.source)}</p>
-      ${s?`<table><thead><tr><th>月份</th><th>實際淨銷量</th><th>出清</th><th>計入平均</th></tr></thead><tbody>${s.months.map((month,i)=>{
-        const covered=s.coverage[i], factor=m.f, net=m.row?.net[i]||0, clearance=m.row?.clear?.[i]||0;
-        return `<tr><td>${esc(month)}</td><td>${covered&&factor?moneyFree(net/factor):'—'}</td><td>${covered&&factor?moneyFree(clearance/factor):'—'}</td><td>${!covered?'無資料':m.row?.gross[i]>0?'是':'否'}</td></tr>`;
+      ${s?`<p class="info-period">計算期間 ${esc(s.start.split('-').reverse().join('/'))}～${esc(s.end.split('-').reverse().join('/'))}（往回六個月，頭尾月份按天數）</p><table><thead><tr><th>月份</th><th>實際淨銷量</th><th>出清</th><th>計入平均</th></tr></thead><tbody>${s.months.map((month,i)=>{
+        const covered=s.coverage[i], factor=m.f, net=m.row?.net[i]||0, clearance=m.row?.clear?.[i]||0, p=s.parts?.[i];
+        const days=p&&p.inWindow<p.days?`（${p.inWindow}/${p.days} 天）`:'';
+        return `<tr><td>${esc(month)}</td><td>${covered&&factor?moneyFree(net/factor):'—'}</td><td>${covered&&factor?moneyFree(clearance/factor):'—'}</td><td>${!covered?'無資料':m.row?.gross[i]>0?'是'+days:'否'}</td></tr>`;
       }).join('')}</tbody></table>`:'<p>尚無每月銷售明細。</p>'}
       <p>尚可賣（含在途）：${c.sellableMonths===null?'—（月銷或庫存／在途資料不足）':`（庫存 ${moneyFree(c.stock)} 箱＋在途可用 ${moneyFree(c.available)} 箱）÷ ${moneyFree(c.monthly)} 箱／月＝<strong>${c.sellableMonths.toFixed(1)} 月</strong>`}</p>
       ${notices.map(n=>`<p class="info-note">${esc(n)}</p>`).join('')}

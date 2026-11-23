@@ -169,3 +169,9 @@ V4.20.0：關聯品號可同卡比價，各自保留歷史與採購操作；報�
 
 `main_config` 已達 Firestore 單一文件 1 MiB 上限（928 KB）。報價移到 `app_data/quotes_v1`，PI 移到 `app_data/pi_containers_v1`；主文件只留商品、對照、廠商、客找保護等。三份一起讀（`src/shell/modules/data-modes.js`）、一起存（`src/shared/app-storage.js` 的 `addAppDataWrites`）。刪除與 PI 修正會寫到該欄位所在的文件。itemToBarcode 讀取時由商品主檔推算，只存推算不到的少數對照。
 搬移由 Admin 在「資料匯入中心」上方按「升級儲存方式」執行，一次交易完成。上線順序與新規則見 `firebase/README.md`、`firebase/firestore.rules`。
+
+## V4.24.0：月銷改為滾動六個月
+
+- 平均月銷期間＝計算截止日往回六個月（`SalesCore.windowStart`），截止日預設為銷售資料最後一天。例：資料到 2026-11-10 → 2026-05-11～2026-11-10。截止日剛好是月底時，就是六個整月，與舊算法相同。
+- 每個月份的權重＝該月落在期間內、且有資料的天數 ÷ 當月天數。該月銷量計入比例＝期間內天數 ÷ 該月有資料的天數。最新月份若資料只到截止日，就全數計入。平均＝期間淨量（不含出清）÷ 有正數出貨月份的權重合計。
+- 舊版存的 `periodEnd`（YYYY-MM）視為「用最新資料」；新版存 YYYY-MM-DD。畫面上的逐月欄位仍照自然月份顯示，最新月份標示「至 N 日」。

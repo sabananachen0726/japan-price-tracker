@@ -235,7 +235,7 @@ export function initialize(context) {
         if (!context.isAdmin()) throw Error('只有 Admin 可匯入銷售資料');
         ref = context.PLANNER_SOURCES_REF;
         const sales = payload;
-        if (sales?.version !== 1 || !/^\d{4}-\d{2}$/.test(sales.periodEnd) || !sales.sources || typeof sales.batchId !== 'string' || sales.batchId.length > 100) throw Error('月銷資料格式無效');
+        if (sales?.version !== 1 || !/^\d{4}-\d{2}(-\d{2})?$/.test(sales.periodEnd) || !sales.sources || typeof sales.batchId !== 'string' || sales.batchId.length > 100) throw Error('月銷資料格式無效');
         const sources = {};
         for (const [slot, s] of Object.entries(sales.sources)) {
           if (!['history', 'current'].includes(slot) || s?.codec !== 'gzip-base64' || typeof s.body !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(s.body) || typeof s.label !== 'string' || s.label.length > 300) throw Error('銷售來源格式無效');

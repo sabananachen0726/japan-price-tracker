@@ -158,6 +158,7 @@ require('./order-sync.e2e.cjs')({test});
 require('./customer-demand.e2e.cjs')({test,reportFile});
 require('./customer-final.e2e.cjs')({test,reportFile});
 require('./storage-v2.e2e.cjs')({test,reportFile});
+require('./sales-rolling.e2e.cjs')({test,reportFile});
 require('./work-notes.e2e.cjs')({test});
 require('./pi-quantity-defaults.e2e.cjs')({test,reportFile});
 require('./pi-completeness.e2e.cjs')({test});

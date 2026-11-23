@@ -114,13 +114,12 @@ export function initialize(context) {
   };
   context.$('salesExport').onclick = () => {
     if (!context.salesSummary) return alert('尚無銷售資料');
-    const rows = [['Item Code', '商品名稱', '採購單位Factor', ...context.salesSummary.months, '六個月原始淨量', '出貨月份數', '自動月銷(採購)', '使用中月銷(採購)', '來源', '排除月份']];
+    const s = context.salesSummary, monthHeads = s.months.map((m, n) => s.parts?.[n] && s.parts[n].inWindow < s.parts[n].days ? `${m}（計入 ${s.parts[n].inWindow}/${s.parts[n].days} 天）` : m);
+    const rows = [['Item Code', '商品名稱', '採購單位Factor', ...monthHeads, `期間淨量（${s.start}～${s.end}，不含出清）`, '出貨月數（按天數）', '自動月銷(採購)', '使用中月銷(採購)', '來源', '排除月份']];
     for (const i of context.state.items) {
       const m = context.monthlyInfo(i),
         r = m.row;
-      rows.push([i.code, i.name, m.f ?? '', ...Array.from({
-        length: 6
-      }, (_, n) => context.salesSummary.coverage[n] && m.f ? (r?.net[n] || 0) / m.f : ''), r?.total ?? '', r?.count ?? 0, m.auto ?? '', m.value ?? '', m.source, context.salesSummary.months.filter((_, n) => !((r?.gross[n] || 0) > 0)).join('、')]);
+      rows.push([i.code, i.name, m.f ?? '', ...s.months.map((_, n) => s.coverage[n] && m.f ? (r?.net[n] || 0) / m.f : ''), r?.total ?? '', r ? Math.round(r.count * 100) / 100 : 0, m.auto ?? '', m.value ?? '', m.source, context.salesSummary.months.filter((_, n) => !((r?.gross[n] || 0) > 0)).join('、')]);
     }
     context.download('Kaisi_Monthly_Sales_' + context.salesSummary.end + '.csv', '\ufeff' + rows.map(r => r.map(context.csvCell).join(',')).join('\r\n'), 'text/csv');
   };

@@ -9,8 +9,10 @@ test('partial six-month coverage divides by shipment months, returns deducted, c
  const sources={history:{months:{'2026-04':[['A',10,10]],'2026-07':[['A',99,99]]}},current:{months:{'2026-07':[['A',20,18]],'2026-08':[['A',0,-2]],'2026-09':[]}}};
  const result=SalesCore.summarize(sources,'2026-09',new Set(['A']));assert.equal(result.complete,false);assert.equal(result.rows.A.count,2);assert.equal(result.rows.A.raw,13);assert.equal(result.rows.A.total,26);assert.deepEqual(result.overlap,['2026-07']);
 });
-test('latest completed-month selection excludes current month and supports sparse data',()=>{
- assert.equal(SalesCore.defaultEnd({current:{stats:{maxDate:'2026-10-19'}}},'2026-10-19'),'2026-09');assert.equal(SalesCore.defaultEnd({history:{stats:{maxDate:'2026-07-01'}}},'2026-10-19'),'2026-07');
+test('default cutoff is the last day the sales files cover, never in the future',()=>{
+ assert.equal(SalesCore.defaultEnd({current:{stats:{maxDate:'2026-11-10'}}},'2026-11-23'),'2026-11-10');
+ assert.equal(SalesCore.defaultEnd({history:{stats:{maxDate:'2026-07-01'}}},'2026-10-19'),'2026-07-01');
+ assert.equal(SalesCore.defaultEnd({current:{stats:{maxDate:'2026-12-01'}}},'2026-11-23'),'2026-11-23');
 });
 test('reimport replaces covered months without losing older history or scope limits',()=>{
  const old={months:{'2026-06':[['A',5,5]],'2026-07':[['A',10,10]]},stats:{minDate:'2026-06-01',maxDate:'2026-07-31'}};
