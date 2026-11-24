@@ -348,3 +348,9 @@ body[data-import-view="auto"] #hub-auto{display:block}
 .storage-notice>div:first-child{flex:1 1 480px}
 .storage-notice .storage-actions{display:flex;gap:8px;flex-wrap:wrap}
 .storage-notice .storage-status{flex-basis:100%}
+
+/* Container tracker: what still keeps a container out of Archive. */
+.archive-blockers{margin-top:6px;font-size:12px;font-weight:700;color:var(--jp-shu);line-height:1.4}
+.card .archive-blockers{margin-top:8px}
+.archive-section .archive-summary{margin:8px 0 4px;padding:8px 10px;border-radius:8px;background:var(--jp-shu-soft);color:var(--jp-shu-deep);font-weight:700;font-size:13px}
+.archive-section .archive-summary.ok{background:var(--jp-matcha-soft);color:#2f5a32}

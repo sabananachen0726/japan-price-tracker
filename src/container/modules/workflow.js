@@ -16,9 +16,12 @@ export const definition = {
   }, {
     "name": "complete",
     "kind": "function"
+  }, {
+    "name": "archiveBlockers",
+    "kind": "function"
   }],
   "imports": ["$", "D", "dateInfo", "log", "piStats", "today"],
-  "writes": ["actionIssues", "active", "complete", "filt", "stage"]
+  "writes": ["actionIssues", "active", "archiveBlockers", "complete", "filt", "stage"]
 };
 export function register(context) {
   context.active = function active() {
@@ -57,6 +60,19 @@ export function register(context) {
       if (af === 'CHECKLIST' && !issues.includes('Checklist')) return false;
       return true;
     });
+  };
+  // What still keeps an active container out of Archive (same conditions as complete()).
+  context.archiveBlockers = function archiveBlockers(c) {
+    if (!c || c.archived || ['Void', 'Cancelled'].includes(c.status)) return [];
+    const d = context.dateInfo(c), out = [];
+    if (!d.unloadDate) out.push('拆櫃日未填');
+    else if (!d.unloadConfirmed) out.push('未勾「已確認拆櫃」');
+    else if (d.unloadDate > context.today()) out.push('拆櫃日還沒到');
+    if (!c.balancePaid) out.push('尾款未付');
+    if (!c.finalListReceived) out.push('未勾「Final Container List Received」');
+    const missing = context.D.settings.checklist.filter(x => !c.checks?.[x]).length;
+    if (missing) out.push(`Checklist 還差 ${missing} 項`);
+    return out;
   };
   context.complete = function complete(c) {
     if (c.archived && c.status === 'Completed' && c.unloadConfirmed === undefined) return false;
