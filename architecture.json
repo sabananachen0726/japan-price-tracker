@@ -58,6 +58,7 @@
           "CONTAINER_TRACKER_REF",
           "ORDER_PLANNER_REF",
           "sharedOrderDrafts",
+          "purchasePool",
           "unsubscribeOrderPlanner",
           "proposalListenerInitialized",
           "containerTrackerData",
@@ -84,6 +85,7 @@
           "currentDataMode",
           "proposalListenerInitialized",
           "sharedOrderDrafts",
+          "purchasePool",
           "unsubscribeContainerTracker",
           "unsubscribeData",
           "unsubscribeOrderPlanner"
@@ -281,6 +283,7 @@
           "proposalListenerInitialized",
           "setDoc",
           "sharedOrderDrafts",
+          "purchasePool",
           "showAppToast",
           "unsubscribeOrderPlanner"
         ],
@@ -295,6 +298,7 @@
           "sendContainerSnapshot",
           "sendSharedOrderDrafts",
           "sharedOrderDrafts",
+          "purchasePool",
           "startSharedOrderListener",
           "unsubscribeOrderPlanner"
         ]
@@ -557,6 +561,7 @@
           "searchCache",
           "setDoc",
           "sharedOrderDrafts",
+          "purchasePool",
           "showAppToast",
           "signInWithEmailAndPassword",
           "signOut",
@@ -588,6 +593,7 @@
           "protectedApp",
           "saveFirebaseData",
           "sharedOrderDrafts",
+          "purchasePool",
           "unsubscribeContainerTracker",
           "unsubscribeData",
           "unsubscribeOrderPlanner"
@@ -957,6 +963,7 @@
           "importFinalPi"
         ],
         "imports": [
+          "purchasePool",
           "catalogData",
           "cleanBarcode",
           "currentDataMode",
@@ -996,6 +1003,7 @@
           "savePiAndShelf"
         ],
         "imports": [
+          "ORDER_PLANNER_REF",
           "QUOTES_REF",
           "PI_REF",
           "storageState",
@@ -1181,6 +1189,7 @@
           "requestDataDeletion"
         ],
         "imports": [
+          "purchasePool",
           "QUOTES_REF",
           "PI_REF",
           "storageState",
@@ -1742,6 +1751,7 @@
           "piWithReservations"
         ],
         "imports": [
+          "purchasePool",
           "norm",
           "round",
           "state",
@@ -1925,6 +1935,7 @@
           "renderAll"
         ],
         "imports": [
+          "renderPurchaseOverview",
           "renderInventorySync",
           "getItems",
           "currentPiQuantities",
@@ -1970,6 +1981,31 @@
           "renderAll",
           "renderContainers",
           "saveDraft"
+        ]
+      },
+      {
+        "id": "purchase-overview",
+        "file": "modules/purchase-overview.js",
+        "owns": [
+          "purchasePool",
+          "renderPurchaseOverview"
+        ],
+        "imports": [
+          "$",
+          "allPis",
+          "compareContainerIds",
+          "deferredDrafts",
+          "dirtyDrafts",
+          "esc",
+          "events",
+          "fmt",
+          "plannerRole",
+          "state",
+          "trackerFeed"
+        ],
+        "writes": [
+          "purchasePool",
+          "renderPurchaseOverview"
         ]
       },
       {
@@ -2397,6 +2433,7 @@
           "sendPlannerHeight"
         ],
         "imports": [
+          "purchasePool",
           "renderInventorySync",
           "$",
           "applyCatalogSnapshot",
@@ -2437,6 +2474,7 @@
           "orderPending"
         ],
         "writes": [
+          "purchasePool",
           "people",
           "catalogReady",
           "customerSourceReady",

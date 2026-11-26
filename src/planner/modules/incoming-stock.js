@@ -1,3 +1,4 @@
+import {pendingFor} from '../../shared/purchase-pool.js';
 // planner: incoming-stock. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "incoming-stock",
@@ -23,7 +24,7 @@ export const definition = {
     "name": "piWithReservations",
     "kind": "function"
   }],
-  "imports": ["norm", "round", "state", "trackerFeed"],
+  "imports": ["purchasePool", "norm", "round", "state", "trackerFeed"],
   "writes": ["allPis", "allocationCode", "compareContainerIds", "containerNaturalCollator", "incoming", "parseContainerSortKey", "piWithReservations"]
 };
 export function register(context) {
@@ -77,6 +78,12 @@ export function register(context) {
       });
     }
     details.sort((a, b) => context.compareContainerIds(a.container, b.container));
+    // 處理中: submitted requests with no PI yet still count, so nobody orders them twice.
+    for (const p of pendingFor(context.purchasePool, item.code, current)) {
+      const qty = context.round(p.qty);
+      sum += qty;
+      details.push({container: p.request, qty, pending: true, version: '處理中', eta: '', etaEstimated: false});
+    }
     return {
       sum: context.round(sum),
       details,

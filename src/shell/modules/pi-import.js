@@ -1,6 +1,7 @@
 import {parsePiPaste, isMultiPiPaste, piFields, readPiColumns, readPiGrid, piMultiFields, suggestPiColumns} from '../../shared/pi-paste.js';
 import {reviewPiPaste} from '../pi-paste-preview.js';
 import {reviewPiProducts} from '../pi-review.js';
+import {piPoolPlan, reviewPiPool} from '../pi-pool-review.js';
 // shell: pi-import. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "pi-import",
@@ -26,10 +27,19 @@ export const definition = {
     "name": "importFinalPi",
     "kind": "function"
   }],
-  "imports": ["catalogData", "cleanBarcode", "currentDataMode", "escapeFinalPiText", "findPiShelfColumn", "normalizeContainerNo", "normalizeFinalPiDate", "parseFinalPiLine", "parseFinalPiPaste", "piShelfPreviewText", "planPiShelf", "readPiShelfCell", "renderFinalPiContainerList", "renderFinalPiSearch", "requestPlannerBackup412", "savePiAndShelf", "showAppToast"],
+  "imports": ["purchasePool", "catalogData", "cleanBarcode", "currentDataMode", "escapeFinalPiText", "findPiShelfColumn", "normalizeContainerNo", "normalizeFinalPiDate", "parseFinalPiLine", "parseFinalPiPaste", "piShelfPreviewText", "planPiShelf", "readPiShelfCell", "renderFinalPiContainerList", "renderFinalPiSearch", "requestPlannerBackup412", "savePiAndShelf", "showAppToast"],
   "writes": ["downloadFinalPiTemplate", "importFinalPi", "importFinalPiMulti", "invalidFinalPiHtml", "invalidFinalPiText", "looksLikeFinalPiMulti", "parseFinalPiMultiPaste"]
 };
 export function register(context) {
+  // 處理中: the PI takes matching pending lines once the Admin confirms (LIVE only).
+  const attachPoolPlan = async (shelfPlan, groups) => {
+    if (context.currentDataMode !== 'live') return true;
+    const plan = piPoolPlan(window.appData, context.purchasePool, groups, shelfPlan.review?.links || {});
+    const choice = await reviewPiPool(plan);
+    if (choice === 'cancel') return false;
+    if (choice === 'apply') shelfPlan.poolUpdates = plan.updates;
+    return true;
+  };
   context.downloadFinalPiTemplate = function downloadFinalPiTemplate() {
     const rows = [['Container No.', 'Supplier', 'JAN Code', 'Qty(CTN)', 'Item Code', 'Unit Price', 'Expiry Date', 'Shelf Life (Months)'], ['JSR26B1201', 'SilkRoad', '4901234567890', '20', 'ASA001', '125', '30/06/2027'], ['JSR26B1201', 'SilkRoad', '4901234567891', '30', '', '', ''], ['JTC26B1202', 'Tencho', '4901234567892', '15', 'ASA003', '118', '31/08/2027']];
     const csv = '\uFEFF' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
@@ -78,6 +88,7 @@ export function register(context) {
     const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,parsed.groups || [{container,rows:parsed.rows}]);
     if (!review) return;
     shelfPlan.review = review;
+    if (!await attachPoolPlan(shelfPlan, parsed.groups)) return;
     const previousPiData = structuredClone(window.appData);
     window.appData.finalPiContainers ||= {};
     parsed.groups.forEach(g => {
@@ -143,6 +154,7 @@ export function register(context) {
     const review = await reviewPiProducts(window.appData,context.currentDataMode === 'test' ? (await context.requestPlannerBackup412()).catalog : context.catalogData,[{container,rows:parsed.rows}]);
     if (!review) return;
     shelfPlan.review = review;
+    if (!await attachPoolPlan(shelfPlan, [{container, rows: parsed.rows}])) return;
     const previousPiData = structuredClone(window.appData);
     window.appData.finalPiContainers ||= {};
     window.appData.finalPiContainers[container] = {

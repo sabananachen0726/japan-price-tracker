@@ -219,6 +219,7 @@
         "piWithReservations"
       ],
       "imports": [
+        "purchasePool",
         "norm",
         "round",
         "state",
@@ -402,6 +403,7 @@
         "renderAll"
       ],
       "imports": [
+        "renderPurchaseOverview",
         "renderInventorySync",
         "getItems",
         "currentPiQuantities",
@@ -447,6 +449,31 @@
         "renderAll",
         "renderContainers",
         "saveDraft"
+      ]
+    },
+    {
+      "id": "purchase-overview",
+      "file": "modules/purchase-overview.js",
+      "owns": [
+        "purchasePool",
+        "renderPurchaseOverview"
+      ],
+      "imports": [
+        "$",
+        "allPis",
+        "compareContainerIds",
+        "deferredDrafts",
+        "dirtyDrafts",
+        "esc",
+        "events",
+        "fmt",
+        "plannerRole",
+        "state",
+        "trackerFeed"
+      ],
+      "writes": [
+        "purchasePool",
+        "renderPurchaseOverview"
       ]
     },
     {
@@ -874,6 +901,7 @@
         "sendPlannerHeight"
       ],
       "imports": [
+        "purchasePool",
         "renderInventorySync",
         "$",
         "applyCatalogSnapshot",
@@ -914,6 +942,7 @@
         "orderPending"
       ],
       "writes": [
+        "purchasePool",
         "people",
         "catalogReady",
         "customerSourceReady",

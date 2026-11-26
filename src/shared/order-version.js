@@ -1,4 +1,5 @@
 import {brisbaneDate, checkProtectedOrder, checkProtectedFinal} from './customer-protection.js';
+import {requestFromSubmission} from './purchase-pool.js';
 // Comments and product snapshots are independent of the editable purchase proposal.
 const canonical = value => value && typeof value === 'object' && !Array.isArray(value)
   ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -34,7 +35,7 @@ export function reconcileOrder(local, remote, selected) {
   }
   return next;
 }
-export async function commitOrderDraft({runTransaction, db, ref, code, cleaned, expectedVersion, FieldPath, protection}) {
+export async function commitOrderDraft({runTransaction, db, ref, code, cleaned, expectedVersion, FieldPath, protection, pool}) {
   return runTransaction(db, async transaction => {
     const snapshot = await transaction.get(ref);
     const current = (snapshot.exists() ? snapshot.data().drafts?.[code] : null) || null;
@@ -60,8 +61,13 @@ export async function commitOrderDraft({runTransaction, db, ref, code, cleaned, 
         });
       }
     }
-    transaction.set(ref, {drafts: {[code]: cleaned}}, {
-      mergeFields: Object.keys(cleaned).map(field => new FieldPath('drafts', code, field))
+    // 處理中: a request with no PI yet (or one already pooled) is refreshed in the same write.
+    const pooled = snapshot.exists() ? snapshot.data().pool?.requests?.[code] : null;
+    const built = pool && (pool.enter || pooled) ? requestFromSubmission(pooled, cleaned, {name: code, at: pool.at, by: pool.by}) : null;
+    // A notes-only work order has nothing to order, so it does not enter 處理中.
+    const request = built && (pooled || Object.keys(built.lines).length) ? built : null;
+    transaction.set(ref, request ? {drafts: {[code]: cleaned}, pool: {requests: {[code]: request}}} : {drafts: {[code]: cleaned}}, {
+      mergeFields: [...Object.keys(cleaned).map(field => new FieldPath('drafts', code, field)), ...(request ? [new FieldPath('pool', 'requests', code)] : [])]
     });
     return {...(current || {}), ...cleaned};
   });

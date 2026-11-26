@@ -17,6 +17,9 @@ export const definition = {
     "name": "sharedOrderDrafts",
     "kind": "let"
   }, {
+    "name": "purchasePool",
+    "kind": "let"
+  }, {
     "name": "unsubscribeOrderPlanner",
     "kind": "let"
   }, {
@@ -45,7 +48,7 @@ export const definition = {
     "kind": "const"
   }],
   "imports": ["db", "doc"],
-  "writes": ["CONTAINER_TRACKER_REF", "ORDER_PLANNER_REF", "PROD_DOC_REF", "QUOTES_REF", "PI_REF", "storageState", "TEST_LOCAL_KEY", "containerTrackerData", "currentDataMode", "proposalListenerInitialized", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
+  "writes": ["CONTAINER_TRACKER_REF", "ORDER_PLANNER_REF", "PROD_DOC_REF", "QUOTES_REF", "PI_REF", "storageState", "TEST_LOCAL_KEY", "containerTrackerData", "currentDataMode", "proposalListenerInitialized", "sharedOrderDrafts", "purchasePool", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {}
 export function initialize(context) {
@@ -72,6 +75,7 @@ export function initialize(context) {
   context.CONTAINER_TRACKER_REF = context.doc(context.db, "app_data", "container_tracker_v1");
   context.ORDER_PLANNER_REF = context.doc(context.db, "app_data", "order_planner_v1");
   context.sharedOrderDrafts = {};
+  context.purchasePool = {requests: {}};
   context.unsubscribeOrderPlanner = null;
   context.proposalListenerInitialized = false;
   context.containerTrackerData = {

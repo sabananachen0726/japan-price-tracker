@@ -31,8 +31,8 @@ export const definition = {
     "name": "sendContainerSnapshot",
     "kind": "function"
   }],
-  "imports": ["requestDataDeletion","db", "runTransaction", "CATALOG_REF", "ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "showAppToast", "unsubscribeOrderPlanner"],
-  "writes": ["people", "noticeReads", "renderInactiveNotices", "deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "startSharedOrderListener", "unsubscribeOrderPlanner"]
+  "imports": ["requestDataDeletion","db", "runTransaction", "CATALOG_REF", "ORDER_PLANNER_REF", "auth", "catalogData", "containerTrackerData", "containerTrackerFrameLoaded", "currentDataMode", "deleteField", "escapeFinalPiText", "isAdmin", "normalizeContainerNo", "onSnapshot", "plannerLoaded", "proposalListenerInitialized", "setDoc", "sharedOrderDrafts", "purchasePool", "showAppToast", "unsubscribeOrderPlanner"],
+  "writes": ["people", "noticeReads", "renderInactiveNotices", "deleteProposal", "exportProposalExcel", "proposalListenerInitialized", "renderSharedOrderDrafts", "sendContainerSnapshot", "sendSharedOrderDrafts", "sharedOrderDrafts", "purchasePool", "startSharedOrderListener", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
   context.renderInactiveNotices = function renderInactiveNotices() {
@@ -129,7 +129,8 @@ export function register(context) {
       type: 'KAISI_ORDER_DRAFTS',
       mode: 'live',
       people: context.people,
-      drafts: context.sharedOrderDrafts
+      drafts: context.sharedOrderDrafts,
+      pool: context.purchasePool
     }, '*');
   };
   context.startSharedOrderListener = function startSharedOrderListener() {
@@ -144,6 +145,7 @@ export function register(context) {
         if (changed.length) context.showAppToast('收到 ' + changed.length + ' 份新提交／更新的採購建議', 'info');
       }
       context.sharedOrderDrafts = next;
+      context.purchasePool = s.exists() && s.data().pool && typeof s.data().pool === 'object' ? {requests: {}, ...s.data().pool} : {requests: {}};
       context.proposalListenerInitialized = true;
       context.renderSharedOrderDrafts();
       context.sendSharedOrderDrafts();

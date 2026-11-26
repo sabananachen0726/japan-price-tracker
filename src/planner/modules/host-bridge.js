@@ -26,8 +26,8 @@ export const definition = {
     "name": "sendPlannerHeight",
     "kind": "function"
   }],
-  "imports": ["renderInventorySync", "$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect", "receiveOrderDrafts", "finishOrderSave", "orderConflicts", "orderBaselines", "orderPending"],
-  "writes": ["people", "catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
+  "imports": ["purchasePool", "renderInventorySync", "$", "applyCatalogSnapshot", "applyPreparedDefaults", "autosaveLabel", "catalogReady", "clearRecoveredWork", "currentKey", "dirtyDrafts", "discoverCatalog", "draftFingerprint", "events", "finishCloud", "flushRecovery", "loadLocalRecovery", "loadPlannerMode", "localRecovery", "localRecoveryScope", "notifyPlannerWidth412", "plannerRole", "plannerUid", "rebuildCatalog", "refreshShelfImporterRole", "refreshStatusImporterRole", "renderAll", "renderNotes", "saveFingerprints", "selectedWorkApplied", "showColumnFilter", "state", "storeLocal", "trackerFeed", "updateWorkSelect", "receiveOrderDrafts", "finishOrderSave", "orderConflicts", "orderBaselines", "orderPending"],
+  "writes": ["purchasePool", "people", "catalogReady", "customerSourceReady", "deferredDrafts", "localRecovery", "localRecoveryScope", "plannerHeightLast", "plannerHeightPending", "plannerRole", "plannerUid", "refreshRetryStatus", "selectedWorkApplied", "sendPlannerHeight", "trackerFeed", "updateTableHeader"]
 };
 export function register(context) {
   context.refreshRetryStatus = function refreshRetryStatus() {
@@ -172,6 +172,7 @@ export function initialize(context) {
     if (m.type === 'KAISI_ORDER_DRAFTS') {
       context.people = m.people || {};
       context.deferredDrafts = m.drafts || {};
+      context.purchasePool = m.pool && typeof m.pool === 'object' ? {requests: {}, ...m.pool} : {requests: {}};
       if (context.trackerFeed?.mode === 'live') {
         context.receiveOrderDrafts(true);
         context.storeLocal();

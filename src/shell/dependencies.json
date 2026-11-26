@@ -57,6 +57,7 @@
         "CONTAINER_TRACKER_REF",
         "ORDER_PLANNER_REF",
         "sharedOrderDrafts",
+        "purchasePool",
         "unsubscribeOrderPlanner",
         "proposalListenerInitialized",
         "containerTrackerData",
@@ -83,6 +84,7 @@
         "currentDataMode",
         "proposalListenerInitialized",
         "sharedOrderDrafts",
+        "purchasePool",
         "unsubscribeContainerTracker",
         "unsubscribeData",
         "unsubscribeOrderPlanner"
@@ -280,6 +282,7 @@
         "proposalListenerInitialized",
         "setDoc",
         "sharedOrderDrafts",
+        "purchasePool",
         "showAppToast",
         "unsubscribeOrderPlanner"
       ],
@@ -294,6 +297,7 @@
         "sendContainerSnapshot",
         "sendSharedOrderDrafts",
         "sharedOrderDrafts",
+        "purchasePool",
         "startSharedOrderListener",
         "unsubscribeOrderPlanner"
       ]
@@ -556,6 +560,7 @@
         "searchCache",
         "setDoc",
         "sharedOrderDrafts",
+        "purchasePool",
         "showAppToast",
         "signInWithEmailAndPassword",
         "signOut",
@@ -587,6 +592,7 @@
         "protectedApp",
         "saveFirebaseData",
         "sharedOrderDrafts",
+        "purchasePool",
         "unsubscribeContainerTracker",
         "unsubscribeData",
         "unsubscribeOrderPlanner"
@@ -956,6 +962,7 @@
         "importFinalPi"
       ],
       "imports": [
+        "purchasePool",
         "catalogData",
         "cleanBarcode",
         "currentDataMode",
@@ -995,6 +1002,7 @@
         "savePiAndShelf"
       ],
       "imports": [
+        "ORDER_PLANNER_REF",
         "QUOTES_REF",
         "PI_REF",
         "storageState",
@@ -1180,6 +1188,7 @@
         "requestDataDeletion"
       ],
       "imports": [
+        "purchasePool",
         "QUOTES_REF",
         "PI_REF",
         "storageState",

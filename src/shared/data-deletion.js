@@ -1,4 +1,5 @@
 import {piRowsVersion as version} from './pi-audit.js';
+import {revertContainer, lineRemaining} from './purchase-pool.js';
 export const containerKey = value => String(value || '').trim().toUpperCase();
 const fieldVersion=(doc,path,value)=>version(doc==='main'&&path[0]==='products'&&path.length===2&&value?{...value,name:typeof value.name==='string'?value.name.replace(/^O\/S\s*-\s*/i,'').trim():value.name}:value);
 const get = (data,path) => path.reduce((v,k)=>v?.[k],data);
@@ -14,6 +15,10 @@ export function buildDeletionPlan(snapshot,request) {
  if(types.has('pi'))for(const [k,p]of pi){add('main',['finalPiContainers',k],null,true);summary.push(`PI ${p.container||k}：${(p.rows||[]).length} 列／${(p.rows||[]).reduce((n,r)=>n+(Number(r.qty)||0),0)} 箱`);}
  if(types.has('tracker')&&containers.length){add('tracker',['containers'],(tracker.containers||[]).filter(c=>containerKey(c.code)!==code));summary.push(`物流貨櫃 ${code}：${containers.length} 筆（含物流日期、付款、待辦及檢查清單）`);}
  if(types.has('proposal'))for(const [k,p]of proposals){add('planner',['drafts',k],null,true);summary.push(`採購工作單 ${k}：${Object.keys(p.rows||{}).length} 項／${Object.values(p.rows||{}).reduce((n,q)=>n+(Number(q)||0),0)} 箱，含備註及 ${(p.notes||[]).length} 則留言`);}
+ // 處理中: a deleted request leaves the pool; a deleted PI hands its boxes back to pending.
+ const poolRequests=Object.entries(planner.pool?.requests||{}),droppedRequests=new Set();
+ if(types.has('proposal'))for(const [k,r]of poolRequests.filter(([k])=>containerKey(k)===code)){droppedRequests.add(k);add('planner',['pool','requests',k],null,true);summary.push(`處理中 ${k}：${Object.keys(r.lines||{}).length} 項一併移除`);}
+ if(types.has('pi'))for(const [k,r]of poolRequests){if(droppedRequests.has(k))continue;const next=revertContainer(r,code);if(!next)continue;const back=Object.values(next.lines||{}).reduce((n,l)=>n+lineRemaining(l),0)-Object.values(r.lines||{}).reduce((n,l)=>n+lineRemaining(l),0);delete next.completedAt;add('planner',['pool','requests',k],next);summary.push(`處理中 ${k}：${back} 箱回到處理中（原由此 PI 劃掉）`);}
  const quoteIds=new Set((request.quoteIds||[]).map(String));
  const removingQuotes=(main.quotes||[]).filter(q=>types.has('quotes')&&containerKey(q.container)===code || quoteIds.has(String(q.id)));
  if(removingQuotes.length){const selected=new Set(removingQuotes);add('main',['quotes'],(main.quotes||[]).filter(q=>!selected.has(q)));summary.push(`廠商報價：${removingQuotes.length} 筆`);}

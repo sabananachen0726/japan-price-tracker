@@ -42,7 +42,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.CONTAINER_TRACKER_URL = './container.html?v=20261124-v4250';
+  context.CONTAINER_TRACKER_URL = './container.html?v=20261126-v4260';
   context.containerTrackerFrameLoaded = false;
   document.addEventListener('shown.bs.tab', e => {
     if (e.target?.id === 'container-tab') {

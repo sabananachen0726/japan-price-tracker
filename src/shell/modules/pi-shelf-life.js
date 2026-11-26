@@ -19,7 +19,7 @@ export const definition = {
     "name": "savePiAndShelf",
     "kind": "function"
   }],
-  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
+  "imports": ["ORDER_PLANNER_REF", "QUOTES_REF", "PI_REF", "storageState", "FieldPath", "CATALOG_REF", "PROD_DOC_REF", "TEST_LOCAL_KEY", "catalogData", "currentDataMode", "db", "isAdmin", "rebuildItemToBarcode", "refreshUI", "requestPlannerBackup412", "safeCatalogKey", "searchCache", "sendCatalogSources", "writeBatch"],
   "writes": ["catalogData", "findPiShelfColumn", "piShelfPreviewText", "planPiShelf", "readPiShelfCell", "savePiAndShelf"]
 };
 export function register(context) {
@@ -120,6 +120,8 @@ export function register(context) {
       if (hasPatch) batch.set(context.CATALOG_REF, patch, {
         merge: true
       });
+      const poolNames = Object.keys(plan.poolUpdates || {});
+      if (poolNames.length) batch.set(context.ORDER_PLANNER_REF, {pool: {requests: plan.poolUpdates}}, {mergeFields: poolNames.map(name => new context.FieldPath('pool', 'requests', name))});
       await batch.commit();
       if (hasPatch) context.catalogData = candidate;
       context.searchCache.valid = false;

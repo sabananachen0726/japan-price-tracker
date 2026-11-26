@@ -36,8 +36,8 @@ export const definition = {
     "name": "saveFirebaseData",
     "kind": "function"
   }],
-  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
-  "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
+  "imports": ["QUOTES_REF", "PI_REF", "storageState", "FieldPath", "writeBatch", "db", "doc", "containerTrackerFrameLoaded", "plannerLoaded", "refreshUI", "savedAppData", "PROD_DOC_REF", "TEST_LOCAL_KEY", "applyRoleUI", "auth", "copyLiveToTest", "currentDataMode", "currentRole", "isAdmin", "loadEmbeddedContainerTracker", "loadEmbeddedOrderPlanner", "loadRole", "onAuthStateChanged", "refreshCustomerSource", "renderSharedOrderDrafts", "resetCustomerSource", "searchCache", "setDoc", "sharedOrderDrafts", "purchasePool", "showAppToast", "signInWithEmailAndPassword", "signOut", "startCatalogListeners", "startContainerTrackerLink", "startDataListener", "startSharedOrderListener", "stopCatalogListeners", "switchDataMode", "tryCustomerLogin", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner", "updateTestDataInfo"],
+  "writes": ["containerTrackerFrameLoaded", "plannerLoaded", "savedAppData", "authGate", "authUser", "btnLogout", "btnModeLive", "btnModeTest", "btnRefreshTestData", "currentRole", "loginError", "loginForm", "protectedApp", "saveFirebaseData", "sharedOrderDrafts", "purchasePool", "unsubscribeContainerTracker", "unsubscribeData", "unsubscribeOrderPlanner"]
 };
 export function register(context) {
   context.saveFirebaseData = async function saveFirebaseData(options = {}) {
@@ -179,6 +179,7 @@ export function initialize(context) {
       context.plannerLoaded = false;
       context.containerTrackerFrameLoaded = false;
       context.sharedOrderDrafts = {};
+      context.purchasePool = {requests: {}};
       context.renderSharedOrderDrafts();
       document.getElementById('containerTrackerFrame')?.contentWindow?.postMessage({
         type: 'KAISI_CONTAINER_LOCK'

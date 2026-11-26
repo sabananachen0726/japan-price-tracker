@@ -1,6 +1,7 @@
 import {installProtectionManager} from '../protection-manager.js';
 import {installImportHub} from '../import-hub.js';
 import {installStorageUpgrade} from '../storage-upgrade.js';
+import {installPurchasePoolActions} from '../purchase-pool-actions.js';
 import {commitOrderDraft} from '../../shared/order-version.js';
 import {withTemporaryImages} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
@@ -19,6 +20,7 @@ export function initialize(context) {
   installProtectionManager(context);
   installImportHub(context);
   installStorageUpgrade(context);
+  installPurchasePoolActions(context);
   let containerReturnScroll = null;
   const containerFrame = document.getElementById('containerTrackerFrame');
   const detailBar = document.createElement('div');
@@ -267,7 +269,9 @@ export function initialize(context) {
       const mode = context.currentDataMode, uid = context.auth.currentUser.uid;
       commitOrderDraft({runTransaction: context.runTransaction, db: context.db,
         ref: context.ORDER_PLANNER_REF, code, cleaned, expectedVersion, FieldPath: context.FieldPath,
-        protection:{ref:context.PROD_DOC_REF, field:"customerProtection", uid, isAdmin:context.isAdmin()}
+        protection:{ref:context.PROD_DOC_REF, field:"customerProtection", uid, isAdmin:context.isAdmin()},
+        // A work order whose name has no PI yet is a sales request: it enters 處理中.
+        pool:{enter:!Object.entries(window.appData.finalPiContainers || {}).some(([k, p]) => context.normalizeContainerNo(p?.container || k) === context.normalizeContainerNo(code)), at:cleaned.updatedAt, by:cleaned.submittedBy}
       }).then(saved => {
         if (mode !== context.currentDataMode || uid !== context.auth.currentUser?.uid) return;
         plannerWindow.postMessage({type: 'KAISI_ORDER_SAVE_RESULT', code, requestId, ok: true, draft: saved}, '*');

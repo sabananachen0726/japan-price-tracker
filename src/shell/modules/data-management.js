@@ -1,6 +1,6 @@
 import {storageDocFor} from '../../shared/app-storage.js';
 import {buildDeletionPlan,commitDeletionPlan,applyDeletionPlan,deletionContainers,containerKey} from '../../shared/data-deletion.js';
-export const definition={id:'data-management',owns:['openDataManager','renderDataManager','requestDataDeletion'].map(name=>({name,kind:'function'})),imports:['QUOTES_REF','PI_REF','storageState','isAdmin','auth','currentDataMode','chooseImportView','containerTrackerData','sharedOrderDrafts','customerRows','customerStatus','PROD_DOC_REF','CONTAINER_TRACKER_REF','ORDER_PLANNER_REF','db','runTransaction','FieldPath','deleteField','saveFirebaseData','refreshUI','sendPlannerSnapshot','sendContainerSnapshot','sendSharedOrderDrafts','masterSelectedProducts','requestPlannerBackup412','storeTestPlanner412','TEST_LOCAL_KEY'],writes:['containerTrackerData','sharedOrderDrafts','openDataManager','renderDataManager','requestDataDeletion']};
+export const definition={id:'data-management',owns:['openDataManager','renderDataManager','requestDataDeletion'].map(name=>({name,kind:'function'})),imports:['purchasePool','QUOTES_REF','PI_REF','storageState','isAdmin','auth','currentDataMode','chooseImportView','containerTrackerData','sharedOrderDrafts','customerRows','customerStatus','PROD_DOC_REF','CONTAINER_TRACKER_REF','ORDER_PLANNER_REF','db','runTransaction','FieldPath','deleteField','saveFirebaseData','refreshUI','sendPlannerSnapshot','sendContainerSnapshot','sendSharedOrderDrafts','masterSelectedProducts','requestPlannerBackup412','storeTestPlanner412','TEST_LOCAL_KEY'],writes:['containerTrackerData','sharedOrderDrafts','openDataManager','renderDataManager','requestDataDeletion']};
 let controller;
 export function register(context){
  context.openDataManager=options=>controller?.open(options||{});
@@ -10,7 +10,7 @@ export function register(context){
 export function initialize(context){
  const section=document.getElementById('hub-manage'), status=document.getElementById('dataManagerStatus');let busy=false;
  const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const snapshot=()=>({main:window.appData,tracker:context.containerTrackerData,planner:{drafts:context.sharedOrderDrafts}});
+ const snapshot=()=>({main:window.appData,tracker:context.containerTrackerData,planner:{drafts:context.sharedOrderDrafts,pool:context.purchasePool}});
  const render=()=>{
   if(!context.isAdmin()||busy)return;
   const old=document.getElementById('manageContainer').value,codes=deletionContainers(snapshot());document.getElementById('manageContainerOptions').innerHTML=codes.map(c=>`<option value="${escape(c)}"></option>`).join('');document.getElementById('manageContainer').value=old;
