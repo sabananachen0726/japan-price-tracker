@@ -435,3 +435,6 @@ body[data-import-view="auto"] #hub-auto{display:block}
 .hub-mini-table .right{text-align:right}
 @media(max-width:900px){.hub-drawer{width:100%}#productHub.hub-drawer-open .hub-panel{margin-right:0}}
 .hub-photo-empty[hidden],.hub-photo-big img[hidden]{display:none!important}
+.hub-filters{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.hub-filter-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hub-filter-title{min-width:72px;font-size:13px;font-weight:700;color:#4a5263}

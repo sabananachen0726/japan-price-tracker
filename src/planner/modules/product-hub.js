@@ -10,9 +10,10 @@ export const definition = {
   "writes": ["renderProductHub"]
 };
 export const HUB_REASONS = ['缺圖片', '缺名稱', '缺 Item Code', '缺 Barcode', '貨別未分類'];
-const FILTERS = [['pending', '⚠ 待補'], ['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['inactive', '暫停／停產'], ['protect', '客找保護中'], ['hidden', '已隱藏']];
+// Filters stack: 貨別 × 訂貨狀態 × 需要補 (+ 客找保護中 / 已隱藏). Counts follow the other choices.
+const GROUPS = [['kind', '貨別', [['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['unknown', '未分類']]], ['state', '訂貨狀態', [['all', '全部'], ['active', '可訂'], ['inactive', '暫停／停產']]], ['need', '需要補', [['all', '不限'], ['pending', '⚠ 任一待補'], ...HUB_REASONS.map(r => [r, r])]], ['special', '其他', [['protect', '客找保護中'], ['hidden', '已隱藏']]]];
 const api = {};
-const view = {filter: 'pending', reason: '', open: '', openBarcode: '', limit: 150, status: '', statusKind: '', pendingRequest: '', next: false, renderedKey: ''};
+const view = {kind: 'all', state: 'all', need: 'pending', special: '', open: '', openBarcode: '', limit: 150, status: '', statusKind: '', pendingRequest: '', next: false, renderedKey: ''};
 const https = u => /^https:\/\//i.test(String(u || '')) ? String(u) : '';
 const dmy = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
 
@@ -28,7 +29,7 @@ export function register(context) {
   const photoOf = e => e.item.noCode ? https(e.item.imgUrl) : context.photo(e.item);
   const barcodeOf = e => e.master?.missingBarcode ? '' : (/^\d{8,14}$/.test(String(e.item.barcode || '')) ? String(e.item.barcode) : '');
   const piOnly = e => !e.item.noCode && String(e.item.code).startsWith('__');
-  const nameOf = e => { const n = String(e.item.name || '').trim(); return n && n !== e.item.code ? n : ''; };
+  const nameOf = e => { const n = String(e.item.name || '').trim(); return n && n !== e.item.code && !n.startsWith('待補商品資料') ? n : ''; };
   const issues = e => {
     const out = [];
     if (!photoOf(e)) out.push('缺圖片');
@@ -40,18 +41,20 @@ export function register(context) {
   };
   const needsMyob = e => !e.item.noCode && !piOnly(e) && (!context.state.inventory?.[e.item.code] || !context.factor(e.item));
   const protection = e => { const p = context.trackerFeed?.protections?.[e.item.code]; return p?.expiresOn > today() ? p : null; };
-  const matches = e => {
-    const q = String(context.$('manageSearch').value || '').trim().toLowerCase();
-    if (q && !`${e.item.code} ${e.item.name} ${e.item.barcode}`.toLowerCase().includes(q)) return false;
-    const f = view.filter;
-    if (f === 'pending') return issues(e).length > 0 && (!view.reason || issues(e).includes(view.reason));
-    if (f === 'frozen' || f === 'dry') return e.item.kind === f;
-    if (f === 'inactive') return e.item.availability !== 'active';
-    if (f === 'protect') return !!protection(e);
-    if (f === 'hidden') return true;
+  const passes = (e, dim, value) => {
+    if (dim === 'kind') return value === 'all' || (e.item.noCode ? 'unknown' : e.item.kind) === value;
+    if (dim === 'state') return value === 'all' || (value === 'active' ? e.item.availability === 'active' : e.item.availability !== 'active');
+    if (dim === 'need') return value === 'all' || (value === 'pending' ? issues(e).length > 0 : issues(e).includes(value));
+    if (dim === 'special') return value !== 'protect' || !!protection(e);
     return true;
   };
-  const filtered = () => (view.filter === 'hidden' ? hiddenEntries() : entries()).filter(matches).sort((a, b) => issues(b).length - issues(a).length || String(a.item.code || 'ZZZ').localeCompare(String(b.item.code || 'ZZZ')));
+  const searched = e => {
+    const q = String(context.$('manageSearch').value || '').trim().toLowerCase();
+    return !q || `${e.item.code} ${e.item.name} ${e.item.barcode}`.toLowerCase().includes(q);
+  };
+  const matches = (e, except = '') => searched(e) && GROUPS.every(([dim]) => dim === except || passes(e, dim, view[dim]));
+  const source = (special = view.special) => special === 'hidden' ? hiddenEntries() : entries();
+  const filtered = () => source().filter(e => matches(e)).sort((a, b) => issues(b).length - issues(a).length || String(a.item.code || 'ZZZ').localeCompare(String(b.item.code || 'ZZZ')));
   const kindLabel = k => k === 'frozen' ? '冷凍' : k === 'dry' ? '乾貨' : '未分類';
   const statusLabel = s => s === 'paused' ? '暫停訂購' : s === 'discontinued' ? '停產' : '可訂';
   const codeLabel = e => e.item.noCode || piOnly(e) ? '待補 Item Code' : e.item.code;
@@ -132,17 +135,19 @@ export function register(context) {
 
   context.renderProductHub = function renderProductHub() {
     const all = entries(), list = filtered();
-    const count = f => f === 'hidden' ? hiddenEntries().length : all.filter(e => f === 'pending' ? issues(e).length : f === 'all' ? true : f === 'frozen' || f === 'dry' ? e.item.kind === f : f === 'inactive' ? e.item.availability !== 'active' : !!protection(e)).length;
-    context.$('hubFilters').innerHTML = FILTERS.map(([id, label]) => `<button type="button" data-hub-filter="${id}" class="${view.filter === id ? 'active' : ''}" aria-pressed="${view.filter === id}">${label} <span class="count">${count(id)}</span></button>`).join('');
-    const pendingAll = all.filter(e => issues(e).length);
-    context.$('hubReasons').innerHTML = view.filter === 'pending' ? `<span class="mini muted">只看：</span><button type="button" data-hub-reason="" class="${view.reason ? '' : 'active'}">全部原因</button>${HUB_REASONS.map(r => `<button type="button" data-hub-reason="${r}" class="${view.reason === r ? 'active' : ''}">${r} <span class="count">${pendingAll.filter(e => issues(e).includes(r)).length}</span></button>`).join('')}<span class="mini muted hub-myob-note">另有 ${all.filter(needsMyob).length} 款「需匯入 MYOB」（不算待補）</span>` : '';
+    const count = (dim, value) => {
+      if (dim === 'special') return source(value === 'hidden' ? 'hidden' : '').filter(e => matches(e, 'special') && passes(e, 'special', value)).length;
+      return source().filter(e => matches(e, dim) && passes(e, dim, value)).length;
+    };
+    context.$('hubFilters').innerHTML = GROUPS.map(([dim, title, options]) => `<div class="hub-filter-group"><span class="hub-filter-title">${title}</span>${options.map(([value, label]) => { const on = view[dim] === value; return `<button type="button" data-hub-dim="${dim}" data-hub-val="${context.esc(value)}" class="${on ? 'active' : ''}" aria-pressed="${on}">${label} <span class="count">${count(dim, value)}</span></button>`; }).join('')}</div>`).join('');
+    context.$('hubReasons').innerHTML = `<span class="mini muted hub-myob-note">「需匯入 MYOB」（MYOB 未配對或換算待確認）另外標示，不算待補：目前篩選中 ${list.filter(needsMyob).length} 款。</span>`;
     context.$('hubCount').textContent = `顯示 ${Math.min(list.length, view.limit)} / ${list.length} 款`;
     context.$('hubRows').innerHTML = list.slice(0, view.limit).map(e => {
       const img = photoOf(e), miss = issues(e);
       return `<tr data-hub-open="${context.esc(e.key)}" class="${view.open === e.key ? 'hub-selected' : ''}" tabindex="0"><td class="hub-photo-col">${img ? `<img src="${context.esc(img)}" alt="" loading="lazy">` : '<span class="hub-photo-none">無圖</span>'}</td><td><b>${context.esc(codeLabel(e))}</b><div>${context.esc(nameOf(e) || '（未命名）')}</div><div class="mini muted">${context.esc(barcodeOf(e) || '缺少 Barcode')}</div></td><td>${kindLabel(e.item.kind)}</td><td>${e.item.noCode ? '—' : statusLabel(e.item.availability)}</td><td class="right">${e.item.noCode || piOnly(e) ? '—' : context.fmt(e.item.stock)}</td><td>${miss.map(m => `<span class="tag hub-issue">${context.esc(m)}</span>`).join(' ')}${needsMyob(e) ? ' <span class="tag hub-myob">需匯入 MYOB</span>' : ''}${protection(e) ? ' <span class="tag hub-protect">客找保護</span>' : ''}${!miss.length && !needsMyob(e) ? '<span class="mini muted">完整</span>' : ''}</td></tr>`;
-    }).join('') || `<tr><td colspan="6" class="empty">${view.filter === 'pending' ? '目前沒有待補的商品 🎉' : '沒有符合的商品。'}</td></tr>`;
+    }).join('') || `<tr><td colspan="6" class="empty">${view.need !== 'all' ? '這個篩選下沒有要補的商品 🎉' : '沒有符合的商品。'}</td></tr>`;
     context.$('hubMore').innerHTML = list.length > view.limit ? `<button type="button" data-hub-more>再顯示 ${Math.min(150, list.length - view.limit)} 款</button>` : '';
-    const pool = view.filter === 'hidden' ? [...all, ...hiddenEntries()] : all;
+    const pool = view.special === 'hidden' ? [...all, ...hiddenEntries()] : all;
     let current = view.open ? pool.find(e => e.key === view.open) : null;
     if (view.open && !current && view.openBarcode && !String(view.open).startsWith('HIDDEN:')) current = all.find(e => barcodeOf(e) === view.openBarcode) || null;
     if (current) { view.open = current.key; } else view.open = '';
@@ -203,11 +208,14 @@ export function register(context) {
 export function initialize(context) {
   const hub = context.$('productHub');
   hub.addEventListener('click', e => {
-    const t = e.target.closest('[data-hub-filter],[data-hub-reason],[data-hub-more],[data-hub-open],#hubDrawerClose,[data-hub-save],[data-hub-temp],[data-hub-match],[data-hub-hide],[data-hub-unhide]');
+    const t = e.target.closest('[data-hub-dim],[data-hub-more],[data-hub-open],#hubDrawerClose,[data-hub-save],[data-hub-temp],[data-hub-match],[data-hub-hide],[data-hub-unhide]');
     if (!t) return;
     const view = api.hubView;
-    if (t.dataset.hubFilter) { view.filter = t.dataset.hubFilter; view.reason = ''; view.limit = 150; context.renderProductHub(); }
-    else if (t.hasAttribute('data-hub-reason')) { view.reason = t.dataset.hubReason; view.limit = 150; context.renderProductHub(); }
+    if (t.dataset.hubDim) {
+      const dim = t.dataset.hubDim, value = t.dataset.hubVal;
+      view[dim] = dim === 'special' && view.special === value ? '' : value;
+      view.limit = 150; context.renderProductHub();
+    }
     else if (t.hasAttribute('data-hub-more')) { view.limit += 150; context.renderProductHub(); }
     else if (t.id === 'hubDrawerClose') { view.open = ''; view.openBarcode = ''; context.renderProductHub(); }
     else if (t.dataset.hubHide) {

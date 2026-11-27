@@ -6,12 +6,12 @@ module.exports=({test,reportFile})=>{
  test('HUB-01','商品清單','商品管理預設打開商品清單，待補依原因篩選，月銷不算待補',async s=>{
   const frame=await open(s);
   assert(await s.page.locator('[data-product-view="hub"].active').isVisible());
-  assert((await frame.locator('[data-hub-filter="pending"]').getAttribute('class')).includes('active'));
-  assert.equal(await frame.locator('[data-hub-reason="月銷待設定"]').count(),0);
-  await frame.locator('[data-hub-reason="缺圖片"]').click();
+  assert((await frame.locator('[data-hub-dim="need"][data-hub-val="pending"]').getAttribute('class')).includes('active'));
+  assert.equal(await frame.locator('[data-hub-dim="need"][data-hub-val="月銷待設定"]').count(),0);
+  await frame.locator('[data-hub-dim="need"][data-hub-val="缺圖片"]').click();
   const tags=await frame.locator('#hubRows tr').evaluateAll(rows=>rows.map(r=>r.innerText));
   assert(tags.length>0&&tags.every(t=>t.includes('缺圖片')));
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
   assert((await frame.locator('#hubRows').innerText()).includes('ACE005'));
  });
  test('HUB-02','商品清單','補名稱和圖片，Enter 儲存並跳到下一個待補；標成暫填',async s=>{
@@ -29,13 +29,13 @@ module.exports=({test,reportFile})=>{
   await frame.locator('[data-hub-open="TEST002"].hub-selected').waitFor();
   await frame.locator('.hub-status.ok').waitFor();
   // Back on ACE005 the filled fields show as 暫填.
-  await frame.locator('[data-hub-filter="all"]').click();await frame.locator('[data-hub-open="ACE005"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();await frame.locator('[data-hub-open="ACE005"]').click();
   assert.equal(await frame.locator('#hubDrawer .hub-temp').count(),2);
  });
  test('HUB-03','商品清單','PI 新品（主檔沒有）列在待補；填 Item Code 後建立主檔並出現在訂貨規劃',async s=>{
   await s.page.evaluate(async()=>{appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4901005022461',qty:12}]}};await saveFirebaseData()});
   const frame=await open(s);
-  await frame.locator('[data-hub-reason="缺 Item Code"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="缺 Item Code"]').click();
   await frame.locator('[data-hub-open="__JAN_4901005022461"]').click();
   assert((await frame.locator('#hubDrawer').innerText()).includes('缺 Item Code'));
   assert.equal(await frame.locator('#hubDrawerSettings select[data-field="kind"]').inputValue(),'frozen');
@@ -44,12 +44,12 @@ module.exports=({test,reportFile})=>{
   await frame.locator('[data-fill="name"]').fill('Akagi 新品');
   await frame.locator('[data-hub-save="stay"]').click();
   await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.products?.['4901005022461']?.itemCode==='AKAG050');
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
   await frame.locator('[data-hub-open="AKAG050"]').waitFor();
  });
  test('HUB-04','商品清單','抽屜裡改貨別會寫入訂貨設定',async s=>{
   const frame=await open(s);
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
   await frame.locator('[data-hub-open="ACE005"]').click();
   await frame.locator('#hubDrawerSettings select[data-field="kind"]').selectOption('frozen');
   await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.kind==='frozen');
@@ -57,18 +57,18 @@ module.exports=({test,reportFile})=>{
  test('HUB-05','商品清單','Admin 可把內建清單商品隱藏，在「已隱藏」取消',async s=>{
   await s.page.evaluate(async()=>{delete appData.products['4901071404000'];delete appData.itemToBarcode.ACE005;await saveFirebaseData()});
   const frame=await open(s);
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
   await frame.locator('[data-hub-open="ACE005"]').click();
   assert((await frame.locator('#hubDrawerExtra').innerText()).includes('隱藏後就不會出現在訂貨規劃'));
   await frame.locator('[data-hub-hide="ACE005"]').click();
   await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.hiddenSeed===true);
   assert(s.dialogs.some(d=>d.includes('從內建清單隱藏')));
   await frame.locator('[data-hub-open="ACE005"]').waitFor({state:'detached'});
-  await frame.locator('[data-hub-filter="hidden"]').click();
+  await frame.locator('[data-hub-dim="special"][data-hub-val="hidden"]').click();
   await frame.locator('[data-hub-open="HIDDEN:ACE005"]').click();
   await frame.locator('[data-hub-unhide="ACE005"]').click();
   await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.hiddenSeed===false);
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="special"][data-hub-val="hidden"]').click();
   await frame.locator('[data-hub-open="ACE005"]').waitFor();
  });
  test('HUB-06','商品清單','PI 新品沒 Item Code 時，名稱和圖片網址直接存成暫填，清單不再顯示缺圖片',async s=>{
@@ -99,12 +99,23 @@ module.exports=({test,reportFile})=>{
  test('HUB-08','商品清單','只在內建清單的商品補名稱圖片時，以原品號建立主檔',async s=>{
   await s.page.evaluate(async()=>{delete appData.products['4901071404000'];delete appData.itemToBarcode.ACE005;await saveFirebaseData()});
   const frame=await open(s);
-  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
   await frame.locator('[data-hub-open="ACE005"]').click();
   await frame.locator('[data-fill="imgUrl"]').fill('https://example.com/ace.png');
   await frame.locator('[data-hub-save="stay"]').click();
   await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.products?.['4901071404000']?.itemCode==='ACE005');
   assert.equal(await s.page.evaluate(()=>window.__store['app_data/main_config'].products['4901071404000'].imgUrl),'https://example.com/ace.png');
   await frame.locator('.hub-status.ok').waitFor();
+ });
+ test('HUB-09','商品清單','篩選可以疊加：冷凍 × 缺圖片，數字跟著其他篩選變',async s=>{
+  await s.page.evaluate(async()=>{appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4571365752980',qty:6}]}};await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-dim="kind"][data-hub-val="frozen"]').click();
+  await frame.locator('[data-hub-dim="need"][data-hub-val="缺圖片"]').click();
+  const rows=await frame.locator('#hubRows tr[data-hub-open]').evaluateAll(r=>r.map(x=>x.dataset.hubOpen));
+  assert.deepEqual(rows,['__JAN_4571365752980']);
+  assert((await frame.locator('[data-hub-dim="kind"][data-hub-val="dry"]').innerText()).match(/\d+/));
+  assert((await frame.locator('[data-hub-dim="need"][data-hub-val="缺圖片"]').getAttribute('class')).includes('active'));
+  await shot(s,'V4275-hub-filters.png');
  });
 };
