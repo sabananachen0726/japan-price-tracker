@@ -85,4 +85,15 @@ module.exports=({test,reportFile})=>{
   assert(row.includes('缺 Item Code'));
   assert(!(await frame.locator('#hubDrawer').innerText()).includes('缺圖片'));
  });
+ test('HUB-07','商品清單','PI 新品在其他同貨別工作單也看得到；條碼和內建商品相同時不重複',async s=>{
+  await s.page.evaluate(async()=>{delete appData.products['4901071404000'];delete appData.itemToBarcode.ACE005;appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4571365752980',qty:6},{barcode:'4901071404000',qty:4}]}};await saveFirebaseData()});
+  const {frame,handle}=await s.planner();
+  await frame.locator('#kind').selectOption('frozen');
+  await frame.locator('#container').fill('JXX27B0301F');await frame.locator('#container').press('Tab');
+  await frame.locator('[data-qty="__JAN_4571365752980"]').waitFor();
+  const codes=await handle.evaluate(()=>getItems().map(i=>i.code));
+  assert(!codes.includes('__JAN_4901071404000'),codes.join());
+  assert.equal(await handle.evaluate(()=>state.items.filter(i=>i.barcode==='4901071404000').length),1);
+  assert.equal(await handle.evaluate(()=>calc(state.items.find(i=>i.code==='ACE005')).pi.sum),4);
+ });
 };

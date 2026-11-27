@@ -224,6 +224,14 @@ export function register(context) {
         map.delete(key);
       }
     }
+    // A PI row the master could not match (__JAN_) is the same product as a known item
+    // with that barcode (e.g. from the built-in list): use that item instead of a duplicate.
+    const byBarcode = new Map();
+    for (const i of map.values()) if (!String(i.code).startsWith('__') && i.barcode) byBarcode.set(i.barcode, byBarcode.has(i.barcode) ? null : i.code);
+    for (const pi of context.trackerFeed?.pis || []) for (const row of pi.rows || []) {
+      const known = String(row.code).startsWith('__JAN_') && row.barcode ? byBarcode.get(String(row.barcode)) : null;
+      if (known) { row.code = known; row.pending = false; }
+    }
     // A PI-only candidate is local presentation, never a master/catalog write.
     for(const pi of context.trackerFeed?.pis || []) for(const row of pi.rows || []) if(!map.has(row.code))map.set(row.code,{...row,code:row.code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:row.imgUrl||'',sources:[],history:[],piOnly:true});
     // Containers each product came in (PIs and quote history) decide 乾貨／冷凍 when no source says.
