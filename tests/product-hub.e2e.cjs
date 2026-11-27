@@ -40,8 +40,6 @@ module.exports=({test,reportFile})=>{
   assert((await frame.locator('#hubDrawer').innerText()).includes('缺 Item Code'));
   assert.equal(await frame.locator('#hubDrawerSettings select[data-field="kind"]').inputValue(),'frozen');
   assert((await frame.locator('#hubDrawerSettings').innerText()).includes('依貨櫃號碼判斷'));
-  await frame.locator('[data-hub-save="stay"]').click();
-  await frame.locator('.hub-status.bad').waitFor();
   await frame.locator('[data-fill="itemCode"]').fill('akag050');
   await frame.locator('[data-fill="name"]').fill('Akagi 新品');
   await frame.locator('[data-hub-save="stay"]').click();
@@ -72,5 +70,19 @@ module.exports=({test,reportFile})=>{
   await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.hiddenSeed===false);
   await frame.locator('[data-hub-filter="all"]').click();
   await frame.locator('[data-hub-open="ACE005"]').waitFor();
+ });
+ test('HUB-06','商品清單','PI 新品沒 Item Code 時，名稱和圖片網址直接存成暫填，清單不再顯示缺圖片',async s=>{
+  await s.page.evaluate(async()=>{appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4571365752980',qty:6}]}};await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-open="__JAN_4571365752980"]').click();
+  await frame.locator('[data-fill="name"]').fill('札幌焦糖布蕾');
+  await frame.locator('[data-fill="imgUrl"]').fill('https://example.com/brulee.png');
+  await frame.locator('[data-hub-save="stay"]').click();
+  await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.piTemporaryProducts?.['4571365752980']?.imgUrl==='https://example.com/brulee.png');
+  await frame.locator('.hub-status.ok').waitFor();
+  const row=await frame.locator('[data-hub-open="__JAN_4571365752980"]').innerText();
+  assert(!row.includes('缺圖片'),row);assert(row.includes('札幌焦糖布蕾'),row);
+  assert(row.includes('缺 Item Code'));
+  assert(!(await frame.locator('#hubDrawer').innerText()).includes('缺圖片'));
  });
 };

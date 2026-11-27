@@ -7,6 +7,7 @@ import {commitOrderDraft} from '../../shared/order-version.js';
 import {withTemporaryImages} from '../temporary-image-store.js';
 import {isUploadedImage,validImageBarcode} from '../../shared/temporary-image.js';
 import {editTemporaryProduct} from '../pi-temporary-editor.js';
+import {validateTemporaryProduct} from '../../shared/product-identity.js';
 import {reviewPiProducts} from '../pi-review.js';
 import {createProductResolver} from '../../shared/product-identity.js';
 // shell: frame-commands. Declare dependencies here when adding cross-feature calls.
@@ -34,6 +35,22 @@ export function initialize(context) {
     const action = e.target.closest('[data-detail-action]')?.dataset.detailAction;
     if (action) containerFrame?.contentWindow?.postMessage({type: 'KAISI_CONTAINER_ACTION', action}, '*');
   });
+  // Save a PI-only product's temporary name / image (dialog and 商品詳細 share this).
+  const saveTemporary = async (barcode, mode, next) => {
+    if(!context.isAdmin() || mode!==context.currentDataMode)throw Error('帳號或資料模式已變更，請關閉後重新開啟');
+    if(!createProductResolver(window.appData)({barcode}).pending)throw Error('此商品已配對主檔，請關閉後查看正式資料');
+    window.appData.piTemporaryProducts ||= {};
+    const old=window.appData.piTemporaryProducts[barcode] || {}, now=new Date().toISOString();
+    const record={name:next.name,imgUrl:next.imgUrl,updatedAt:now};
+    let image;
+    if(next.replaceImage && next.imageData){if(!validImageBarcode(barcode)||!isUploadedImage(next.imageData))throw Error('圖片資料無效');if(mode==='live'){record.imageRevision=now;image={barcode,dataUrl:next.imageData}}else record.imageData=next.imageData}
+    else if(!next.replaceImage){if(old.imageRevision)record.imageRevision=old.imageRevision;if(mode==='test'&&old.imageData)record.imageData=old.imageData}
+    if(record.name||record.imgUrl||record.imageRevision||record.imageData)window.appData.piTemporaryProducts[barcode]=record;
+    else delete window.appData.piTemporaryProducts[barcode];
+    const ok=await context.saveFirebaseData({temporaryImage:image});
+    if(ok){context.refreshUI();context.sendPlannerSnapshot();}
+    return ok;
+  };
   context.events.onMessage(e => {
     if (!context.auth.currentUser) return;
     const plannerWindow = document.getElementById('plannerFrame')?.contentWindow;
@@ -45,21 +62,18 @@ export function initialize(context) {
       const exists=Object.values(window.appData.finalPiContainers||{}).some(p=>(p.rows||[]).some(r=>String(r.barcode)===barcode));
       if(!exists || !createProductResolver(window.appData)({barcode}).pending)return;
       const mode=context.currentDataMode;
-      editTemporaryProduct({barcode,value:withTemporaryImages(window.appData,mode).piTemporaryProducts?.[barcode],save:async next=>{
-        if(!context.isAdmin() || mode!==context.currentDataMode)throw Error('帳號或資料模式已變更，請關閉後重新開啟');
-        if(!createProductResolver(window.appData)({barcode}).pending)throw Error('此商品已配對主檔，請關閉後查看正式資料');
-        window.appData.piTemporaryProducts ||= {};
-        const old=window.appData.piTemporaryProducts[barcode] || {}, now=new Date().toISOString();
-        const record={name:next.name,imgUrl:next.imgUrl,updatedAt:now};
-        let image;
-        if(next.replaceImage && next.imageData){if(!validImageBarcode(barcode)||!isUploadedImage(next.imageData))throw Error('圖片資料無效');if(mode==='live'){record.imageRevision=now;image={barcode,dataUrl:next.imageData}}else record.imageData=next.imageData}
-        else if(!next.replaceImage){if(old.imageRevision)record.imageRevision=old.imageRevision;if(mode==='test'&&old.imageData)record.imageData=old.imageData}
-        if(record.name||record.imgUrl||record.imageRevision||record.imageData)window.appData.piTemporaryProducts[barcode]=record;
-        else delete window.appData.piTemporaryProducts[barcode];
-        const ok=await context.saveFirebaseData({temporaryImage:image});
-        if(ok){context.refreshUI();context.sendPlannerSnapshot();}
-        return ok;
-      }});
+      editTemporaryProduct({barcode,value:withTemporaryImages(window.appData,mode).piTemporaryProducts?.[barcode],save:next=>saveTemporary(barcode,mode,next)});
+      return;
+    }
+    // 商品詳細 saves a name / image URL for a PI-only product without opening the dialog.
+    if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_TEMP_SAVE') {
+      const reply=(ok,error='')=>plannerWindow.postMessage({type:'KAISI_MASTER_FILL_RESULT',requestId:e.data.requestId,ok,error,changed:ok?['temporary']:[]},'*');
+      if(!context.isAdmin())return reply(false,'只有 Admin 可以暫填');
+      const barcode=String(e.data.barcode||'');
+      const exists=Object.values(window.appData.finalPiContainers||{}).some(p=>(p.rows||[]).some(r=>String(r.barcode)===barcode));
+      if(!exists)return reply(false,'找不到這個 PI 商品，請重新整理');
+      let next;try{next=validateTemporaryProduct({name:e.data.name||'',imgUrl:e.data.imgUrl||''})}catch(err){return reply(false,err.message)}
+      saveTemporary(barcode,context.currentDataMode,{...next,replaceImage:false}).then(ok=>reply(ok,ok?'':'儲存失敗，請重試'),err=>reply(false,err.message||String(err)));
       return;
     }
     if (e.source === plannerWindow && e.data?.type === 'KAISI_PI_MATCH') {

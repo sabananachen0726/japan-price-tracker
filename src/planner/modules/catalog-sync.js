@@ -225,7 +225,7 @@ export function register(context) {
       }
     }
     // A PI-only candidate is local presentation, never a master/catalog write.
-    for(const pi of context.trackerFeed?.pis || []) for(const row of pi.rows || []) if(!map.has(row.code))map.set(row.code,{...row,code:row.code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:'',sources:[],history:[],piOnly:true});
+    for(const pi of context.trackerFeed?.pis || []) for(const row of pi.rows || []) if(!map.has(row.code))map.set(row.code,{...row,code:row.code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:row.imgUrl||'',sources:[],history:[],piOnly:true});
     // Containers each product came in (PIs and quote history) decide 乾貨／冷凍 when no source says.
     const seen = new Map(), add = (key, container) => { if (!key) return; if (!seen.has(key)) seen.set(key, []); seen.get(key).push(container); };
     for (const pi of context.trackerFeed?.pis || []) for (const row of pi.rows || []) { add(row.code, pi.container); if (row.barcode) add('BC:' + row.barcode, pi.container); }

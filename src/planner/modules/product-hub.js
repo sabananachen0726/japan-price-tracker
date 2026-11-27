@@ -95,13 +95,14 @@ export function register(context) {
     const noMaster = piOnly(e) && !e.master;
     if (!admin) form = '<p class="mini muted">只有 Admin 可以補主檔資料。</p>';
     else {
-      const imgValue = e.item.noCode ? e.master?.imgUrl || '' : e.master?.imgUrl || '';
+      const imgValue = noMaster ? https(e.item.imgUrl) : e.master?.imgUrl || '';
+      const temp = noMaster && e.item.temporary;
       form = `<div class="hub-fill" data-hub-key="${context.esc(e.key)}">
-        ${fillRow('商品名稱', 'name', nameOf(e), {manual: manual.has('name'), placeholder: '輸入商品名稱'})}
-        ${fillRow('圖片網址', 'imgUrl', imgValue, {manual: manual.has('imgUrl'), placeholder: 'https://…', type: 'url'})}
-        ${e.item.noCode || piOnly(e) ? fillRow('Item Code', 'itemCode', '', {placeholder: '例如 AKAG050', hint: noMaster ? '填了 Item Code 才能寫入主檔；只想先補名稱圖片可用下方「暫填名稱／圖片」。' : ''}) : ''}
+        ${fillRow('商品名稱', 'name', nameOf(e), {manual: manual.has('name') || (temp && !!nameOf(e)), placeholder: '輸入商品名稱'})}
+        ${fillRow('圖片網址', 'imgUrl', imgValue, {manual: manual.has('imgUrl') || (temp && !!imgValue), placeholder: 'https://…', type: 'url', hint: noMaster && img && !imgValue ? '目前用的是上傳的照片。' : ''})}
+        ${e.item.noCode || piOnly(e) ? fillRow('Item Code', 'itemCode', '', {placeholder: '例如 AKAG050', hint: noMaster ? '有 Item Code 就會建立主檔；沒填的話，名稱和圖片網址先存成暫填。' : ''}) : ''}
         ${!barcodeOf(e) ? fillRow('Barcode', 'barcode', '', {manual: manual.has('barcode'), placeholder: '8–14 位數字'}) : `<div class="hub-field"><span class="hub-label">Barcode${manual.has('barcode') ? ' <span class="tag hub-temp">暫填</span>' : ''}</span><div>${context.esc(barcodeOf(e))}</div></div>`}
-        <div class="row hub-actions"><button type="button" class="primary" data-hub-save="next">儲存並到下一個待補</button><button type="button" data-hub-save="stay">儲存</button>${noMaster ? `<button type="button" data-hub-temp="${context.esc(i.barcode)}">暫填名稱／圖片（可上傳照片）</button><button type="button" data-hub-match="${context.esc(i.barcode)}">配對既有主檔</button>` : ''}</div>
+        <div class="row hub-actions"><button type="button" class="primary" data-hub-save="next">儲存並到下一個待補</button><button type="button" data-hub-save="stay">儲存</button>${noMaster ? `<button type="button" data-hub-temp="${context.esc(i.barcode)}">上傳照片…</button><button type="button" data-hub-match="${context.esc(i.barcode)}">配對既有主檔</button>` : ''}</div>
         <div class="hub-status ${view.statusKind}" role="status" aria-live="polite">${context.esc(view.status)}</div>
         <p class="mini muted">在名稱或網址欄按 Enter ＝ 儲存並到下一個。補的資料是暫填：下次匯入主檔時，主檔有值的欄位會直接覆蓋；主檔空白則保留你補的。</p>
       </div>`;
@@ -172,17 +173,19 @@ export function register(context) {
     box.querySelectorAll('[data-fill]').forEach(input => { fields[input.dataset.fill] = input.value; });
     if (!fields.itemCode) delete fields.itemCode;
     if (!fields.barcode) delete fields.barcode;
-    if (piOnly(e) && !e.master && !fields.itemCode) {
-      view.status = 'PI 新品要先填 Item Code 才能寫入主檔；只補名稱圖片請按「暫填名稱／圖片」。'; view.statusKind = 'bad';
-      view.renderedKey = ''; renderDrawer(e); return;
-    }
     const requestId = crypto.randomUUID();
+    // A PI-only product without an Item Code keeps its name / image as a temporary fill.
+    const temporary = piOnly(e) && !e.master && !fields.itemCode;
+    if (temporary && fields.imgUrl && !/^https:\/\//i.test(fields.imgUrl.trim())) {
+      view.status = '圖片請貼 https:// 開頭的網址'; view.statusKind = 'bad'; view.renderedKey = ''; renderDrawer(e); return;
+    }
     view.pendingRequest = requestId;
     view.next = next ? api.hubNextKey(e.key) : '';
     view.status = '儲存中…'; view.statusKind = 'pending';
     const status = box.querySelector('.hub-status');
     if (status) { status.textContent = view.status; status.className = 'hub-status pending'; }
-    window.parent.postMessage({type: 'KAISI_MASTER_FILL', requestId, masterKey: e.master?.masterKey || '', barcode: String(e.item.barcode || ''), fields}, '*');
+    if (temporary) window.parent.postMessage({type: 'KAISI_PI_TEMP_SAVE', requestId, barcode: String(e.item.barcode || ''), name: fields.name || '', imgUrl: (fields.imgUrl || '').trim()}, '*');
+    else window.parent.postMessage({type: 'KAISI_MASTER_FILL', requestId, masterKey: e.master?.masterKey || '', barcode: String(e.item.barcode || ''), fields}, '*');
   };
   api.hubResult = m => {
     if (m.requestId !== view.pendingRequest) return;
@@ -216,7 +219,8 @@ export function initialize(context) {
       view.open = ''; context.renderProductHub();
     }
     else if (t.dataset.hubSave) api.hubSave(t.dataset.hubSave === 'next');
-    else if (t.dataset.hubTemp) window.parent.postMessage({type: 'KAISI_PI_TEMP_EDIT', barcode: t.dataset.hubTemp}, '*');
+    else if (t.dataset.hubTemp) { view.status = ''; view.statusKind = ''; const s = hub.querySelector('.hub-status'); if (s) s.textContent = ''; }
+    if (t.dataset.hubTemp) window.parent.postMessage({type: 'KAISI_PI_TEMP_EDIT', barcode: t.dataset.hubTemp}, '*');
     else if (t.dataset.hubMatch) window.parent.postMessage({type: 'KAISI_PI_MATCH', barcode: t.dataset.hubMatch}, '*');
     else if (t.dataset.hubOpen && !e.target.closest('#hubDrawer')) api.hubOpen(t.dataset.hubOpen);
   });
