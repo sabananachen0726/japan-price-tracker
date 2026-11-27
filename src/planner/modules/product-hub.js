@@ -172,6 +172,8 @@ export function register(context) {
     const fields = {};
     box.querySelectorAll('[data-fill]').forEach(input => { fields[input.dataset.fill] = input.value; });
     if (!fields.itemCode) delete fields.itemCode;
+    // A product known only from the built-in list has no master record yet: create one under its own code.
+    if (!e.master && !e.item.noCode && !piOnly(e)) fields.itemCode = e.item.code;
     if (!fields.barcode) delete fields.barcode;
     const requestId = crypto.randomUUID();
     // A PI-only product without an Item Code keeps its name / image as a temporary fill.

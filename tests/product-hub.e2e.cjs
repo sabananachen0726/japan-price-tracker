@@ -96,4 +96,15 @@ module.exports=({test,reportFile})=>{
   assert.equal(await handle.evaluate(()=>state.items.filter(i=>i.barcode==='4901071404000').length),1);
   assert.equal(await handle.evaluate(()=>calc(state.items.find(i=>i.code==='ACE005')).pi.sum),4);
  });
+ test('HUB-08','商品清單','只在內建清單的商品補名稱圖片時，以原品號建立主檔',async s=>{
+  await s.page.evaluate(async()=>{delete appData.products['4901071404000'];delete appData.itemToBarcode.ACE005;await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-open="ACE005"]').click();
+  await frame.locator('[data-fill="imgUrl"]').fill('https://example.com/ace.png');
+  await frame.locator('[data-hub-save="stay"]').click();
+  await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.products?.['4901071404000']?.itemCode==='ACE005');
+  assert.equal(await s.page.evaluate(()=>window.__store['app_data/main_config'].products['4901071404000'].imgUrl),'https://example.com/ace.png');
+  await frame.locator('.hub-status.ok').waitFor();
+ });
 };
