@@ -113,6 +113,9 @@ export function register(context) {
         } else if (key === 'kind') {
           if (!['dry', 'frozen', 'unknown'].includes(value)) throw Error('貨別無效');
           v.kind = value;
+        } else if (key === 'hiddenSeed') {
+          if (typeof value !== 'boolean') throw Error('隱藏設定無效');
+          v.hiddenSeed = value;
         } else if (key === 'availability') {
           if (!['active', 'paused', 'discontinued', 'merged'].includes(value)) throw Error('訂貨狀態無效');
           v.availability = value;

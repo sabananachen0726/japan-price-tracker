@@ -190,8 +190,8 @@ export function register(context) {
       map.set(key, existing);
       return existing;
     };
-    // 1. 你整理後的 Excel（只內建已核准保留的 1,266 款）。
-    for (const item of context.SEED.items) addSource(item.code, item, '整理 Excel');
+    // 1. 你整理後的 Excel（內建 1,263 款）；Admin 在商品詳細隱藏的品號不載入。
+    for (const item of context.SEED.items) if (context.state.catalog?.[item.code]?.hiddenSeed !== true) addSource(item.code, item, '整理 Excel');
     // 2. 僅明確標示 isFinal === true 的 PI，可作為商品候選來源。
     //    尚未 Final 的 PI 仍由 incoming() 作為在途庫存計算，不在此新增產品。
     for (const pi of [...(context.trackerFeed?.pis || [])].filter(p => p.isFinal === true).sort((a, b) => String(a.updated || '').localeCompare(String(b.updated || '')) || String(a.container || '').localeCompare(String(b.container || '')))) {

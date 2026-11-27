@@ -23,7 +23,7 @@ export const definition = {
     "name": "renderCatalogSources",
     "kind": "function"
   }],
-  "imports": ["$", "esc", "factor", "factorInfo", "fmt", "migrationConflicts", "monthlyManagement", "normalizePlannerState", "openPlannerDialog", "photo", "plannerRole", "saveCatalogPatch", "sendCloud", "shelfLife", "state", "storeLocal", "trackerFeed", "val"],
+  "imports": ["SEED", "$", "esc", "factor", "factorInfo", "fmt", "migrationConflicts", "monthlyManagement", "normalizePlannerState", "openPlannerDialog", "photo", "plannerRole", "saveCatalogPatch", "sendCloud", "shelfLife", "state", "storeLocal", "trackerFeed", "val"],
   "writes": ["itemIssues", "kindSelect", "renderCatalogSources", "renderManagement", "renderPending", "showHistory", "state", "statusSelect"]
 };
 export function register(context) {
@@ -79,7 +79,7 @@ export function register(context) {
       count = s => context.state.items.filter(i => i.sources.includes(s)).length;
     const active = context.state.items.filter(i => i.availability === 'active').length;
     context.$('catalogSummary').textContent = `三來源候選商品 ${n} 款 · Active ${active} · Inactive ${n - active}；來源：商品主檔 ${count('商品主檔')}、Final PI ${count('Final PI')}、整理 Excel ${count('整理 Excel')}（可重疊）`;
-    context.$('sourceInfo').innerHTML = `准入來源只有：① 已整理 Excel（內建 1,266 款）② 已標記 Final 的 PI ③ 商品主檔；優先權：商品主檔 ＞ Final PI ＞ 整理 Excel。<br>舊訂貨表、歷史 Excel 訂貨紀錄、非 Final PI、MYOB 庫存、客訂、舊共享商品庫都不新增可訂商品。<br>MYOB：${context.esc(context.state.meta.myob || '提供的庫存快照')}<br>客訂：${context.esc(context.state.meta.orders || '24 小時快取')}<br>最高庫存、月銷與 Inactive：共享商品設定。`;
+    context.$('sourceInfo').innerHTML = `准入來源只有：① 已整理 Excel（內建 ${context.SEED.items.length} 款，可在商品詳細隱藏）② 已標記 Final 的 PI ③ 商品主檔；優先權：商品主檔 ＞ Final PI ＞ 整理 Excel。<br>舊訂貨表、歷史 Excel 訂貨紀錄、非 Final PI、MYOB 庫存、客訂、舊共享商品庫都不新增可訂商品。<br>MYOB：${context.esc(context.state.meta.myob || '提供的庫存快照')}<br>客訂：${context.esc(context.state.meta.orders || '24 小時快取')}<br>最高庫存、月銷與 Inactive：共享商品設定。`;
   };
 }
 export function initialize(context) {

@@ -2017,6 +2017,8 @@
           "renderProductHub"
         ],
         "imports": [
+          "SEED",
+          "saveCatalogPatch",
           "$",
           "esc",
           "events",
@@ -2242,6 +2244,7 @@
           "renderCatalogSources"
         ],
         "imports": [
+          "SEED",
           "$",
           "esc",
           "factor",

@@ -56,4 +56,21 @@ module.exports=({test,reportFile})=>{
   await frame.locator('#hubDrawerSettings select[data-field="kind"]').selectOption('frozen');
   await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.kind==='frozen');
  });
+ test('HUB-05','商品清單','Admin 可把內建清單商品隱藏，在「已隱藏」取消',async s=>{
+  await s.page.evaluate(async()=>{delete appData.products['4901071404000'];delete appData.itemToBarcode.ACE005;await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-open="ACE005"]').click();
+  assert((await frame.locator('#hubDrawerExtra').innerText()).includes('隱藏後就不會出現在訂貨規劃'));
+  await frame.locator('[data-hub-hide="ACE005"]').click();
+  await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.hiddenSeed===true);
+  assert(s.dialogs.some(d=>d.includes('從內建清單隱藏')));
+  await frame.locator('[data-hub-open="ACE005"]').waitFor({state:'detached'});
+  await frame.locator('[data-hub-filter="hidden"]').click();
+  await frame.locator('[data-hub-open="HIDDEN:ACE005"]').click();
+  await frame.locator('[data-hub-unhide="ACE005"]').click();
+  await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.hiddenSeed===false);
+  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-open="ACE005"]').waitFor();
+ });
 };

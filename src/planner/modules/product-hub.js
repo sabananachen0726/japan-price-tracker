@@ -6,11 +6,11 @@ export const definition = {
     "name": "renderProductHub",
     "kind": "function"
   }],
-  "imports": ["$", "esc", "events", "factor", "factorInfo", "fmt", "incoming", "kindSelect", "photo", "plannerRole", "shelfLife", "state", "statusSelect", "trackerFeed", "val"],
+  "imports": ["SEED", "saveCatalogPatch", "$", "esc", "events", "factor", "factorInfo", "fmt", "incoming", "kindSelect", "photo", "plannerRole", "shelfLife", "state", "statusSelect", "trackerFeed", "val"],
   "writes": ["renderProductHub"]
 };
 export const HUB_REASONS = ['缺圖片', '缺名稱', '缺 Item Code', '缺 Barcode', '貨別未分類'];
-const FILTERS = [['pending', '⚠ 待補'], ['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['inactive', '暫停／停產'], ['protect', '客找保護中']];
+const FILTERS = [['pending', '⚠ 待補'], ['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['inactive', '暫停／停產'], ['protect', '客找保護中'], ['hidden', '已隱藏']];
 const api = {};
 const view = {filter: 'pending', reason: '', open: '', openBarcode: '', limit: 150, status: '', statusKind: '', pendingRequest: '', next: false, renderedKey: ''};
 const https = u => /^https:\/\//i.test(String(u || '')) ? String(u) : '';
@@ -24,6 +24,7 @@ export function register(context) {
     for (const m of context.trackerFeed?.masterNoCode || []) list.push({key: 'MASTER:' + m.masterKey, master: {masterKey: m.masterKey, manual: m.manual || [], missingBarcode: !m.barcode, imgUrl: m.imgUrl}, item: {code: '', name: m.name, barcode: m.barcode, imgUrl: m.imgUrl, kind: 'unknown', availability: 'active', history: [], sources: ['商品主檔'], noCode: true}});
     return list;
   };
+  const hiddenEntries = () => context.SEED.items.filter(s => context.state.catalog?.[s.code]?.hiddenSeed === true).map(s => ({key: 'HIDDEN:' + s.code, hidden: true, master: null, item: {...s, availability: 'active', history: [], sources: ['整理 Excel']}}));
   const photoOf = e => e.item.noCode ? https(e.item.imgUrl) : context.photo(e.item);
   const barcodeOf = e => e.master?.missingBarcode ? '' : (/^\d{8,14}$/.test(String(e.item.barcode || '')) ? String(e.item.barcode) : '');
   const piOnly = e => !e.item.noCode && String(e.item.code).startsWith('__');
@@ -47,9 +48,10 @@ export function register(context) {
     if (f === 'frozen' || f === 'dry') return e.item.kind === f;
     if (f === 'inactive') return e.item.availability !== 'active';
     if (f === 'protect') return !!protection(e);
+    if (f === 'hidden') return true;
     return true;
   };
-  const filtered = () => entries().filter(matches).sort((a, b) => issues(b).length - issues(a).length || String(a.item.code || 'ZZZ').localeCompare(String(b.item.code || 'ZZZ')));
+  const filtered = () => (view.filter === 'hidden' ? hiddenEntries() : entries()).filter(matches).sort((a, b) => issues(b).length - issues(a).length || String(a.item.code || 'ZZZ').localeCompare(String(b.item.code || 'ZZZ')));
   const kindLabel = k => k === 'frozen' ? '冷凍' : k === 'dry' ? '乾貨' : '未分類';
   const statusLabel = s => s === 'paused' ? '暫停訂購' : s === 'discontinued' ? '停產' : '可訂';
   const codeLabel = e => e.item.noCode || piOnly(e) ? '待補 Item Code' : e.item.code;
@@ -79,6 +81,13 @@ export function register(context) {
     if (keepTyping) return;
     view.renderedKey = e.key;
     const i = e.item, miss = issues(e), manual = new Set(e.master?.manual || []), admin = context.plannerRole === 'admin';
+    if (e.hidden) {
+      context.$('hubDrawerTitle').innerHTML = `<div class="hub-title-code">${context.esc(i.code)}</div><div class="hub-title-name">${context.esc(nameOf(e) || '（未命名）')}</div>`;
+      context.$('hubDrawerBody').innerHTML = `<div class="hub-section"><h4>內建清單（已隱藏）</h4><p>這個品號已從內建「整理 Excel」清單隱藏，不會出現在訂貨規劃。條碼：${context.esc(i.barcode || '—')}</p>${admin ? `<button type="button" data-hub-unhide="${context.esc(i.code)}">取消隱藏</button>` : ''}</div>`;
+      context.$('hubDrawerSettings').innerHTML = '';
+      context.$('hubDrawerExtra').innerHTML = '';
+      return;
+    }
     const img = photoOf(e);
     context.$('hubDrawerTitle').innerHTML = `<div class="hub-title-code">${context.esc(codeLabel(e))}</div><div class="hub-title-name">${context.esc(nameOf(e) || '（未命名）')}</div>`;
     const missing = miss.length ? `<div class="hub-missing-box">還缺：${miss.map(context.esc).join('、')}</div>` : '<div class="hub-ok-box">基本資料完整</div>';
@@ -111,6 +120,10 @@ export function register(context) {
       const p = protection(e);
       extra += `<div class="hub-section"><h4>客找保護</h4>${p ? `<p>${context.esc(p.store)} 保護到 ${context.esc(dmy(p.expiresOn))}</p>` : '<p class="mini muted">沒有保護中的店家。</p>'}</div>`;
     }
+    if (admin && (i.sources || []).includes('整理 Excel')) {
+      const others = (i.sources || []).filter(x => x !== '整理 Excel');
+      extra += `<div class="hub-section"><h4>內建清單</h4><p class="mini muted">這個商品來自網站內建的「整理 Excel」清單。${others.length ? `它也出現在 ${context.esc(others.join('、'))}，隱藏後仍會顯示。` : '隱藏後就不會出現在訂貨規劃；可在「已隱藏」取消。'}</p><button type="button" data-hub-hide="${context.esc(i.code)}">從內建清單隱藏</button></div>`;
+    }
     const history = (i.history || []).slice(-12).reverse();
     extra += `<div class="hub-section"><h4>訂貨紀錄</h4>${history.length ? `<table class="hub-mini-table"><thead><tr><th>貨櫃</th><th class="right">箱數</th><th class="right">價格（¥）</th></tr></thead><tbody>${history.map(h => `<tr><td>${context.esc(h.container)}</td><td class="right">${h.qty == null ? '報價' : context.fmt(h.qty)}</td><td class="right">${context.fmt(h.price)}</td></tr>`).join('')}</tbody></table>` : '<p class="mini muted">尚無訂貨紀錄。</p>'}</div>`;
     context.$('hubDrawerExtra').innerHTML = extra;
@@ -118,7 +131,7 @@ export function register(context) {
 
   context.renderProductHub = function renderProductHub() {
     const all = entries(), list = filtered();
-    const count = f => all.filter(e => f === 'pending' ? issues(e).length : f === 'all' ? true : f === 'frozen' || f === 'dry' ? e.item.kind === f : f === 'inactive' ? e.item.availability !== 'active' : !!protection(e)).length;
+    const count = f => f === 'hidden' ? hiddenEntries().length : all.filter(e => f === 'pending' ? issues(e).length : f === 'all' ? true : f === 'frozen' || f === 'dry' ? e.item.kind === f : f === 'inactive' ? e.item.availability !== 'active' : !!protection(e)).length;
     context.$('hubFilters').innerHTML = FILTERS.map(([id, label]) => `<button type="button" data-hub-filter="${id}" class="${view.filter === id ? 'active' : ''}" aria-pressed="${view.filter === id}">${label} <span class="count">${count(id)}</span></button>`).join('');
     const pendingAll = all.filter(e => issues(e).length);
     context.$('hubReasons').innerHTML = view.filter === 'pending' ? `<span class="mini muted">只看：</span><button type="button" data-hub-reason="" class="${view.reason ? '' : 'active'}">全部原因</button>${HUB_REASONS.map(r => `<button type="button" data-hub-reason="${r}" class="${view.reason === r ? 'active' : ''}">${r} <span class="count">${pendingAll.filter(e => issues(e).includes(r)).length}</span></button>`).join('')}<span class="mini muted hub-myob-note">另有 ${all.filter(needsMyob).length} 款「需匯入 MYOB」（不算待補）</span>` : '';
@@ -128,14 +141,15 @@ export function register(context) {
       return `<tr data-hub-open="${context.esc(e.key)}" class="${view.open === e.key ? 'hub-selected' : ''}" tabindex="0"><td class="hub-photo-col">${img ? `<img src="${context.esc(img)}" alt="" loading="lazy">` : '<span class="hub-photo-none">無圖</span>'}</td><td><b>${context.esc(codeLabel(e))}</b><div>${context.esc(nameOf(e) || '（未命名）')}</div><div class="mini muted">${context.esc(barcodeOf(e) || '缺少 Barcode')}</div></td><td>${kindLabel(e.item.kind)}</td><td>${e.item.noCode ? '—' : statusLabel(e.item.availability)}</td><td class="right">${e.item.noCode || piOnly(e) ? '—' : context.fmt(e.item.stock)}</td><td>${miss.map(m => `<span class="tag hub-issue">${context.esc(m)}</span>`).join(' ')}${needsMyob(e) ? ' <span class="tag hub-myob">需匯入 MYOB</span>' : ''}${protection(e) ? ' <span class="tag hub-protect">客找保護</span>' : ''}${!miss.length && !needsMyob(e) ? '<span class="mini muted">完整</span>' : ''}</td></tr>`;
     }).join('') || `<tr><td colspan="6" class="empty">${view.filter === 'pending' ? '目前沒有待補的商品 🎉' : '沒有符合的商品。'}</td></tr>`;
     context.$('hubMore').innerHTML = list.length > view.limit ? `<button type="button" data-hub-more>再顯示 ${Math.min(150, list.length - view.limit)} 款</button>` : '';
-    let current = view.open ? all.find(e => e.key === view.open) : null;
-    if (view.open && !current && view.openBarcode) current = all.find(e => barcodeOf(e) === view.openBarcode) || null;
+    const pool = view.filter === 'hidden' ? [...all, ...hiddenEntries()] : all;
+    let current = view.open ? pool.find(e => e.key === view.open) : null;
+    if (view.open && !current && view.openBarcode && !String(view.open).startsWith('HIDDEN:')) current = all.find(e => barcodeOf(e) === view.openBarcode) || null;
     if (current) { view.open = current.key; } else view.open = '';
     renderDrawer(current);
   };
 
   api.hubOpen = (key, {keepStatus = false} = {}) => {
-    const e = entries().find(x => x.key === key);
+    const e = [...entries(), ...hiddenEntries()].find(x => x.key === key);
     view.open = e ? key : '';
     view.openBarcode = e ? barcodeOf(e) || String(e.item.barcode || '') : '';
     view.renderedKey = '';
@@ -184,13 +198,23 @@ export function register(context) {
 export function initialize(context) {
   const hub = context.$('productHub');
   hub.addEventListener('click', e => {
-    const t = e.target.closest('[data-hub-filter],[data-hub-reason],[data-hub-more],[data-hub-open],#hubDrawerClose,[data-hub-save],[data-hub-temp],[data-hub-match]');
+    const t = e.target.closest('[data-hub-filter],[data-hub-reason],[data-hub-more],[data-hub-open],#hubDrawerClose,[data-hub-save],[data-hub-temp],[data-hub-match],[data-hub-hide],[data-hub-unhide]');
     if (!t) return;
     const view = api.hubView;
     if (t.dataset.hubFilter) { view.filter = t.dataset.hubFilter; view.reason = ''; view.limit = 150; context.renderProductHub(); }
     else if (t.hasAttribute('data-hub-reason')) { view.reason = t.dataset.hubReason; view.limit = 150; context.renderProductHub(); }
     else if (t.hasAttribute('data-hub-more')) { view.limit += 150; context.renderProductHub(); }
     else if (t.id === 'hubDrawerClose') { view.open = ''; view.openBarcode = ''; context.renderProductHub(); }
+    else if (t.dataset.hubHide) {
+      if (context.plannerRole !== 'admin' || !confirm(`把 ${t.dataset.hubHide} 從內建清單隱藏？可在「已隱藏」取消。`)) return;
+      const next = api.hubNextKey(t.dataset.hubHide);
+      context.saveCatalogPatch({items: {[t.dataset.hubHide]: {hiddenSeed: true}}});
+      view.open = next; view.openBarcode = ''; view.renderedKey = ''; context.renderProductHub();
+    } else if (t.dataset.hubUnhide) {
+      if (context.plannerRole !== 'admin') return;
+      context.saveCatalogPatch({items: {[t.dataset.hubUnhide]: {hiddenSeed: false}}});
+      view.open = ''; context.renderProductHub();
+    }
     else if (t.dataset.hubSave) api.hubSave(t.dataset.hubSave === 'next');
     else if (t.dataset.hubTemp) window.parent.postMessage({type: 'KAISI_PI_TEMP_EDIT', barcode: t.dataset.hubTemp}, '*');
     else if (t.dataset.hubMatch) window.parent.postMessage({type: 'KAISI_PI_MATCH', barcode: t.dataset.hubMatch}, '*');
