@@ -22,7 +22,7 @@ export const definition = {
     "name": "renderAll",
     "kind": "function"
   }],
-  "imports": ["renderPurchaseOverview", "renderInventorySync", "getItems", "currentPiQuantities", "$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed", "orderBaselines", "orderConflicts", "orderPending", "orderSyncReady", "refreshOrderSync", "rememberOrderBase"],
+  "imports": ["renderProductHub", "renderPurchaseOverview", "renderInventorySync", "getItems", "currentPiQuantities", "$", "allPis", "autosaveLabel", "calc", "compareContainerIds", "currentKey", "customerSourceReady", "deferredDrafts", "dirtyDrafts", "draft", "draftFingerprint", "esc", "flushRecovery", "fmt", "persist", "plannerRole", "refreshRetryStatus", "renderCatalogSources", "renderManagement", "renderNotes", "renderPending", "renderPlan", "renderSourceReview", "saveFingerprints", "stageLocalDraft", "state", "trackedItem", "trackerFeed", "orderBaselines", "orderConflicts", "orderPending", "orderSyncReady", "refreshOrderSync", "rememberOrderBase"],
   "writes": ["csvCell", "download", "exportCsv", "renderAll", "renderContainers", "saveDraft"]
 };
 export function register(context) {
@@ -122,6 +122,7 @@ export function register(context) {
       context.renderManagement();
       context.renderSourceReview();
     }
+    if (!context.$('productHub').classList.contains('hidden')) context.renderProductHub();
     if (!context.$('containers').classList.contains('hidden')) {
       context.renderContainers();
       document.querySelectorAll('#containerCards .admin-only').forEach(b => b.hidden = context.plannerRole !== 'admin');

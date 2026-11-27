@@ -24,7 +24,7 @@ export function initialize(context) {
   context.$('productRows').addEventListener('click', e => {const bc=e.target.closest('[data-match-pi]')?.dataset.matchPi;if(bc)window.parent.postMessage({type:'KAISI_PI_MATCH',barcode:bc},'*')});
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('active', x === b));
-    ['plan', 'containers', 'settings', 'imports', 'pending'].forEach(id => context.$(id).classList.toggle('hidden', id !== b.dataset.tab));
+    ['plan', 'containers', 'settings', 'imports', 'pending', 'productHub'].forEach(id => context.$(id).classList.toggle('hidden', id !== b.dataset.tab));
     context.renderAll();
   });
   context.setArrivalDefault();

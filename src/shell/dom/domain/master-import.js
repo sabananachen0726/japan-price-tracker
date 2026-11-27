@@ -80,8 +80,13 @@ export const JapanMasterImport = {
     for (const row of parsed.rows) {
       const oldKey = byCode.get(row.code),
         old = oldKey ? products[oldKey] : null;
-      let key = row.barcode || 'PENDING_ITEM_' + row.code;
-      if (oldKey && this.barcode(old.sourceBarcode || oldKey) === row.barcode && row.barcode) key = oldKey;
+      // Hand-filled fields (manualFields) are temporary: any value in the import replaces
+      // them; a blank import cell keeps the fill so the product does not fall back to 待補.
+      const manual = {...(old?.manualFields || {})};
+      for (const field of ['name', 'imgUrl', 'barcode']) if (row[field]) delete manual[field];
+      const barcode = row.barcode || (old?.manualFields?.barcode ? this.barcode(old.sourceBarcode || '') : '');
+      let key = barcode || 'PENDING_ITEM_' + row.code;
+      if (oldKey && this.barcode(old.sourceBarcode || oldKey) === barcode && barcode) key = oldKey;
       if (products[key] && this.norm(products[key].itemCode) !== row.code) key = 'PENDING_ITEM_' + row.code;
       if (products[key] && this.norm(products[key].itemCode) !== row.code) throw Error('品號儲存識別衝突：' + row.code);
       if (old) {
@@ -100,14 +105,16 @@ export const JapanMasterImport = {
         itemCode: row.code,
         name: row.name || old?.name || '',
         imgUrl: row.imgUrl || old?.imgUrl || '',
-        sourceBarcode: row.barcode,
+        sourceBarcode: barcode,
         placeOfProduction: row.origin,
         itemKind: row.itemKind,
         kind: row.kind === 'unknown' ? old?.kind || 'unknown' : row.kind,
         sourceActive: row.sourceActive,
         pendingProduct: false,
-        missingBarcode: !row.barcode
+        missingBarcode: !barcode
       };
+      if (Object.keys(manual).length) products[key].manualFields = manual;
+      else delete products[key].manualFields;
       byCode.set(row.code, key);
     }
     const groups = new Map();

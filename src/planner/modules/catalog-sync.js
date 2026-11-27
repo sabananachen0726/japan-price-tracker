@@ -1,3 +1,4 @@
+import {inferKind} from '../../shared/container-kind.js';
 // planner: catalog-sync. Declare dependencies here when adding cross-feature calls.
 export const definition = {
   "id": "catalog-sync",
@@ -225,6 +226,10 @@ export function register(context) {
     }
     // A PI-only candidate is local presentation, never a master/catalog write.
     for(const pi of context.trackerFeed?.pis || []) for(const row of pi.rows || []) if(!map.has(row.code))map.set(row.code,{...row,code:row.code,stock:null,custom:'',monthly:null,maxStock:null,imgUrl:'',sources:[],history:[],piOnly:true});
+    // Containers each product came in (PIs and quote history) decide 乾貨／冷凍 when no source says.
+    const seen = new Map(), add = (key, container) => { if (!key) return; if (!seen.has(key)) seen.set(key, []); seen.get(key).push(container); };
+    for (const pi of context.trackerFeed?.pis || []) for (const row of pi.rows || []) { add(row.code, pi.container); if (row.barcode) add('BC:' + row.barcode, pi.container); }
+    for (const h of context.trackerFeed?.historyRows || []) { add(h.code, h.container); if (h.barcode) add('BC:' + h.barcode, h.container); }
     for (const i of map.values()) {
       const inv = context.state.inventory?.[i.code],
         units = context.state.unitMetadata?.[i.code] || context.SEED.inventory?.[i.code] || {};
@@ -235,6 +240,10 @@ export function register(context) {
       const settings = context.state.catalog?.[i.code] || {};
       if (!i.imgUrl && settings.imgUrl) i.imgUrl = settings.imgUrl;
       if (i.kind === 'unknown' && ['dry', 'frozen'].includes(settings.kind)) i.kind = settings.kind;
+      if (!['dry', 'frozen'].includes(i.kind)) {
+        const guess = inferKind([...(i.history || []).map(h => h.container), ...(seen.get(i.code) || []), ...(i.barcode ? seen.get('BC:' + i.barcode) || [] : [])]);
+        if (guess) { i.kind = guess; i.kindFromContainer = true; }
+      }
       i.availability = ['paused', 'discontinued'].includes(settings.availability) ? settings.availability : 'active';
       i.kind = ['dry', 'frozen'].includes(i.kind) ? i.kind : 'unknown';
       i.sources = context.ELIGIBLE_SOURCE_ORDER.filter(s => i.sources.includes(s));

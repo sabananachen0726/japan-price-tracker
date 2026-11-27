@@ -34,16 +34,25 @@ export function register(context) {
       const data=window.appData,uid=context.auth.currentUser.uid;
       void loadTemporaryImages(data,{getDoc:context.getDoc,doc:context.doc,db:context.db}).then(changed=>{if(changed&&context.currentDataMode==='live'&&context.auth.currentUser?.uid===uid&&window.appData===data)context.sendPlannerSnapshot()}).catch(()=>{});
     }
+    // Master products without an Item Code only show in 商品管理 (待補), never in planning.
+    const masterNoCode = [];
     Object.entries(window.appData.products || {}).forEach(([barcode, p]) => {
       const code = String(validItemCode(p.itemCode) ? p.itemCode : '').trim().toUpperCase(),
         key = code || '__JAN_' + String(barcode).replace(/[^A-Z0-9_-]/gi, '');
-      if (!code) return;
+      const manual = Object.keys(p.manualFields || {});
+      if (!code) {
+        masterNoCode.push({masterKey: barcode, barcode: p.missingBarcode ? '' : String(p.sourceBarcode || barcode).replace(/^PENDING_ITEM_.*/, ''), name: p.name || '', imgUrl: p.imgUrl || '', manual});
+        return;
+      }
       products[key] = {
         code,
         barcode: String(p.sourceBarcode || barcode),
         name: p.name || '',
         imgUrl: p.imgUrl || '',
         kind: ['dry', 'frozen'].includes(p.kind) ? p.kind : 'unknown',
+        masterKey: barcode,
+        missingBarcode: p.missingBarcode === true,
+        manual,
         prices: []
       };
     });
@@ -137,7 +146,8 @@ export function register(context) {
         pis,
         historyRows,
         protections: context.currentDataMode === "live" ? window.appData.customerProtection?.protections || {} : {},
-        japanCodes: Array.isArray(window.appData.masterJapanCodes) ? window.appData.masterJapanCodes : null
+        japanCodes: Array.isArray(window.appData.masterJapanCodes) ? window.appData.masterJapanCodes : null,
+        masterNoCode
       }
     }, '*');
     context.sendCatalogSources();
@@ -167,7 +177,7 @@ export function register(context) {
   };
 }
 export function initialize(context) {
-  context.ORDER_PLANNER_URL = './planner.html?v=20261126-v4260';
+  context.ORDER_PLANNER_URL = './planner.html?v=20261127-v4270';
   context.plannerLoaded = false;
   document.addEventListener('click', e => {
     const dest = e.target.closest('[data-open-import],.import-switcher [data-import-view]');
@@ -179,7 +189,7 @@ export function initialize(context) {
   document.addEventListener('shown.bs.tab', e => {
     if (e.target?.id === 'add-tab' && document.getElementById('add-tab').classList.contains('active')) context.chooseImportView(document.body.dataset.importView || (context.currentRole === 'admin' ? 'auto' : 'planner'));
     if (e.target?.id === 'planner-tab' && document.getElementById('planner-tab').classList.contains('active')) {
-      document.body.dataset.productView = 'master';
+      document.body.dataset.productView = 'hub';
       context.loadEmbeddedOrderPlanner();
       document.getElementById('plannerFrame')?.contentWindow?.postMessage({
         type: 'KAISI_OPEN_PLAN'

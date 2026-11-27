@@ -201,6 +201,7 @@
       "file": "modules/frame-commands.js",
       "owns": [],
       "imports": [
+        "rebuildItemToBarcode",
         "chooseImportView",
         "chooseProductView412",
         "deleteField",

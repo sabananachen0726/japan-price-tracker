@@ -135,7 +135,7 @@ export function initialize(context) {
       context.$('manageSearch').value = m.query || '';
       context.$('pendingSearch').value = m.query || '';
       context.$('sourceReviewSearch').value = m.query || '';
-      document.querySelector(`[data-tab="${m.view === 'pending' ? 'pending' : 'settings'}"]`).click();
+      document.querySelector(`[data-tab="${m.view === 'pending' ? 'pending' : m.view === 'hub' ? 'productHub' : 'settings'}"]`).click();
       context.notifyPlannerWidth412();
     }
     if (m.type === 'KAISI_OPEN_PLAN' || m.type === 'KAISI_OPEN_IMPORT_CENTER') {

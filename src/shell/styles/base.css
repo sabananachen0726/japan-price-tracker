@@ -74,10 +74,13 @@ body[data-import-view="planner"] #add-panel.active ~ #planner-panel #customerSou
 /* One fixed normal workspace on desktop, independent of monitor width. */
 #protectedApp>.container{width:calc(100% - 32px);max-width:1320px!important;margin-left:auto;margin-right:auto}
 body.planner-wide:has(#planner-panel.active) #protectedApp>.container{max-width:none!important;width:calc(100% - 32px)}
+body[data-product-view="hub"] #settings-panel.active ~ #planner-panel,
 body[data-product-view="settings"] #settings-panel.active ~ #planner-panel,
 body[data-product-view="pending"] #settings-panel.active ~ #planner-panel{display:block!important;opacity:1!important}
+body[data-product-view="hub"]:has(#settings-panel.active) #customerSourcePanel,
 body[data-product-view="settings"]:has(#settings-panel.active) #customerSourcePanel,
 body[data-product-view="pending"]:has(#settings-panel.active) #customerSourcePanel{display:none!important}
+body[data-product-view="hub"] #productMasterView,
 body[data-product-view="settings"] #productMasterView,
 body[data-product-view="pending"] #productMasterView{display:none}
 .workspace-subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}

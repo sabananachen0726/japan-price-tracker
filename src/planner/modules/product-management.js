@@ -84,7 +84,7 @@ export function register(context) {
 }
 export function initialize(context) {
   context.state = context.normalizePlannerState(context.state);
-  for (const id of ['manageRows', 'pendingRows']) {
+  for (const id of ['manageRows', 'pendingRows', 'hubDrawerSettings']) {
     context.$(id).addEventListener('change', e => {
       const t = e.target,
         code = t.dataset.code;

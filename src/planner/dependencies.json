@@ -403,6 +403,7 @@
         "renderAll"
       ],
       "imports": [
+        "renderProductHub",
         "renderPurchaseOverview",
         "renderInventorySync",
         "getItems",
@@ -474,6 +475,33 @@
       "writes": [
         "purchasePool",
         "renderPurchaseOverview"
+      ]
+    },
+    {
+      "id": "product-hub",
+      "file": "modules/product-hub.js",
+      "owns": [
+        "renderProductHub"
+      ],
+      "imports": [
+        "$",
+        "esc",
+        "events",
+        "factor",
+        "factorInfo",
+        "fmt",
+        "incoming",
+        "kindSelect",
+        "photo",
+        "plannerRole",
+        "shelfLife",
+        "state",
+        "statusSelect",
+        "trackerFeed",
+        "val"
+      ],
+      "writes": [
+        "renderProductHub"
       ]
     },
     {

@@ -29,7 +29,7 @@ export function register(context) {
     if (!f?.contentWindow) return;
     if (document.getElementById('add-tab').classList.contains('active') && document.body.dataset.importView === 'planner') f.contentWindow.postMessage({
       type: 'KAISI_OPEN_IMPORT_CENTER'
-    }, '*');else if (document.getElementById('settings-tab').classList.contains('active') && ['settings', 'pending'].includes(document.body.dataset.productView)) f.contentWindow.postMessage({
+    }, '*');else if (document.getElementById('settings-tab').classList.contains('active') && ['hub', 'settings', 'pending'].includes(document.body.dataset.productView)) f.contentWindow.postMessage({
       type: 'KAISI_PRODUCT_OPEN',
       view: document.body.dataset.productView,
       query: document.getElementById('productSearch412')?.value || ''
@@ -38,11 +38,11 @@ export function register(context) {
     }, '*');
   };
   context.chooseProductView412 = function chooseProductView412(view) {
-    document.body.dataset.productView = ['settings', 'pending', 'protect'].includes(view) ? view : 'master';
+    document.body.dataset.productView = ['hub', 'settings', 'pending', 'protect', 'master'].includes(view) ? view : 'hub';
     document.querySelectorAll('[data-product-view]').forEach(b => {
       if (b.tagName === 'BUTTON') b.classList.toggle('active', b.dataset.productView === document.body.dataset.productView);
     });
-    if (view !== 'master' && view !== 'protect') context.loadEmbeddedOrderPlanner();
+    if (document.body.dataset.productView !== 'master' && document.body.dataset.productView !== 'protect') context.loadEmbeddedOrderPlanner();
     document.dispatchEvent(new CustomEvent('kaisi:product-view', {detail: document.body.dataset.productView}));
     context.routePlannerWorkspace();
   };
@@ -83,7 +83,7 @@ export function initialize(context) {
     while (settings.firstChild) master.append(settings.firstChild);
     settings.append(master);
     const bar = document.createElement('div');
-    bar.innerHTML = '<h3>商品管理</h3><input id="productSearch412" class="form-control mb-3" placeholder="搜尋 Item Code／Barcode／商品名稱"><div class="workspace-subnav"><button class="btn btn-outline-primary active" data-product-view="master">基本資料</button><button class="btn btn-outline-primary" data-product-view="settings">訂貨設定</button><button class="btn btn-outline-primary" data-product-view="pending">待補資料</button></div>';
+    bar.innerHTML = '<h3>商品管理</h3><input id="productSearch412" class="form-control mb-3" placeholder="搜尋 Item Code／Barcode／商品名稱"><div class="workspace-subnav"><button class="btn btn-outline-primary active" data-product-view="hub">商品清單</button></div><div class="product-advanced-links"><span>進階：</span><button type="button" class="btn btn-link btn-sm" data-product-view="master">主檔原始表</button><button type="button" class="btn btn-link btn-sm" data-product-view="settings">訂貨設定原始表</button></div>';
     settings.prepend(bar);
     document.getElementById('masterSearchInput').classList.add('d-none');
     document.getElementById('productSearch412').addEventListener('input', e => {
@@ -97,7 +97,7 @@ export function initialize(context) {
       }, '*');
     });
     settings.querySelectorAll('button[data-product-view]').forEach(b => b.onclick = () => context.chooseProductView412(b.dataset.productView));
-    document.body.dataset.productView = 'master';
+    document.body.dataset.productView = 'hub';
     document.getElementById('btnDownloadMasterTemplate').hidden = true;
     master.querySelector('h4').textContent = '商品基本資料';
     master.querySelector('p.text-muted').textContent = '商品主檔以 Item Code 更新；同條碼不同品號分開保留。原始資料可在資料匯入中心更新。';
@@ -149,7 +149,7 @@ export function initialize(context) {
     document.getElementById('authUser').parentElement.prepend(gear);
     document.addEventListener('shown.bs.tab', e => {
       if (!e.target.classList.contains('active')) return;
-      if (e.target?.id === 'settings-tab') context.chooseProductView412(document.body.dataset.productView || 'master');
+      if (e.target?.id === 'settings-tab') context.chooseProductView412(document.body.dataset.productView || 'hub');
       if (e.target?.id !== 'planner-tab') document.body.classList.remove('planner-wide');
     });
     document.querySelector('[data-import-view="pi"]').textContent = '廠商 PI';

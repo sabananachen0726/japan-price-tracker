@@ -1,0 +1,59 @@
+const assert=require('node:assert/strict');
+const path=require('node:path');
+module.exports=({test,reportFile})=>{
+ const shot=(s,name)=>s.page.screenshot({path:path.join(path.dirname(reportFile),name)});
+ async function open(s){await s.planner();await s.page.locator('#settings-tab').click();const frame=s.page.frameLocator('#plannerFrame');await frame.locator('#productHub:not(.hidden)').waitFor();await frame.locator('#hubRows tr').first().waitFor();return frame;}
+ test('HUB-01','商品清單','商品管理預設打開商品清單，待補依原因篩選，月銷不算待補',async s=>{
+  const frame=await open(s);
+  assert(await s.page.locator('[data-product-view="hub"].active').isVisible());
+  assert((await frame.locator('[data-hub-filter="pending"]').getAttribute('class')).includes('active'));
+  assert.equal(await frame.locator('[data-hub-reason="月銷待設定"]').count(),0);
+  await frame.locator('[data-hub-reason="缺圖片"]').click();
+  const tags=await frame.locator('#hubRows tr').evaluateAll(rows=>rows.map(r=>r.innerText));
+  assert(tags.length>0&&tags.every(t=>t.includes('缺圖片')));
+  await frame.locator('[data-hub-filter="all"]').click();
+  assert((await frame.locator('#hubRows').innerText()).includes('ACE005'));
+ });
+ test('HUB-02','商品清單','補名稱和圖片，Enter 儲存並跳到下一個待補；標成暫填',async s=>{
+  const frame=await open(s);
+  await frame.locator('[data-hub-open="ACE005"]').click();
+  await frame.locator('#hubDrawer:not([hidden])').waitFor();
+  await frame.locator('[data-fill="name"]').fill('Acecook 泡麵');
+  await frame.locator('[data-fill="imgUrl"]').fill('https://example.com/ace.png');
+  await shot(s,'V4270-hub-drawer.png');
+  await frame.locator('[data-fill="imgUrl"]').press('Enter');
+  await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.products?.['4901071404000']?.imgUrl==='https://example.com/ace.png');
+  const p=await s.page.evaluate(()=>window.__store['app_data/main_config'].products['4901071404000']);
+  assert.equal(p.name,'Acecook 泡麵');assert(p.manualFields.name&&p.manualFields.imgUrl);
+  // Moved on to the next product that still needs data.
+  await frame.locator('[data-hub-open="TEST002"].hub-selected').waitFor();
+  await frame.locator('.hub-status.ok').waitFor();
+  // Back on ACE005 the filled fields show as 暫填.
+  await frame.locator('[data-hub-filter="all"]').click();await frame.locator('[data-hub-open="ACE005"]').click();
+  assert.equal(await frame.locator('#hubDrawer .hub-temp').count(),2);
+ });
+ test('HUB-03','商品清單','PI 新品（主檔沒有）列在待補；填 Item Code 後建立主檔並出現在訂貨規劃',async s=>{
+  await s.page.evaluate(async()=>{appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4901005022461',qty:12}]}};await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-reason="缺 Item Code"]').click();
+  await frame.locator('[data-hub-open="__JAN_4901005022461"]').click();
+  assert((await frame.locator('#hubDrawer').innerText()).includes('缺 Item Code'));
+  assert.equal(await frame.locator('#hubDrawerSettings select[data-field="kind"]').inputValue(),'frozen');
+  assert((await frame.locator('#hubDrawerSettings').innerText()).includes('依貨櫃號碼判斷'));
+  await frame.locator('[data-hub-save="stay"]').click();
+  await frame.locator('.hub-status.bad').waitFor();
+  await frame.locator('[data-fill="itemCode"]').fill('akag050');
+  await frame.locator('[data-fill="name"]').fill('Akagi 新品');
+  await frame.locator('[data-hub-save="stay"]').click();
+  await s.page.waitForFunction(()=>window.__store['app_data/main_config']?.products?.['4901005022461']?.itemCode==='AKAG050');
+  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-open="AKAG050"]').waitFor();
+ });
+ test('HUB-04','商品清單','抽屜裡改貨別會寫入訂貨設定',async s=>{
+  const frame=await open(s);
+  await frame.locator('[data-hub-filter="all"]').click();
+  await frame.locator('[data-hub-open="ACE005"]').click();
+  await frame.locator('#hubDrawerSettings select[data-field="kind"]').selectOption('frozen');
+  await s.page.waitForFunction(()=>window.__store['app_data/order_catalog_v1']?.items?.ACE005?.kind==='frozen');
+ });
+};
