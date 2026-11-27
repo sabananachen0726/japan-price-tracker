@@ -1749,7 +1749,9 @@
           "compareContainerIds",
           "incoming",
           "allocationCode",
-          "piWithReservations"
+          "piWithReservations",
+          "piPresence",
+          "itemOrigin"
         ],
         "imports": [
           "purchasePool",
@@ -1759,6 +1761,8 @@
           "trackerFeed"
         ],
         "writes": [
+          "piPresence",
+          "itemOrigin",
           "allPis",
           "allocationCode",
           "compareContainerIds",
@@ -1842,6 +1846,7 @@
           "updateDraftTotal"
         ],
         "imports": [
+          "itemOrigin",
           "customerSourceReady",
           "salesSummary",
           "trackerFeed",
@@ -2017,6 +2022,7 @@
           "renderProductHub"
         ],
         "imports": [
+          "itemOrigin",
           "SEED",
           "saveCatalogPatch",
           "$",

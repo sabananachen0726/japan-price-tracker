@@ -6,14 +6,14 @@ export const definition = {
     "name": "renderProductHub",
     "kind": "function"
   }],
-  "imports": ["SEED", "saveCatalogPatch", "$", "esc", "events", "factor", "factorInfo", "fmt", "incoming", "kindSelect", "photo", "plannerRole", "shelfLife", "state", "statusSelect", "trackerFeed", "val"],
+  "imports": ["itemOrigin", "SEED", "saveCatalogPatch", "$", "esc", "events", "factor", "factorInfo", "fmt", "incoming", "kindSelect", "photo", "plannerRole", "shelfLife", "state", "statusSelect", "trackerFeed", "val"],
   "writes": ["renderProductHub"]
 };
 export const HUB_REASONS = ['缺圖片', '缺名稱', '缺 Item Code', '缺 Barcode', '貨別未分類'];
 // Filters stack: 貨別 × 訂貨狀態 × 需要補 (+ 客找保護中 / 已隱藏). Counts follow the other choices.
-const GROUPS = [['kind', '貨別', [['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['unknown', '未分類']]], ['state', '訂貨狀態', [['all', '全部'], ['active', '可訂'], ['inactive', '暫停／停產']]], ['need', '需要補', [['all', '不限'], ['pending', '⚠ 任一待補'], ...HUB_REASONS.map(r => [r, r])]], ['special', '其他', [['protect', '客找保護中'], ['hidden', '已隱藏']]]];
+const GROUPS = [['kind', '貨別', [['all', '全部'], ['frozen', '冷凍'], ['dry', '乾貨'], ['unknown', '未分類']]], ['state', '訂貨狀態', [['all', '全部'], ['active', '可訂'], ['inactive', '暫停／停產']]], ['need', '需要補', [['all', '不限'], ['pending', '⚠ 任一待補'], ...HUB_REASONS.map(r => [r, r])]], ['origin', '來源', [['all', '全部'], ['master', '主檔'], ['seed', '內建清單'], ['pi', '只在 PI'], ['arriving', '未到櫃新品']]], ['special', '其他', [['protect', '客找保護中'], ['hidden', '已隱藏']]]];
 const api = {};
-const view = {kind: 'all', state: 'all', need: 'pending', special: '', open: '', openBarcode: '', limit: 150, status: '', statusKind: '', pendingRequest: '', next: false, renderedKey: ''};
+const view = {kind: 'all', state: 'all', need: 'pending', origin: 'all', special: '', open: '', openBarcode: '', limit: 150, status: '', statusKind: '', pendingRequest: '', next: false, renderedKey: ''};
 const https = u => /^https:\/\//i.test(String(u || '')) ? String(u) : '';
 const dmy = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
 
@@ -45,8 +45,29 @@ export function register(context) {
     if (dim === 'kind') return value === 'all' || (e.item.noCode ? 'unknown' : e.item.kind) === value;
     if (dim === 'state') return value === 'all' || (value === 'active' ? e.item.availability === 'active' : e.item.availability !== 'active');
     if (dim === 'need') return value === 'all' || (value === 'pending' ? issues(e).length > 0 : issues(e).includes(value));
+    if (dim === 'origin') {
+      if (value === 'all') return true;
+      const o = originOf(e);
+      return value === 'master' ? o.master : value === 'seed' ? o.seed && !o.master : value === 'pi' ? o.piOnly : o.newArrival;
+    }
     if (dim === 'special') return value !== 'protect' || !!protection(e);
     return true;
+  };
+  const originCache = new Map();
+  const originOf = e => {
+    if (e.hidden) return {master: false, seed: true, piOnly: false, pis: [], open: [], newArrival: false};
+    if (!originCache.has(e.key)) originCache.set(e.key, context.itemOrigin(e.item));
+    return originCache.get(e.key);
+  };
+  const piText = p => `${p.container} ${p.received ? '已到' : `未到櫃${p.eta ? `（${p.etaEstimated ? '約 ' : ''}${dmy(p.eta)}）` : ''}`}`;
+  const originTags = e => {
+    const o = originOf(e), tags = [];
+    if (o.master) tags.push('<span class="tag src-master">主檔</span>');
+    if (o.seed) tags.push('<span class="tag src-seed">內建清單</span>');
+    if (o.piOnly) tags.push('<span class="tag src-pi">只在 PI</span>');
+    if (o.newArrival) tags.push('<span class="tag src-new">未到櫃新品</span>');
+    const pis = o.pis.slice(0, 2).map(piText).join('、') + (o.pis.length > 2 ? ` 等 ${o.pis.length} 櫃` : '');
+    return `<div class="hub-origin">${tags.join(' ')}${pis ? ` <span class="mini muted">PI：${context.esc(pis)}</span>` : ''}</div>`;
   };
   const searched = e => {
     const q = String(context.$('manageSearch').value || '').trim().toLowerCase();
@@ -124,6 +145,10 @@ export function register(context) {
       const p = protection(e);
       extra += `<div class="hub-section"><h4>客找保護</h4>${p ? `<p>${context.esc(p.store)} 保護到 ${context.esc(dmy(p.expiresOn))}</p>` : '<p class="mini muted">沒有保護中的店家。</p>'}</div>`;
     }
+    {
+      const o = originOf(e);
+      extra = `<div class="hub-section"><h4>來源</h4>${originTags(e)}<p class="mini muted">${o.master ? '商品主檔有這個商品。' : o.seed ? '只在網站內建清單（整理 Excel），主檔沒有。' : '主檔和內建清單都沒有，只出現在 PI。'}${o.newArrival ? ' 還沒到櫃的新品，資料通常要等主檔匯入或手動暫填。' : ''}</p>${o.pis.length ? `<ul class="hub-pi-list">${o.pis.map(p => `<li>${context.esc(piText(p))}${p.isFinal ? ' · Final' : ''}</li>`).join('')}</ul>` : ''}</div>` + extra;
+    }
     if (admin && (i.sources || []).includes('整理 Excel')) {
       const others = (i.sources || []).filter(x => x !== '整理 Excel');
       extra += `<div class="hub-section"><h4>內建清單</h4><p class="mini muted">這個商品來自網站內建的「整理 Excel」清單。${others.length ? `它也出現在 ${context.esc(others.join('、'))}，隱藏後仍會顯示。` : '隱藏後就不會出現在訂貨規劃；可在「已隱藏」取消。'}</p><button type="button" data-hub-hide="${context.esc(i.code)}">從內建清單隱藏</button></div>`;
@@ -134,6 +159,7 @@ export function register(context) {
   };
 
   context.renderProductHub = function renderProductHub() {
+    originCache.clear();
     const all = entries(), list = filtered();
     const count = (dim, value) => {
       if (dim === 'special') return source(value === 'hidden' ? 'hidden' : '').filter(e => matches(e, 'special') && passes(e, 'special', value)).length;
@@ -144,7 +170,7 @@ export function register(context) {
     context.$('hubCount').textContent = `顯示 ${Math.min(list.length, view.limit)} / ${list.length} 款`;
     context.$('hubRows').innerHTML = list.slice(0, view.limit).map(e => {
       const img = photoOf(e), miss = issues(e);
-      return `<tr data-hub-open="${context.esc(e.key)}" class="${view.open === e.key ? 'hub-selected' : ''}" tabindex="0"><td class="hub-photo-col">${img ? `<img src="${context.esc(img)}" alt="" loading="lazy">` : '<span class="hub-photo-none">無圖</span>'}</td><td><b>${context.esc(codeLabel(e))}</b><div>${context.esc(nameOf(e) || '（未命名）')}</div><div class="mini muted">${context.esc(barcodeOf(e) || '缺少 Barcode')}</div></td><td>${kindLabel(e.item.kind)}</td><td>${e.item.noCode ? '—' : statusLabel(e.item.availability)}</td><td class="right">${e.item.noCode || piOnly(e) ? '—' : context.fmt(e.item.stock)}</td><td>${miss.map(m => `<span class="tag hub-issue">${context.esc(m)}</span>`).join(' ')}${needsMyob(e) ? ' <span class="tag hub-myob">需匯入 MYOB</span>' : ''}${protection(e) ? ' <span class="tag hub-protect">客找保護</span>' : ''}${!miss.length && !needsMyob(e) ? '<span class="mini muted">完整</span>' : ''}</td></tr>`;
+      return `<tr data-hub-open="${context.esc(e.key)}" class="${view.open === e.key ? 'hub-selected' : ''}" tabindex="0"><td class="hub-photo-col">${img ? `<img src="${context.esc(img)}" alt="" loading="lazy">` : '<span class="hub-photo-none">無圖</span>'}</td><td><b>${context.esc(codeLabel(e))}</b><div>${context.esc(nameOf(e) || '（未命名）')}</div><div class="mini muted">${context.esc(barcodeOf(e) || '缺少 Barcode')}</div>${originTags(e)}</td><td>${kindLabel(e.item.kind)}</td><td>${e.item.noCode ? '—' : statusLabel(e.item.availability)}</td><td class="right">${e.item.noCode || piOnly(e) ? '—' : context.fmt(e.item.stock)}</td><td>${miss.map(m => `<span class="tag hub-issue">${context.esc(m)}</span>`).join(' ')}${needsMyob(e) ? ' <span class="tag hub-myob">需匯入 MYOB</span>' : ''}${protection(e) ? ' <span class="tag hub-protect">客找保護</span>' : ''}${!miss.length && !needsMyob(e) ? '<span class="mini muted">完整</span>' : ''}</td></tr>`;
     }).join('') || `<tr><td colspan="6" class="empty">${view.need !== 'all' ? '這個篩選下沒有要補的商品 🎉' : '沒有符合的商品。'}</td></tr>`;
     context.$('hubMore').innerHTML = list.length > view.limit ? `<button type="button" data-hub-more>再顯示 ${Math.min(150, list.length - view.limit)} 款</button>` : '';
     const pool = view.special === 'hidden' ? [...all, ...hiddenEntries()] : all;

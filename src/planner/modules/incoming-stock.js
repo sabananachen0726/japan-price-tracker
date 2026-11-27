@@ -23,11 +23,38 @@ export const definition = {
   }, {
     "name": "piWithReservations",
     "kind": "function"
+  }, {
+    "name": "piPresence",
+    "kind": "function"
+  }, {
+    "name": "itemOrigin",
+    "kind": "function"
   }],
   "imports": ["purchasePool", "norm", "round", "state", "trackerFeed"],
-  "writes": ["allPis", "allocationCode", "compareContainerIds", "containerNaturalCollator", "incoming", "parseContainerSortKey", "piWithReservations"]
+  "writes": ["piPresence", "itemOrigin", "allPis", "allocationCode", "compareContainerIds", "containerNaturalCollator", "incoming", "parseContainerSortKey", "piWithReservations"]
 };
 export function register(context) {
+  // Which PIs a product is in (newest container first), received or not.
+  const presenceIndex = new WeakMap();
+  context.piPresence = function piPresence(item) {
+    const raw = Array.isArray(context.trackerFeed?.pis) ? context.trackerFeed.pis : context.state.pis || [];
+    let index = presenceIndex.get(raw);
+    if (!index) {
+      index = {code: new Map(), barcode: new Map()};
+      const put = (map, key, p) => { if (!key) return; if (!map.has(key)) map.set(key, new Set()); map.get(key).add(p); };
+      for (const p of context.allPis()) for (const r of p.rows || []) { put(index.code, context.norm(r.code), p); put(index.barcode, String(r.barcode || ''), p); }
+      presenceIndex.set(raw, index);
+    }
+    const hits = new Set([...(index.code.get(item.code) || []), ...(item.barcode ? index.barcode.get(String(item.barcode)) || [] : [])]);
+    return [...hits].map(p => ({container: p.container, received: !!p.received, eta: p.eta || '', etaEstimated: !!p.etaEstimated, isFinal: p.isFinal === true})).sort((a, b) => context.compareContainerIds(b.container, a.container));
+  };
+  // Where a product comes from: 主檔 / 內建清單 / PI only, plus the PIs not yet unloaded.
+  context.itemOrigin = function itemOrigin(item) {
+    const sources = item.sources || [];
+    const master = sources.includes('商品主檔'), seed = sources.includes('整理 Excel');
+    const pis = context.piPresence(item), open = pis.filter(p => !p.received);
+    return {master, seed, piOnly: !master && !seed, pis, open, newArrival: !master && !seed && open.length > 0};
+  };
   context.allPis = function allPis() {
     const by = new Map();
     const source = Array.isArray(context.trackerFeed?.pis) ? context.trackerFeed.pis : context.state.pis || [];

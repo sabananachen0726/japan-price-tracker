@@ -438,3 +438,10 @@ body[data-import-view="auto"] #hub-auto{display:block}
 .hub-filters{display:flex;flex-direction:column;gap:6px;align-items:stretch}
 .hub-filter-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .hub-filter-title{min-width:72px;font-size:13px;font-weight:700;color:#4a5263}
+.hub-origin{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tag.src-master{background:#e3e9f4!important;color:#2c4a7c!important}
+.tag.src-seed{background:#efece6!important;color:#5b5446!important}
+.tag.src-pi{background:#fff4dc!important;color:#7a5200!important}
+.tag.src-new,.new-arrival-tag{background:#e7f4ea!important;color:#1f6b35!important}
+.new-arrival-tag{display:inline-block;border-radius:6px;padding:1px 6px;margin-top:3px;font-weight:600}
+.hub-pi-list{margin:6px 0 0;padding-left:18px;font-size:13px}

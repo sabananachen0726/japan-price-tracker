@@ -118,4 +118,21 @@ module.exports=({test,reportFile})=>{
   assert((await frame.locator('[data-hub-dim="need"][data-hub-val="缺圖片"]').getAttribute('class')).includes('active'));
   await shot(s,'V4275-hub-filters.png');
  });
+ test('HUB-10','商品來源','清單標出來源（主檔／內建清單／只在 PI）與未到櫃 PI；訂貨規劃標「未到櫃新品」',async s=>{
+  await s.page.evaluate(async()=>{appData.finalPiContainers={JSR27B0202F:{container:'JSR27B0202F',rows:[{barcode:'4571365752980',qty:6}]}};await saveFirebaseData()});
+  const frame=await open(s);
+  await frame.locator('[data-hub-dim="need"][data-hub-val="all"]').click();
+  await frame.locator('[data-hub-dim="origin"][data-hub-val="arriving"]').click();
+  const rows=await frame.locator('#hubRows tr[data-hub-open]').evaluateAll(r=>r.map(x=>x.dataset.hubOpen));
+  assert.deepEqual(rows,['__JAN_4571365752980']);
+  const text=await frame.locator('#hubRows').innerText();
+  assert(text.includes('只在 PI')&&text.includes('未到櫃新品')&&text.includes('JSR27B0202F 未到櫃'),text);
+  await frame.locator('[data-hub-dim="origin"][data-hub-val="master"]').click();
+  assert((await frame.locator('#hubRows').innerText()).includes('主檔'));
+  await shot(s,'V4276-hub-origin.png');
+  const {frame:plan}=await s.planner();
+  await plan.locator('#kind').selectOption('frozen');
+  await plan.locator('.new-arrival-tag').first().waitFor();
+  assert((await plan.locator('.new-arrival-tag').first().innerText()).includes('未到櫃新品 · JSR27B0202F'));
+ });
 };
